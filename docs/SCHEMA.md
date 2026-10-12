@@ -45,6 +45,8 @@
 * `id` (UUID, Primary Key)
 * `applicant_id` (UUID, Foreign Key -> applicants.id, Indexed)
 * `job_id` (UUID, Foreign Key -> jobs.id, Indexed)
+- `terms_version` (String) - e.g., "v1.0" (RA 10173 consent)
+- `consent_agreed` (Boolean) - Must be true
 * `resume_path` (String) - Local filesystem path
 * `resume_filename` (String) - Original filename
 * `resume_size_bytes` (Integer)

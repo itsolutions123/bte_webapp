@@ -1,5 +1,5 @@
 # API Contract: BTE Careers
-*Last verified: 2026-10-12 (Initial Draft)*
+*Last verified: 2026-10-12 (Added RA 10173 Consent)*
 
 ## Global Rules
 * All `/api/v1/admin/*` endpoints require HR authentication (cookie/token).
@@ -29,6 +29,8 @@
   * `first_name`, `last_name`, `email`, `phone` (strings)
   * `answers` (JSON string array: `[{"question_id": "uuid", "answer": "string"}]`)
   * `resume` (File, PDF only)
+  * `terms_version` (string)
+  * `consent_agreed` (boolean) - Philippine Data Privacy Act (RA 10173)
 * **Response (201 Created):** `{ "message": "Application submitted successfully", "application_id": "uuid" }`
 
 ---
