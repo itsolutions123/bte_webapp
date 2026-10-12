@@ -297,9 +297,7 @@
                             `<a href="#">${f.name}</a>`
                         ).join('');
                     } else {
-                        document.getElementById('form-list').innerHTML = ['CMA', 'CMA 1', 'MARKETING', 'OIC', 'BME', 'ADMIN', 'ASSOC'].map(f =>
-                            `<a href="#">${f}</a>`
-                        ).join('');
+                        document.getElementById('form-list').innerHTML = '<span class="px-3 text-muted small fw-bold">No forms yet</span>';
                     }
                 }
 
@@ -350,22 +348,7 @@
                             </div>
                         `).join('');
                     } else {
-                        const mockBrands = [
-                            { name: "PARES RETIRO", matches: 319 },
-                            { name: "THE SANDWICH GUY", matches: 41 },
-                            { name: "SAPPORO MILKTEA", matches: 63 }
-                        ];
-                        document.getElementById('brand-summary-cards').innerHTML = mockBrands.map(b => `
-                            <div class="col-md-4">
-                                <div class="dashboard-card h-100 d-flex justify-content-between align-items-center mb-0">
-                                    <div>
-                                        <div class="stat-label mb-0" style="color: var(--text-main); font-size: 0.85rem;">${b.name}</div>
-                                        <div class="stat-label mt-1" style="font-size: 0.65rem;">Top Matches</div>
-                                    </div>
-                                    <div class="stat-value" style="color: var(--accent-gold);">${b.matches}</div>
-                                </div>
-                            </div>
-                        `).join('');
+                        document.getElementById('brand-summary-cards').innerHTML = '<div class="col-12"><span class="text-muted small fw-bold">No brand data yet</span></div>';
                     }
                 }
 

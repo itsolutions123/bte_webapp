@@ -31,7 +31,7 @@
 
 **`forms`** (shared template: many jobs can use one form, e.g. PR and TSG jobs answer the same form)
 - `id` (UUID, Primary Key)
-- `slug` (String, Unique, Indexed) - e.g., "general-screening"; used in /admin/forms/{form_slug}
+- `slug` (String, Unique, Indexed) - e.g., "general-screening"; used in API paths such as /forms/{form_slug}/jobs/{job_id}; admin page URLs use the form id (/admin/forms/{form-UID})
 - `name` (String, Not Null) - e.g., "IT Recruitment"
 - `created_at` (Timestamp)
 

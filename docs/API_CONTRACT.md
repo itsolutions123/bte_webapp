@@ -1,5 +1,5 @@
 # API Contract: BTE Careers
-*Last verified: 2026-10-12 (on top of e5dd49d, uncommitted: shared forms, answer points and suggested fit planned)*
+*Last verified: 2026-10-12 (on top of 2451ad7; shared forms, answer points and suggested fit planned)*
 
 ## Global Rules
 - All `/api/v1/admin/*` endpoints require HR authentication (cookie/token).
