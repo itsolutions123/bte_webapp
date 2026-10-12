@@ -5,59 +5,63 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BTE Careers - HR Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-main: #0b0c10;
-            --bg-card: #14151a;
-            --bg-sidebar: #0f1015;
-            --text-main: #e2e8f0;
-            --text-muted: #8b949e;
-            --border-color: #2d333b;
-            --accent-purple: #8a2be2;
-            --accent-green: #2ea043;
-            --accent-blue: #38bdf8;
-            --accent-red: #f85149;
-            --accent-yellow: #d29922;
+            --bg-main: #f4f6f8;
+            --bg-card: #ffffff;
+            --text-main: #111111;
+            --text-muted: #6c757d;
+            
+            /* Gold, Black, White Palette */
+            --accent-gold: #d4af37;
+            --accent-black: #111111;
+            --accent-white: #ffffff;
+            --border-light: #eaedf1;
+
+            /* Soft Box Shadows */
+            --soft-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
         }
         
         body { 
             background-color: var(--bg-main); 
             color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            font-size: 0.85rem;
+            font-family: 'Nunito', sans-serif;
+            font-size: 0.9rem;
         }
 
         /* Sidebar Styling */
         .sidebar { 
-            background-color: var(--bg-sidebar); 
-            border-right: 1px solid var(--border-color);
+            background-color: var(--bg-card);
+            border-right: 1px solid var(--border-light);
             min-height: 100vh; 
-            padding: 1.5rem 1rem;
+            padding: 2rem 1.5rem;
+            z-index: 10;
         }
         .sidebar-brand {
-            font-weight: 700;
-            font-size: 1.1rem;
+            font-weight: 800;
+            font-size: 1.2rem;
             letter-spacing: 0.5px;
-            margin-bottom: 2rem;
-            color: #fff;
+            margin-bottom: 2.5rem;
+            color: var(--accent-black);
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
         }
         .sidebar-brand .logo-box {
-            width: 24px;
-            height: 24px;
-            background-color: var(--accent-purple);
-            border-radius: 4px;
+            width: 28px;
+            height: 28px;
+            background-color: var(--accent-gold);
+            border-radius: 8px;
             display: inline-block;
         }
         .nav-section {
             font-size: 0.75rem;
             text-transform: uppercase;
             color: var(--text-muted);
-            font-weight: 600;
+            font-weight: 800;
             margin-top: 1.5rem;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
             padding-left: 0.5rem;
             display: flex;
             justify-content: space-between;
@@ -65,90 +69,129 @@
         .sidebar a { 
             color: var(--text-main); 
             text-decoration: none; 
+            font-weight: 600;
             display: block; 
-            padding: 0.4rem 0.5rem; 
-            border-radius: 6px;
-            margin-bottom: 2px;
+            padding: 0.6rem 1rem; 
+            border-radius: 12px;
+            margin-bottom: 6px;
+            transition: all 0.2s ease;
         }
-        .sidebar a:hover, .sidebar a.active { 
-            background-color: #21262d; 
-            color: #fff;
+        .sidebar a:hover { 
+            background-color: #f8f9fa; 
+            color: var(--accent-gold);
+        }
+        .sidebar a.active { 
+            background-color: var(--accent-black); 
+            color: var(--accent-gold);
         }
 
         /* Top Bar Styling */
         .top-bar {
-            padding: 1rem 0;
+            padding: 1.5rem 0;
             margin-bottom: 1.5rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         .search-box, .date-box {
-            background-color: var(--bg-main);
-            border: 1px solid var(--border-color);
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-light);
+            box-shadow: var(--soft-shadow);
             color: var(--text-main);
-            padding: 0.4rem 1rem;
-            border-radius: 6px;
+            padding: 0.6rem 1.2rem;
+            border-radius: 12px;
+            font-family: inherit;
         }
-        .search-box:focus {
+        .search-box:focus, .date-box:focus {
             outline: none;
-            border-color: var(--text-muted);
+            border-color: var(--accent-gold);
         }
         .btn-profile {
-            background-color: transparent;
-            border: 1px solid var(--border-color);
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-light);
+            box-shadow: var(--soft-shadow);
             color: var(--text-main);
-            padding: 0.4rem 1rem;
-            border-radius: 6px;
+            font-weight: 700;
+            padding: 0.6rem 1.5rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-profile:hover {
+            border-color: var(--accent-gold);
+            color: var(--accent-gold);
         }
 
         /* Card Styling */
         .dashboard-card {
             background-color: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 1.25rem;
-            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-light);
+            border-radius: 20px;
+            box-shadow: var(--soft-shadow);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
         }
         .stat-label {
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
             color: var(--text-muted);
-            font-weight: 600;
+            font-weight: 800;
             letter-spacing: 0.5px;
             margin-bottom: 0.5rem;
         }
         .stat-value {
-            font-size: 1.5rem;
-            font-weight: 300;
-            color: #fff;
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: var(--accent-black);
         }
 
         /* Pass Rate Specific */
         .pass-rate-box {
-            border-right: 1px solid var(--border-color);
+            position: relative;
+        }
+        .pass-rate-box::after, .col-divider::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 15%;
+            height: 70%;
+            width: 1px;
+            background-color: var(--border-light);
         }
         .pass-rate-sub {
-            font-size: 0.75rem;
+            font-size: 0.85rem;
+            font-weight: 600;
             color: var(--text-muted);
         }
 
         /* Table Styling */
-        .table-dark {
-            background-color: transparent;
+        .table {
             color: var(--text-main);
+            margin-bottom: 0;
         }
-        .table-dark th {
-            border-bottom: 1px solid var(--border-color);
+        .table th {
+            border-bottom: 2px solid var(--border-light);
             color: var(--text-muted);
-            font-weight: 500;
+            font-weight: 800;
             font-size: 0.75rem;
             text-transform: uppercase;
+            padding: 1rem 0.5rem;
         }
-        .table-dark td {
-            border-bottom: 1px solid var(--border-color);
+        .table td {
+            border-bottom: 1px solid var(--border-light);
             background-color: transparent;
             vertical-align: middle;
+            font-weight: 700;
+            padding: 1rem 0.5rem;
+        }
+        .badge-auto {
+            background-color: var(--bg-main);
+            border: 1px solid var(--border-light);
+            color: var(--text-muted);
+            font-weight: 700;
+            padding: 0.4rem 0.8rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
         }
     </style>
 </head>
@@ -173,7 +216,7 @@
                 </div>
                 <div class="nav flex-column" id="brand-list">
                     <!-- Populated by JS -->
-                    <span class="px-2 text-muted small">Loading...</span>
+                    <span class="px-3 text-muted small fw-bold">Loading...</span>
                 </div>
 
                 <div class="nav-section">
@@ -185,7 +228,7 @@
             </nav>
 
             <!-- Main Content -->
-            <main class="col-md-10 px-4">
+            <main class="col-md-10 px-4 pb-5">
                 <!-- Top Nav -->
                 <div class="top-bar">
                     <div class="d-flex gap-3">
@@ -199,7 +242,7 @@
                 <div class="dashboard-card mb-4">
                     <div class="row text-center align-items-center" id="main-summary">
                         <!-- Populated by JS -->
-                        <div class="col"><span class="text-muted">Loading metrics...</span></div>
+                        <div class="col"><span class="text-muted fw-bold">Loading metrics...</span></div>
                     </div>
                 </div>
 
@@ -210,12 +253,12 @@
 
                 <!-- Live Tally Table -->
                 <div class="dashboard-card">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="m-0 text-white font-weight-bold">Live Status Tally</h6>
-                        <span class="badge bg-secondary" style="font-size: 0.65rem;">Auto-updating</span>
+                    <div class="d-flex justify-content-between align-items-center mb-3 px-2">
+                        <h5 class="m-0 fw-bold">Live Status Tally</h5>
+                        <span class="badge-auto">Auto-updating</span>
                     </div>
-                    <div class="table-responsive">
-                        <table class="table table-dark table-sm mb-0 table-hover">
+                    <div class="table-responsive px-2">
+                        <table class="table table-borderless table-hover">
                             <thead>
                                 <tr>
                                     <th>Job Title</th>
@@ -228,7 +271,7 @@
                             </thead>
                             <tbody id="tally-body">
                                 <!-- Populated by JS -->
-                                <tr><td colspan="6" class="text-center text-muted">Loading pipeline...</td></tr>
+                                <tr><td colspan="6" class="text-center text-muted fw-bold py-4">Loading pipeline...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -249,7 +292,6 @@
                         `<a href="#">${b.name}</a>`
                     ).join('');
                     
-                    // Render forms if returned by API, otherwise show placeholders matching wireframe
                     if (sidebarData.forms && sidebarData.forms.length > 0) {
                         document.getElementById('form-list').innerHTML = sidebarData.forms.map(f =>
                             `<a href="#">${f.name}</a>`
@@ -268,49 +310,46 @@
                     const stats = summaryData.overall_totals || {};
                     
                     const passed = stats.passed || 0;
-                    const total = stats.total_processed || 1; // avoid div by zero
+                    const total = stats.total_processed || 1;
                     const passRate = total > 0 && stats.total_processed !== undefined ? Math.round((passed / total) * 100) : 0;
                     
-                    // Build Main Summary (Pass Rate + Metrics)
                     document.getElementById('main-summary').innerHTML = `
                         <div class="col pass-rate-box">
                             <div class="stat-label">Pass Rate</div>
-                            <div class="stat-value" style="color: var(--accent-green);">${passRate}%</div>
+                            <div class="stat-value" style="color: var(--accent-gold);">${passRate}%</div>
                             <div class="pass-rate-sub">${passed}/${total === 1 && stats.total_processed === undefined ? 0 : total}</div>
                         </div>
-                        <div class="col" style="border-right: 1px solid var(--border-color);">
+                        <div class="col col-divider">
                             <div class="stat-label">Endorsed</div>
-                            <div class="stat-value" style="color: var(--accent-purple);">${stats.endorsed || 0}</div>
+                            <div class="stat-value" style="color: var(--accent-black);">${stats.endorsed || 0}</div>
                         </div>
-                        <div class="col" style="border-right: 1px solid var(--border-color);">
+                        <div class="col col-divider">
                             <div class="stat-label">Pooling</div>
-                            <div class="stat-value" style="color: var(--accent-yellow);">${stats.pooling || 0}</div>
+                            <div class="stat-value" style="color: var(--text-muted);">${stats.pooling || 0}</div>
                         </div>
-                        <div class="col" style="border-right: 1px solid var(--border-color);">
+                        <div class="col col-divider">
                             <div class="stat-label">Hired</div>
-                            <div class="stat-value" style="color: var(--accent-blue);">${stats.hired || 0}</div>
+                            <div class="stat-value" style="color: var(--accent-gold);">${stats.hired || 0}</div>
                         </div>
                         <div class="col">
                             <div class="stat-label">Failed</div>
-                            <div class="stat-value" style="color: var(--accent-red);">${stats.failed || 0}</div>
+                            <div class="stat-value" style="color: var(--accent-black);">${stats.failed || 0}</div>
                         </div>
                     `;
 
-                    // Render per-brand top matches if returned, else render placeholders from wireframe
                     if (summaryData.brand_matches && summaryData.brand_matches.length > 0) {
                         document.getElementById('brand-summary-cards').innerHTML = summaryData.brand_matches.map(b => `
                             <div class="col-md-4">
-                                <div class="dashboard-card h-100 d-flex justify-content-between align-items-center">
+                                <div class="dashboard-card h-100 d-flex justify-content-between align-items-center mb-0">
                                     <div>
-                                        <div class="stat-label" style="color: #fff;">${b.name}</div>
-                                        <div class="stat-label mt-1">Top Matches</div>
+                                        <div class="stat-label mb-0" style="color: var(--text-main); font-size: 0.85rem;">${b.name}</div>
+                                        <div class="stat-label mt-1" style="font-size: 0.65rem;">Top Matches</div>
                                     </div>
-                                    <div class="stat-value">${b.matches || 0}</div>
+                                    <div class="stat-value" style="color: var(--accent-gold);">${b.matches || 0}</div>
                                 </div>
                             </div>
                         `).join('');
                     } else {
-                        // Fallback matching the wireframe explicitly
                         const mockBrands = [
                             { name: "PARES RETIRO", matches: 319 },
                             { name: "THE SANDWICH GUY", matches: 41 },
@@ -318,12 +357,12 @@
                         ];
                         document.getElementById('brand-summary-cards').innerHTML = mockBrands.map(b => `
                             <div class="col-md-4">
-                                <div class="dashboard-card h-100 d-flex justify-content-between align-items-center">
+                                <div class="dashboard-card h-100 d-flex justify-content-between align-items-center mb-0">
                                     <div>
-                                        <div class="stat-label" style="color: #fff;">${b.name}</div>
-                                        <div class="stat-label mt-1">Top Matches</div>
+                                        <div class="stat-label mb-0" style="color: var(--text-main); font-size: 0.85rem;">${b.name}</div>
+                                        <div class="stat-label mt-1" style="font-size: 0.65rem;">Top Matches</div>
                                     </div>
-                                    <div class="stat-value">${b.matches}</div>
+                                    <div class="stat-value" style="color: var(--accent-gold);">${b.matches}</div>
                                 </div>
                             </div>
                         `).join('');
@@ -336,12 +375,12 @@
                     const tallyData = await tallyRes.json();
                     document.getElementById('tally-body').innerHTML = tallyData.data.map(t => `
                         <tr>
-                            <td class="text-white">${t.job_title}</td>
-                            <td style="color: var(--accent-green);">${t.counts.PASSED || 0}</td>
-                            <td style="color: var(--accent-red);">${t.counts.FAILED || 0}</td>
-                            <td style="color: var(--accent-yellow);">${t.counts.POOLING || 0}</td>
-                            <td style="color: var(--accent-purple);">${t.counts.ENDORSED || 0}</td>
-                            <td style="color: var(--accent-blue);">${t.counts.HIRED || 0}</td>
+                            <td class="fw-bold">${t.job_title}</td>
+                            <td style="color: var(--accent-gold);">${t.counts.PASSED || 0}</td>
+                            <td style="color: var(--accent-black);">${t.counts.FAILED || 0}</td>
+                            <td style="color: var(--text-muted);">${t.counts.POOLING || 0}</td>
+                            <td style="color: var(--accent-black);">${t.counts.ENDORSED || 0}</td>
+                            <td style="color: var(--accent-gold);">${t.counts.HIRED || 0}</td>
                         </tr>
                     `).join('');
                 }
@@ -350,7 +389,6 @@
             }
         }
 
-        // Initial fetch and set polling
         fetchDashboardData();
         setInterval(fetchDashboardData, 10000);
     </script>
