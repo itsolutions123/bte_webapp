@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import public, admin
+from app.routers import public
 
 app = FastAPI(title="BTE Careers API")
 
@@ -23,11 +23,11 @@ app.mount("/static", StaticFiles(directory=os.path.join(base_dir, "static")), na
 @app.get("/apply", include_in_schema=False)
 async def serve_apply_page(request: Request, job_id: str = ""):
     # We pass job_id to pre-fill the hidden input in apply.html
-    return templates.TemplateResponse("apply.html", {"request": request, "job": {"id": job_id}})
+    return templates.TemplateResponse(request=request, name="apply.html", context={"job": {"id": job_id}})
 
 @app.get("/careers", include_in_schema=False)
 async def serve_careers_board(request: Request):
-    return templates.TemplateResponse("careers.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="careers.html")
 
 @app.get("/health")
 async def health_check():

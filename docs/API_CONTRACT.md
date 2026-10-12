@@ -1,5 +1,5 @@
 # API Contract: BTE Careers
-*Last verified: 2026-10-12 (Added RA 10173 Consent)*
+*Last verified: 2026-10-12 (Docker container setup & endpoint health verified)*
 
 ## Global Rules
 * All `/api/v1/admin/*` endpoints require HR authentication (cookie/token).
@@ -64,3 +64,66 @@
 * **Purpose:** Download/view the applicant's PDF.
 * **Request:** None
 * **Response (200 OK):** Streams `application/pdf` via `FileResponse` (Rule 13.5)
+
+---
+
+## 3. Dashboard HTML & Summary Endpoints (Added for Wireframe)
+
+### `GET /admin`
+- **Purpose:** Server-rendered HTML entry point for the HR dashboard.
+- **Request:** None (Requires HR cookie/token)
+- **Response (200 OK):** `text/html` Jinja2 template.
+
+### `GET /api/v1/admin/metadata/sidebar`
+- **Purpose:** Fetch dynamic lists of brands and forms for the left navigation.
+- **Request:** None
+- **Response (200 OK):**
+  `{ "brands": [ { "id": "uuid", "name": "string", "code": "string" } ], "forms": [ { "id": "uuid", "name": "string" } ] }`
+
+### `GET /api/v1/admin/dashboard/summary`
+- **Purpose:** Fetch overall application totals and brand-level top match summaries.
+- **Request:** Query `?date_from={YYYY-MM-DD}&date_to={YYYY-MM-DD}` (optional)
+- **Response (200 OK):**
+  `{ "overall_totals": { "passed": int, "failed": int, "pooling": int, "endorsed": int, "hired": int, "total_processed": int }, "brand_summaries": [ { "brand_id": "uuid", "brand_name": "string", "top_matches_count": int } ] }`
+
+---
+
+## 3. Dashboard HTML & Summary Endpoints (Added for Wireframe)
+
+### `GET /admin`
+- **Purpose:** Server-rendered HTML entry point for the HR dashboard.
+- **Request:** None (Requires HR cookie/token)
+- **Response (200 OK):** `text/html` Jinja2 template.
+
+### `GET /api/v1/admin/metadata/sidebar`
+- **Purpose:** Fetch dynamic lists of brands and forms for the left navigation.
+- **Request:** None
+- **Response (200 OK):**
+  `{ "brands": [ { "id": "uuid", "name": "string", "code": "string" } ], "forms": [ { "id": "uuid", "name": "string" } ] }`
+
+### `GET /api/v1/admin/dashboard/summary`
+- **Purpose:** Fetch overall application totals and brand-level top match summaries.
+- **Request:** Query `?date_from={YYYY-MM-DD}&date_to={YYYY-MM-DD}` (optional)
+- **Response (200 OK):**
+  `{ "overall_totals": { "passed": int, "failed": int, "pooling": int, "endorsed": int, "hired": int, "total_processed": int }, "brand_summaries": [ { "brand_id": "uuid", "brand_name": "string", "top_matches_count": int } ] }`
+
+---
+
+## 3. Dashboard HTML & Summary Endpoints (Added for Wireframe)
+
+### `GET /admin`
+- **Purpose:** Server-rendered HTML entry point for the HR dashboard.
+- **Request:** None (Requires HR cookie/token)
+- **Response (200 OK):** `text/html` Jinja2 template.
+
+### `GET /api/v1/admin/metadata/sidebar`
+- **Purpose:** Fetch dynamic lists of brands and forms for the left navigation.
+- **Request:** None
+- **Response (200 OK):**
+  `{ "brands": [ { "id": "uuid", "name": "string", "code": "string" } ], "forms": [ { "id": "uuid", "name": "string" } ] }`
+
+### `GET /api/v1/admin/dashboard/summary`
+- **Purpose:** Fetch overall application totals and brand-level top match summaries.
+- **Request:** Query `?date_from={YYYY-MM-DD}&date_to={YYYY-MM-DD}` (optional)
+- **Response (200 OK):**
+  `{ "overall_totals": { "passed": int, "failed": int, "pooling": int, "endorsed": int, "hired": int, "total_processed": int }, "brand_summaries": [ { "brand_id": "uuid", "brand_name": "string", "top_matches_count": int } ] }`
