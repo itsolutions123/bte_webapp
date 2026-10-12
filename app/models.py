@@ -11,6 +11,7 @@ def utc_now():
 class Brand(Base):
     __tablename__ = "brands"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    slug = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=False)
     
     jobs = relationship("Job", back_populates="brand")
@@ -19,6 +20,7 @@ class Job(Base):
     __tablename__ = "jobs"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     brand_id = Column(UUID(as_uuid=True), ForeignKey("brands.id"), nullable=False)
+    slug = Column(String, unique=True, index=True, nullable=False)
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     pass_threshold = Column(Integer, nullable=False)
@@ -48,6 +50,7 @@ class Applicant(Base):
 class Parameter(Base):
     __tablename__ = "parameters"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    slug = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     
@@ -58,6 +61,7 @@ class JobQuestion(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     job_id = Column(UUID(as_uuid=True), ForeignKey("jobs.id"), nullable=False)
     parameter_id = Column(UUID(as_uuid=True), ForeignKey("parameters.id"), nullable=False)
+    display_order = Column(Integer, nullable=False, default=0)
     question_text = Column(String, nullable=False)
     expected_answer = Column(String, nullable=False)
     is_hard_requirement = Column(Boolean, default=False)
@@ -70,6 +74,8 @@ class Application(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     applicant_id = Column(UUID(as_uuid=True), ForeignKey("applicants.id"), nullable=False)
     job_id = Column(UUID(as_uuid=True), ForeignKey("jobs.id"), nullable=False)
+    terms_version = Column(String, nullable=False, default="v1.0")
+    consent_agreed = Column(Boolean, nullable=False, default=True)
     resume_path = Column(String, nullable=False)
     resume_filename = Column(String, nullable=False)
     resume_size_bytes = Column(Integer, nullable=False)

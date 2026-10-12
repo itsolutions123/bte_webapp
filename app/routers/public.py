@@ -21,7 +21,7 @@ async def get_public_jobs(
     db: AsyncSession = Depends(get_db)
 ):
     # Base query for active jobs, joining brand to get the brand_name
-    query = select(Job, Brand.name.label("brand_name")).join(Brand).where(Job.is_active == True)
+    query = select(Job, Brand.name.label("brand_name"), Brand.slug.label("brand_slug")).join(Brand).where(Job.is_active == True)
     
     if brand_id:
         query = query.where(Job.brand_id == brand_id)
@@ -36,12 +36,14 @@ async def get_public_jobs(
     rows = result.all()
     
     jobs = []
-    for job_obj, brand_name in rows:
+    for job_obj, brand_name, brand_slug in rows:
         jobs.append(PublicJob(
             id=job_obj.id,
+            slug=job_obj.slug,
             title=job_obj.title,
             brand_id=job_obj.brand_id,
-            brand_name=brand_name
+            brand_name=brand_name,
+            brand_slug=brand_slug
         ))
         
     return PublicJobsResponse(data=jobs, total=total)
@@ -58,12 +60,12 @@ async def get_job_questions(
         raise HTTPException(status_code=404, detail="Job not found")
 
     # Fetch dynamic parameters/questions linked to this job
-    query = select(JobQuestion).where(JobQuestion.job_id == job_id)
+    query = select(JobQuestion).where(JobQuestion.job_id == job_id).order_by(JobQuestion.display_order.asc())
     result = await db.execute(query)
     questions = result.scalars().all()
     
     return PublicJobQuestionsResponse(
-        data=[PublicJobQuestion(id=q.id, question_text=q.question_text) for q in questions]
+        data=[PublicJobQuestion(id=q.id, question_text=q.question_text, display_order=q.display_order) for q in questions]
     )
 
 
@@ -161,7 +163,7 @@ async def submit_application(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found or inactive")
 
-    questions_query = select(JobQuestion).where(JobQuestion.job_id == job_id)
+    questions_query = select(JobQuestion).where(JobQuestion.job_id == job_id).order_by(JobQuestion.display_order.asc())
     questions_result = await db.execute(questions_query)
     job_questions = {str(q.id): q for q in questions_result.scalars().all()}
 

@@ -4,9 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.database import get_db
-from app.models import Brand, Job, StatusCount
+from app.models import Brand, Job, StatusCount, Parameter, Parameter
 from app.schemas import (
-    SidebarMetadataResponse, SidebarBrandItem, 
+    SidebarMetadataResponse, SidebarBrandItem, SidebarFormItem, SidebarFormItem, 
     AdminSummaryResponse, OverallTotals, 
     AdminTallyResponse, AdminTallyItem, JobCounts
 )
@@ -15,10 +15,15 @@ router = APIRouter()
 
 @router.get("/metadata/sidebar", response_model=SidebarMetadataResponse)
 async def get_sidebar_metadata(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Brand))
-    brands = result.scalars().all()
-    brand_items = [SidebarBrandItem(id=b.id, name=b.name, code=b.name[:3].upper()) for b in brands]
-    return SidebarMetadataResponse(brands=brand_items, forms=[])
+    brand_result = await db.execute(select(Brand))
+    brands = brand_result.scalars().all()
+    brand_items = [SidebarBrandItem(id=b.id, name=b.name, slug=b.slug, code=b.name[:3].upper()) for b in brands]
+
+    param_result = await db.execute(select(Parameter))
+    params = param_result.scalars().all()
+    form_items = [SidebarFormItem(id=p.id, name=p.name, slug=p.slug) for p in params]
+
+    return SidebarMetadataResponse(brands=brand_items, forms=form_items)
 
 @router.get("/dashboard/summary", response_model=AdminSummaryResponse)
 async def get_dashboard_summary(

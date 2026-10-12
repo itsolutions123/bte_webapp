@@ -5,9 +5,11 @@ from datetime import datetime
 # --- Public Schemas ---
 class PublicJob(BaseModel):
     id: UUID4
+    slug: str
     title: str
     brand_id: UUID4
     brand_name: str
+    brand_slug: str
 
 class PublicJobsResponse(BaseModel):
     data: List[PublicJob]
@@ -15,6 +17,7 @@ class PublicJobsResponse(BaseModel):
 
 class PublicJobQuestion(BaseModel):
     id: UUID4
+    display_order: int
     question_text: str
 
 class PublicJobQuestionsResponse(BaseModel):
@@ -84,11 +87,15 @@ class AdminStatusPatchRequest(BaseModel):
 class SidebarBrandItem(BaseModel):
     id: UUID4
     name: str
+    slug: str
+    slug: str
     code: str = "BTE"
 
 class SidebarFormItem(BaseModel):
     id: UUID4
     name: str
+    slug: str
+    slug: str
 
 class SidebarMetadataResponse(BaseModel):
     brands: List[SidebarBrandItem]
@@ -105,6 +112,7 @@ class OverallTotals(BaseModel):
 class BrandSummaryItem(BaseModel):
     brand_id: UUID4
     brand_name: str
+    brand_slug: str
     top_matches_count: int = 0
 
 class AdminSummaryResponse(BaseModel):
