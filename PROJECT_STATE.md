@@ -1,13 +1,13 @@
 # Project State: BTE Careers (ATS)
 
-**Last Updated:** 2026-10-12
+**Last Updated:** 2026-10-13
 **Status:** Admin UI Redesigned & Admin API Wired
 
 ## Infrastructure & Environment
 - **Host:** ansible-srv (10.0.10.37)
 - **Directory:** `~/bte_webapp`
 - **Containers Running:**
-  - `bte_careers_db` (Postgres 15 Alpine, Port 5432) - Resource Limits: 1.0 vCPU / 512MB RAM
+  - `bte_careers_db` (Postgres 15 Alpine, Port 5432, bound to 127.0.0.1 only) - Resource Limits: 1.0 vCPU / 512MB RAM
   - `bte_careers_web` (FastAPI + Uvicorn, Port 8000) - Resource Limits: 0.5 vCPU / 256MB RAM
 - **Resume Storage Path:** `./data/resumes/` (mounted at `/app/data/resumes`)
 
@@ -24,7 +24,6 @@
 - Async database stack using `sqlalchemy[asyncio]` and `greenlet`.
 - Server-rendered Jinja2 templates using Starlette-compliant `TemplateResponse`.
 - Admin UI driven by vanilla JS `fetch()` polling to dedicated async API endpoints, strictly avoiding hardcoded business data.
-- Admin dashboard styled with custom CSS matching the dark mode visual reference.
 
 ## Scope & Build Order (Gem Prompts v4)
 - Local-only: app runs at 10.0.10.37:8000 on the LAN. The bte_website cross-app work is paused.
@@ -56,6 +55,13 @@
 - Applicants module stays a placeholder shell for now. Its fields come from form answers once forms exist; `Applicant` has only first_name, last_name, email and phone.
 - Forms creation is built first so it can be tested. The Applicants page waits.
 
+## Decisions Recorded (2026-10-13)
+- Schema-change mechanism: option A. Plain SQL files in `migrations/NNN_*.sql`, applied with docker exec into bte_careers_db, non-destructive and idempotent where possible. Applied so far: 001 (`forms` table with unique `ix_forms_slug`) and 002 (nullable `jobs.form_id`, FK to `forms`, `idx_jobs_form_id`).
+- Admin Forms page URL uses the form id: `/admin/forms/{form-UID}` (confirmed again 2026-10-13).
+- Applicant flow, served by bte_webapp on :8000 for now: job landing page `/careers/jobs/{job-UID}` (job UID is `jobs.id`) shows the instructions; the form page is `/careers/jobs/{job-UID}/forms/{form-UID}`. The job travels in the path because many jobs share a form, and the server must check that the form belongs to that job (`jobs.form_id`). These routes are not yet in API_CONTRACT.md.
+- Deployment layout: website on 10.0.10.37:8086 and webapp on 10.0.10.37:8000 (same VM, separate containers). Later plan, OUT OF SCOPE while local-only: website at bigtimeempire.com fetching job data from the webapp, webapp admin at ats.bigtimeempire.com/admin. The apply flow uses relative URLs so that move needs no code change.
+- Security incident (2026-10-12/13): GitGuardian flagged the fallback DB password in docker-compose.yml. Cause: `DB_PASSWORD` was unset in `.env`, so the live DB ran on the stock default, and Postgres 5432 was published on all interfaces. Fixed: DB role password rotated; `DB_PASSWORD` is required in docker-compose.yml (no fallback); `app/database.py` has no `DATABASE_URL` fallback; 5432 is bound to 127.0.0.1. Committed in ab9bae3. Postgres trusts loopback connections inside its container, so password checks must go over the network (`-h db`). Remaining: mark the GitGuardian alert resolved from its dashboard, and add `DB_PASSWORD` to `.env.example`.
+
 ## OPEN Decisions
 - `/admin` vs `/admin/home`: Dashboard is `/admin/home` (decided 2026-10-12). Assumed `/admin` stays as an alias; not yet confirmed.
 - Should jobs with no form be hidden from the public jobs board? The contract currently returns an empty question list from `/questions` and 409 from `/apply`, a dead end for applicants. Only crew and store jobs will have a form for now.
@@ -66,12 +72,14 @@
 - Security: the sample Open ended question about mental health (sensitive data under RA 10173): example only, or does it need extra consent and retention rules?
 - Security: `consent_agreed` defaults to True in `app/models.py`; consent should be explicit.
 - Security: admin endpoints have no auth check in code (the sidebar endpoint depends only on get_db), although the contract requires HR authentication.
-- Schema-change mechanism: the repo has no table creation or migration. Options: A) plain SQL files applied with docker exec (proposed), B) Alembic with a baseline, C) create_all at startup. Undecided.
-- Proposed first forms slice (not yet confirmed): additive only, a new `forms` table, form list and create. The destructive `job_questions` migration waits and needs explicit confirmation.
+- Schema-change mechanism: DECIDED 2026-10-13, option A (plain SQL files in `migrations/NNN_*.sql`). The 8 original tables still have no baseline in the repo.
+- First forms slice: the `forms` table (001) and `jobs.form_id` (002) are live (2026-10-13). Form list and create (contract, then shell, then wiring) come next. The `job_questions` migration is split: add nullable columns, backfill, tighten, and drop `job_id` and `expected_answer` last with explicit confirmation. Row counts of jobs, job_questions, applications and answers are still needed to decide whether a backfill is required.
+- Admin form endpoints: use the form id instead of `form_slug` (`/api/v1/admin/forms/{form_id}/...`)? Recommended, not yet confirmed; needs a contract edit (API_CONTRACT.md lines 98-151).
+- Public applicant routes and the form-questions endpoint by form id still need recording in API_CONTRACT.md (Structure handoff pending).
 - Which form questions feed the Applicants list columns (full name, address, age, gender).
 
 ## Known Mismatches (verified 2026-10-12)
-- No `forms` or `answer_points` table exists, and `jobs` has no `form_id`. Today a "form" is the set of `job_questions` rows under one job.
+- The `forms` table and `jobs.form_id` are live (migrations 001 and 002, applied 2026-10-13). `answer_points` does not exist yet, and `job_questions` still has the old shape (`job_id`, `expected_answer`, NOT NULL `parameter_id`; no `form_id`, `question_type` or `options`). Until the questions move, a "form" in practice is the set of `job_questions` rows under one job.
 - `app/models.py` JobQuestion still has `job_id`, a NOT NULL `parameter_id` and a NOT NULL `expected_answer`, and no `question_type` or `options`.
 - The matching engine in `POST /apply` (app/routers/public.py, lines 98-258) scores with `expected_answer` (line 182). It must be rewritten for answer points, required answers and brand points, as its own contract-first step.
 - `GET /api/v1/public/jobs/{job_id}/questions` returns no question type or options.
@@ -88,14 +96,14 @@
 - Dashboard pass rate shows 0% with "0/1" while every count is 0. A denominator of 1 looks like a fallback value (UNVERIFIED, code not read).
 - Security: admin.html puts brand and form names into `innerHTML` unescaped in the sidebar fetch code. This needs escaping before the "+" create buttons exist.
 - Docs are ahead of code: SCHEMA.md and API_CONTRACT.md section 3 have no model or endpoint behind them yet.
-- No schema creation or migration in the repo. The db has 8 tables (answers, applicants, applications, brands, job_questions, jobs, parameters, status_counts), created outside the repo; `app/database.py` only builds the engine, so a fresh db cannot be rebuilt from the repo.
-- `app/database.py` lines 7-8: `DATABASE_URL` has a default value (UNVERIFIED whether it holds credentials). `RESUME_STORAGE_PATH` is read in public.py line 127 (default `/data/resumes`); whether compose sets it is UNVERIFIED.
+- The 8 original tables (answers, applicants, applications, brands, job_questions, jobs, parameters, status_counts) were created outside the repo and have no baseline, so a fresh db still cannot be rebuilt from the repo. Changes since 2026-10-13 live in `migrations/` (001 forms, 002 jobs.form_id); `app/database.py` only builds the engine.
+- RESOLVED 2026-10-13: the `DATABASE_URL` fallback in `app/database.py` and the `DB_PASSWORD` fallbacks in docker-compose.yml are removed (see the security incident under Decisions Recorded 2026-10-13). Fixed non-secret defaults remain for `DB_USER` and `DB_NAME` in compose. Still UNVERIFIED: `RESUME_STORAGE_PATH` is read in public.py line 127 (default `/data/resumes`); whether compose sets it.
 - `Applicant` (models.py line 35) has only first_name, last_name, email and phone: no age, gender or address.
 - Cosmetic in app/main.py: unused `CORSMiddleware` import and `from app.routers import public` imported twice.
 
 ## Next Steps
 1. DONE: docs and the slug, display_order and consent code are committed (2451ad7). The admin.html mock-data removal and these doc updates are committed on 2026-10-12 after that.
-   Paused here: next is the schema-change mechanism decision, then the forms-creation slice (shell, form list, form create).
+   Done 2026-10-13: schema-change mechanism decided (option A), migrations 001 and 002 applied, DB password incident fixed (committed in ab9bae3). Next: check row counts, then the forms-creation slice (contract for the admin forms endpoints, id vs slug; then shell, form list, form create).
 2. Security: decide admin auth and review the Open ended sensitive-data example.
 3. Design: build the Brands and Forms page shells with "+" buttons using placeholder content only, plus the apply wizard layouts (Yes/No, A-D, Open ended).
 4. Structure/API: migration plan for forms, answer_points and `jobs.form_id` (contract-first, destructive steps confirmed).
