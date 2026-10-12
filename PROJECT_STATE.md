@@ -50,7 +50,7 @@
 - Apply wizard layout reference: progress bar, question heading, question text, options, Previous/Next (wireframe provided by user).
 - `display_order` and the `slug` columns are in SCHEMA.md and `app/models.py` and are committed (2451ad7).
 - Docs are current for these decisions: docs/SCHEMA.md (119 lines) and docs/API_CONTRACT.md (183 lines, section 3 marked PLANNED).
-- Admin page routes (decided 2026-10-12): Dashboard `/admin/home`; Applicants list `/admin/applicants` and detail `/admin/applicants/{applicant-UID}`; Brands `/admin/brands/{brand-UID}`; Forms `/admin/forms/{form-UID}`. Page URLs use UIDs, not names or slugs; slug columns stay. This replaces `{brand-name}`/`{form-name}` from the v4 preamble and the `{form_slug}`/`{application_id}` page-route text in the docs (the contract's page-route section is not yet reconciled).
+- Admin page routes (decided 2026-10-12): Dashboard `/admin/home`; Applicants list `/admin/applicants` and detail `/admin/applicants/{applicant-UID}`; Brands `/admin/brands/{brand-UID}`; Forms `/admin/forms/{form-UID}`. Page URLs use UIDs, not names or slugs; slug columns stay. This replaces `{brand-name}`/`{form-name}` from the v4 preamble and the `{form_slug}`/`{application_id}` page-route text in the docs (the contract's forms page route was reconciled on 2026-10-13; the brand and applicant page routes still say `{brand_slug}` and `{application_id}`).
 - Applicants list shows full name, address, age and gender; every other form field shows only when the admin opens an applicant. One "Full Name" column is assumed (the wireframe shows first and last name).
 - Applicants module stays a placeholder shell for now. Its fields come from form answers once forms exist; `Applicant` has only first_name, last_name, email and phone.
 - Forms creation is built first so it can be tested. The Applicants page waits.
@@ -61,6 +61,8 @@
 - Applicant flow, served by bte_webapp on :8000 for now: job landing page `/careers/jobs/{job-UID}` (job UID is `jobs.id`) shows the instructions; the form page is `/careers/jobs/{job-UID}/forms/{form-UID}`. The job travels in the path because many jobs share a form, and the server must check that the form belongs to that job (`jobs.form_id`). These routes are not yet in API_CONTRACT.md.
 - Deployment layout: website on 10.0.10.37:8086 and webapp on 10.0.10.37:8000 (same VM, separate containers). Later plan, OUT OF SCOPE while local-only: website at bigtimeempire.com fetching job data from the webapp, webapp admin at ats.bigtimeempire.com/admin. The apply flow uses relative URLs so that move needs no code change.
 - Security incident (2026-10-12/13): GitGuardian flagged the fallback DB password in docker-compose.yml. Cause: `DB_PASSWORD` was unset in `.env`, so the live DB ran on the stock default, and Postgres 5432 was published on all interfaces. Fixed: DB role password rotated; `DB_PASSWORD` is required in docker-compose.yml (no fallback); `app/database.py` has no `DATABASE_URL` fallback; 5432 is bound to 127.0.0.1. Committed in ab9bae3. Postgres trusts loopback connections inside its container, so password checks must go over the network (`-h db`). Remaining: mark the GitGuardian alert resolved from its dashboard, and add `DB_PASSWORD` to `.env.example`.
+- Admin forms endpoints are keyed by form id (`/api/v1/admin/forms/{form_id}/...`) and the page route is `/admin/forms/{form_id}`; recorded in API_CONTRACT.md on 2026-10-13 (section 3 still PLANNED). The slug stays a response field and is used only in public paths.
+- Row counts 2026-10-13: jobs, job_questions, applications and answers are all empty, so the `job_questions` reshape needs no backfill. Remaining schema work is HELD until the question editor step: migration 003 (job_questions: form_id, question_type, options, nullable parameter_id, idx_jq_form_order), 004 (answer_points and its index), 005 (applications.brand_points, answers.is_passed nullable, idx_answers_application_id), and dropping `job_id` and `expected_answer` last with explicit confirmation. The drop breaks `GET /api/v1/public/jobs/{job_id}/questions` and `POST /apply` until they are rewritten for forms.
 
 ## OPEN Decisions
 - `/admin` vs `/admin/home`: Dashboard is `/admin/home` (decided 2026-10-12). Assumed `/admin` stays as an alias; not yet confirmed.
@@ -73,8 +75,8 @@
 - Security: `consent_agreed` defaults to True in `app/models.py`; consent should be explicit.
 - Security: admin endpoints have no auth check in code (the sidebar endpoint depends only on get_db), although the contract requires HR authentication.
 - Schema-change mechanism: DECIDED 2026-10-13, option A (plain SQL files in `migrations/NNN_*.sql`). The 8 original tables still have no baseline in the repo.
-- First forms slice: the `forms` table (001) and `jobs.form_id` (002) are live (2026-10-13). Form list and create (contract, then shell, then wiring) come next. The `job_questions` migration is split: add nullable columns, backfill, tighten, and drop `job_id` and `expected_answer` last with explicit confirmation. Row counts of jobs, job_questions, applications and answers are still needed to decide whether a backfill is required.
-- Admin form endpoints: use the form id instead of `form_slug` (`/api/v1/admin/forms/{form_id}/...`)? Recommended, not yet confirmed; needs a contract edit (API_CONTRACT.md lines 98-151).
+- First forms slice: the `forms` table (001) and `jobs.form_id` (002) are live (2026-10-13). Form list and create (contract, then shell, then wiring) come next. The `job_questions` migration is a clean reshape (no data), with the `job_id` and `expected_answer` drops last and explicitly confirmed. Row counts are all 0 (2026-10-13), so no backfill is needed; the reshape is held until the question editor step.
+- Admin form endpoints: DECIDED 2026-10-13, keyed by form id (see Decisions Recorded 2026-10-13).
 - Public applicant routes and the form-questions endpoint by form id still need recording in API_CONTRACT.md (Structure handoff pending).
 - Which form questions feed the Applicants list columns (full name, address, age, gender).
 
@@ -103,7 +105,7 @@
 
 ## Next Steps
 1. DONE: docs and the slug, display_order and consent code are committed (2451ad7). The admin.html mock-data removal and these doc updates are committed on 2026-10-12 after that.
-   Done 2026-10-13: schema-change mechanism decided (option A), migrations 001 and 002 applied, DB password incident fixed (committed in ab9bae3). Next: check row counts, then the forms-creation slice (contract for the admin forms endpoints, id vs slug; then shell, form list, form create).
+   Done 2026-10-13: schema-change mechanism decided (option A), migrations 001 and 002 applied, DB password incident fixed (committed in ab9bae3). Next: the forms-creation slice. The admin forms contract is recorded (by form id); then the Forms page shell, form list and form create.
 2. Security: decide admin auth and review the Open ended sensitive-data example.
 3. Design: build the Brands and Forms page shells with "+" buttons using placeholder content only, plus the apply wizard layouts (Yes/No, A-D, Open ended).
 4. Structure/API: migration plan for forms, answer_points and `jobs.form_id` (contract-first, destructive steps confirmed).

@@ -1,5 +1,5 @@
 # API Contract: BTE Careers
-*Last verified: 2026-10-12 (on top of 2451ad7; shared forms, answer points and suggested fit planned)*
+*Last verified: 2026-10-13 (on top of 9ae232a; admin forms endpoints and page route keyed by form id, still planned; public applicant routes not yet recorded)*
 
 ## Global Rules
 - All `/api/v1/admin/*` endpoints require HR authentication (cookie/token).
@@ -82,7 +82,7 @@
 
 ## 3. Admin Forms API (PLANNED - not implemented)
 
-All endpoints require HR authentication (see Global Rules). A form is a shared template: many jobs can use one form (`jobs.form_id`), and a job uses at most one. A form's questions are its `job_questions` rows. Question type is set at creation and cannot be changed (delete and re-add instead). The answer points (the admin cheat sheet) are never returned by public endpoints.
+All endpoints require HR authentication (see Global Rules). A form is a shared template: many jobs can use one form (`jobs.form_id`), and a job uses at most one. A form's questions are its `job_questions` rows. Question type is set at creation and cannot be changed (delete and re-add instead). The answer points (the admin cheat sheet) are never returned by public endpoints. Admin form endpoints are addressed by form id (`{form_id}`), matching the page route `/admin/forms/{form_id}`; the slug is returned as a field and is used only in public paths. Every `{form_id}`, `{job_id}` and `{question_id}` must be a valid UUID (422 otherwise); an unknown id returns 404.
 
 ### `GET /api/v1/admin/forms`
 - **Purpose:** Paginated list of forms for the Forms module.
@@ -95,17 +95,17 @@ All endpoints require HR authentication (see Global Rules). A form is a shared t
 - **Response (201 Created):** `{ "id": "uuid", "slug": "string", "name": "string" }`
 - **Errors:** 409 slug already taken; 422 invalid body.
 
-### `GET /api/v1/admin/forms/{form_slug}`
+### `GET /api/v1/admin/forms/{form_id}`
 - **Purpose:** Form detail for the editor: name, the jobs that use it, and all questions in order with their answer points (a form holds a small, bounded number of questions, so the list is not paginated).
 - **Response (200 OK):** `{ "id": "uuid", "slug": "string", "name": "string", "jobs": [ { "id": "uuid", "slug": "string", "title": "string", "brand_name": "string" } ], "questions": [ { "id": "uuid", "display_order": int, "question_type": "YES_NO|MULTIPLE_CHOICE|OPEN_ENDED", "question_text": "string", "options": ["string"] or null, "is_hard_requirement": bool, "answer_points": [ { "answer_value": "YES|NO|A|B|C|D", "target_type": "BRAND|FAIL", "brand_id": "uuid or null", "brand_name": "string or null", "points": int } ] } ] }`
 - **Errors:** 404 form not found.
 
-### `PATCH /api/v1/admin/forms/{form_slug}`
+### `PATCH /api/v1/admin/forms/{form_id}`
 - **Purpose:** Rename a form. The slug does NOT change on rename (stable URLs).
 - **Request:** JSON `{ "name": "string" }`
 - **Response (200 OK):** `{ "id": "uuid", "slug": "string", "name": "string" }`
 
-### `DELETE /api/v1/admin/forms/{form_slug}`
+### `DELETE /api/v1/admin/forms/{form_id}`
 - **Purpose:** Delete a form.
 - **Response:** 204 No Content.
 - **Errors:** 409 if any job uses the form or any of its questions has applicant answers.
@@ -113,19 +113,19 @@ All endpoints require HR authentication (see Global Rules). A form is a shared t
 ### `GET /api/v1/admin/jobs`
 - **Purpose:** Paginated job list, used to pick jobs to attach to a form.
 - **Request:** Query `?has_form=true|false&brand_id={uuid}&page=1&limit=50`
-- **Response (200 OK):** `{ "data": [ { "id": "uuid", "slug": "string", "title": "string", "brand_name": "string", "form_slug": "string or null" } ], "total": int }`
+- **Response (200 OK):** `{ "data": [ { "id": "uuid", "slug": "string", "title": "string", "brand_name": "string", "form_id": "uuid or null" } ], "total": int }`
 
-### `PUT /api/v1/admin/forms/{form_slug}/jobs/{job_id}`
+### `PUT /api/v1/admin/forms/{form_id}/jobs/{job_id}`
 - **Purpose:** Attach a job to this form (sets `jobs.form_id`).
 - **Response (200 OK):** `{ "message": "Job attached" }`
 - **Errors:** 404 form or job not found; 409 if the job already uses a different form (detach it first).
 
-### `DELETE /api/v1/admin/forms/{form_slug}/jobs/{job_id}`
+### `DELETE /api/v1/admin/forms/{form_id}/jobs/{job_id}`
 - **Purpose:** Detach a job from this form.
 - **Response:** 204 No Content.
 - **Errors:** 409 if the job already has applications (their answers refer to this form's questions).
 
-### `POST /api/v1/admin/forms/{form_slug}/questions`
+### `POST /api/v1/admin/forms/{form_id}/questions`
 - **Purpose:** Add a question with its answer points. `display_order` is assigned server-side as last + 1.
 - **Request:** JSON `{ "question_type": "YES_NO|MULTIPLE_CHOICE|OPEN_ENDED", "question_text": "string", "options": ["A text", "B text", "C text", "D text"], "is_hard_requirement": bool, "answer_points": [ { "answer_value": "A", "target_type": "BRAND", "brand_id": "uuid", "points": 1 }, { "answer_value": "B", "target_type": "FAIL" } ] }`
 - **Rules:**
@@ -138,17 +138,17 @@ All endpoints require HR authentication (see Global Rules). A form is a shared t
 - **Response (201 Created):** the created question object (same shape as in form detail).
 - **Errors:** 404 form not found; 422 rule violation.
 
-### `PATCH /api/v1/admin/forms/{form_slug}/questions/{question_id}`
+### `PATCH /api/v1/admin/forms/{form_id}/questions/{question_id}`
 - **Purpose:** Edit a question. `question_type` cannot be changed.
 - **Request:** JSON, any subset of `question_text`, `options`, `is_hard_requirement`, `answer_points`. When `answer_points` is sent it REPLACES the question's whole set. The same rules apply.
 - **Response (200 OK):** the updated question object.
 
-### `DELETE /api/v1/admin/forms/{form_slug}/questions/{question_id}`
+### `DELETE /api/v1/admin/forms/{form_id}/questions/{question_id}`
 - **Purpose:** Delete a question and its answer points.
 - **Response:** 204 No Content.
 - **Errors:** 409 if the question already has applicant answers.
 
-### `POST /api/v1/admin/forms/{form_slug}/questions/reorder`
+### `POST /api/v1/admin/forms/{form_id}/questions/reorder`
 - **Purpose:** Set the question order. The body must list every question id of this form exactly once.
 - **Request:** JSON `{ "ordered_ids": ["uuid"] }`
 - **Response (200 OK):** `{ "message": "Order updated" }`
@@ -174,7 +174,7 @@ A form's submissions are the applications for the jobs that use it: `GET /api/v1
 - **Purpose:** Dashboard pre-filtered to a specific brand.
 - **Response:** `text/html`
 
-### `GET /admin/forms/{form_slug}`
+### `GET /admin/forms/{form_id}`
 - **Purpose:** Form view: shows the form and its submissions (applications for the jobs that use the form), with the question editor. PLANNED.
 - **Response:** `text/html`
 
