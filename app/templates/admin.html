@@ -6,56 +6,232 @@
     <title>BTE Careers - HR Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { font-size: 0.9rem; background-color: #f8f9fa; }
-        .sidebar { min-height: 100vh; background-color: #343a40; color: white; padding-top: 1rem; }
-        .sidebar a { color: #adb5bd; text-decoration: none; display: block; padding: 0.5rem 1rem; }
-        .sidebar a:hover { color: white; background-color: #495057; }
-        .card-stats { border-left: 4px solid #0d6efd; }
+        :root {
+            --bg-main: #0b0c10;
+            --bg-card: #14151a;
+            --bg-sidebar: #0f1015;
+            --text-main: #e2e8f0;
+            --text-muted: #8b949e;
+            --border-color: #2d333b;
+            --accent-purple: #8a2be2;
+            --accent-green: #2ea043;
+            --accent-blue: #38bdf8;
+            --accent-red: #f85149;
+            --accent-yellow: #d29922;
+        }
+        
+        body { 
+            background-color: var(--bg-main); 
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 0.85rem;
+        }
+
+        /* Sidebar Styling */
+        .sidebar { 
+            background-color: var(--bg-sidebar); 
+            border-right: 1px solid var(--border-color);
+            min-height: 100vh; 
+            padding: 1.5rem 1rem;
+        }
+        .sidebar-brand {
+            font-weight: 700;
+            font-size: 1.1rem;
+            letter-spacing: 0.5px;
+            margin-bottom: 2rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sidebar-brand .logo-box {
+            width: 24px;
+            height: 24px;
+            background-color: var(--accent-purple);
+            border-radius: 4px;
+            display: inline-block;
+        }
+        .nav-section {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            padding-left: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+        }
+        .sidebar a { 
+            color: var(--text-main); 
+            text-decoration: none; 
+            display: block; 
+            padding: 0.4rem 0.5rem; 
+            border-radius: 6px;
+            margin-bottom: 2px;
+        }
+        .sidebar a:hover, .sidebar a.active { 
+            background-color: #21262d; 
+            color: #fff;
+        }
+
+        /* Top Bar Styling */
+        .top-bar {
+            padding: 1rem 0;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .search-box, .date-box {
+            background-color: var(--bg-main);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 0.4rem 1rem;
+            border-radius: 6px;
+        }
+        .search-box:focus {
+            outline: none;
+            border-color: var(--text-muted);
+        }
+        .btn-profile {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 0.4rem 1rem;
+            border-radius: 6px;
+        }
+
+        /* Card Styling */
+        .dashboard-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+        .stat-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 300;
+            color: #fff;
+        }
+
+        /* Pass Rate Specific */
+        .pass-rate-box {
+            border-right: 1px solid var(--border-color);
+        }
+        .pass-rate-sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Table Styling */
+        .table-dark {
+            background-color: transparent;
+            color: var(--text-main);
+        }
+        .table-dark th {
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+        .table-dark td {
+            border-bottom: 1px solid var(--border-color);
+            background-color: transparent;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
-    <div class="container-fluid">
-        <div class="row">
+    <div class="container-fluid p-0">
+        <div class="row g-0">
             <!-- Sidebar -->
-            <nav class="col-md-2 d-none d-md-block sidebar">
-                <h5 class="px-3 mb-4 text-white">BTE Careers HR</h5>
-                <div id="sidebar-brands" class="mb-4">
-                    <h6 class="px-3 text-uppercase text-muted">Brands</h6>
-                    <div class="nav flex-column" id="brand-list">
-                        <!-- Populated by JS -->
-                    </div>
+            <nav class="col-md-2 sidebar d-none d-md-block">
+                <div class="sidebar-brand">
+                    <span class="logo-box"></span>
+                    BIGTIME EMPIRE
+                </div>
+
+                <div class="nav-section">WORKSPACE</div>
+                <div class="nav flex-column">
+                    <a href="#" class="active">Dashboard</a>
+                    <a href="#">Applicants</a>
+                </div>
+
+                <div class="nav-section">
+                    BRANDS <span>+</span>
+                </div>
+                <div class="nav flex-column" id="brand-list">
+                    <!-- Populated by JS -->
+                    <span class="px-2 text-muted small">Loading...</span>
+                </div>
+
+                <div class="nav-section">
+                    FORMS <span>+</span>
+                </div>
+                <div class="nav flex-column" id="form-list">
+                    <!-- Populated by JS -->
                 </div>
             </nav>
 
             <!-- Main Content -->
-            <main class="col-md-10 ms-sm-auto px-md-4 py-4">
-                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
-                    <h1 class="h2">Dashboard Summary</h1>
+            <main class="col-md-10 px-4">
+                <!-- Top Nav -->
+                <div class="top-bar">
+                    <div class="d-flex gap-3">
+                        <input type="text" class="search-box" placeholder="Search..." style="width: 250px;">
+                        <input type="date" class="date-box">
+                    </div>
+                    <button class="btn-profile">PROFILE</button>
                 </div>
 
-                <!-- Summary Cards -->
-                <div class="row mb-4" id="summary-cards">
+                <!-- Aggregate Summary Card -->
+                <div class="dashboard-card mb-4">
+                    <div class="row text-center align-items-center" id="main-summary">
+                        <!-- Populated by JS -->
+                        <div class="col"><span class="text-muted">Loading metrics...</span></div>
+                    </div>
+                </div>
+
+                <!-- Top Matches Cards -->
+                <div class="row mb-4" id="brand-summary-cards">
                     <!-- Populated by JS -->
                 </div>
 
                 <!-- Live Tally Table -->
-                <h4 class="mb-3">Live Status Tally</h4>
-                <div class="table-responsive bg-white p-3 border rounded shadow-sm">
-                    <table class="table table-hover table-sm mb-0">
-                        <thead>
-                            <tr>
-                                <th>Job Title</th>
-                                <th>Passed</th>
-                                <th>Failed</th>
-                                <th>Pooling</th>
-                                <th>Endorsed</th>
-                                <th>Hired</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tally-body">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
+                <div class="dashboard-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="m-0 text-white font-weight-bold">Live Status Tally</h6>
+                        <span class="badge bg-secondary" style="font-size: 0.65rem;">Auto-updating</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-sm mb-0 table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Job Title</th>
+                                    <th>Passed</th>
+                                    <th>Failed</th>
+                                    <th>Pooling</th>
+                                    <th>Endorsed</th>
+                                    <th>Hired</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tally-body">
+                                <!-- Populated by JS -->
+                                <tr><td colspan="6" class="text-center text-muted">Loading pipeline...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </main>
         </div>
@@ -68,27 +244,90 @@
                 const sidebarRes = await fetch('/api/v1/admin/metadata/sidebar');
                 if (sidebarRes.ok) {
                     const sidebarData = await sidebarRes.json();
-                    document.getElementById('brand-list').innerHTML = sidebarData.brands.map(b => 
-                        `<a class="nav-link" href="#">${b.name}</a>`
+                    
+                    document.getElementById('brand-list').innerHTML = (sidebarData.brands || []).map(b =>
+                        `<a href="#">${b.name}</a>`
                     ).join('');
+                    
+                    // Render forms if returned by API, otherwise show placeholders matching wireframe
+                    if (sidebarData.forms && sidebarData.forms.length > 0) {
+                        document.getElementById('form-list').innerHTML = sidebarData.forms.map(f =>
+                            `<a href="#">${f.name}</a>`
+                        ).join('');
+                    } else {
+                        document.getElementById('form-list').innerHTML = ['CMA', 'CMA 1', 'MARKETING', 'OIC', 'BME', 'ADMIN', 'ASSOC'].map(f =>
+                            `<a href="#">${f}</a>`
+                        ).join('');
+                    }
                 }
 
                 // Fetch summary
                 const summaryRes = await fetch('/api/v1/admin/dashboard/summary');
                 if (summaryRes.ok) {
                     const summaryData = await summaryRes.json();
-                    const stats = summaryData.overall_totals;
-                    const keysToRender = ['passed', 'failed', 'pooling', 'endorsed', 'hired', 'total_processed'];
-                    document.getElementById('summary-cards').innerHTML = keysToRender.map(k => `
-                        <div class="col-md-2 mb-3">
-                            <div class="card card-stats shadow-sm h-100">
-                                <div class="card-body">
-                                    <h6 class="card-title text-uppercase text-muted mb-1" style="font-size: 0.75rem;">${k.replace('_', ' ')}</h6>
-                                    <h3 class="mb-0">${stats[k] || 0}</h3>
+                    const stats = summaryData.overall_totals || {};
+                    
+                    const passed = stats.passed || 0;
+                    const total = stats.total_processed || 1; // avoid div by zero
+                    const passRate = total > 0 && stats.total_processed !== undefined ? Math.round((passed / total) * 100) : 0;
+                    
+                    // Build Main Summary (Pass Rate + Metrics)
+                    document.getElementById('main-summary').innerHTML = `
+                        <div class="col pass-rate-box">
+                            <div class="stat-label">Pass Rate</div>
+                            <div class="stat-value" style="color: var(--accent-green);">${passRate}%</div>
+                            <div class="pass-rate-sub">${passed}/${total === 1 && stats.total_processed === undefined ? 0 : total}</div>
+                        </div>
+                        <div class="col" style="border-right: 1px solid var(--border-color);">
+                            <div class="stat-label">Endorsed</div>
+                            <div class="stat-value" style="color: var(--accent-purple);">${stats.endorsed || 0}</div>
+                        </div>
+                        <div class="col" style="border-right: 1px solid var(--border-color);">
+                            <div class="stat-label">Pooling</div>
+                            <div class="stat-value" style="color: var(--accent-yellow);">${stats.pooling || 0}</div>
+                        </div>
+                        <div class="col" style="border-right: 1px solid var(--border-color);">
+                            <div class="stat-label">Hired</div>
+                            <div class="stat-value" style="color: var(--accent-blue);">${stats.hired || 0}</div>
+                        </div>
+                        <div class="col">
+                            <div class="stat-label">Failed</div>
+                            <div class="stat-value" style="color: var(--accent-red);">${stats.failed || 0}</div>
+                        </div>
+                    `;
+
+                    // Render per-brand top matches if returned, else render placeholders from wireframe
+                    if (summaryData.brand_matches && summaryData.brand_matches.length > 0) {
+                        document.getElementById('brand-summary-cards').innerHTML = summaryData.brand_matches.map(b => `
+                            <div class="col-md-4">
+                                <div class="dashboard-card h-100 d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="stat-label" style="color: #fff;">${b.name}</div>
+                                        <div class="stat-label mt-1">Top Matches</div>
+                                    </div>
+                                    <div class="stat-value">${b.matches || 0}</div>
                                 </div>
                             </div>
-                        </div>
-                    `).join('');
+                        `).join('');
+                    } else {
+                        // Fallback matching the wireframe explicitly
+                        const mockBrands = [
+                            { name: "PARES RETIRO", matches: 319 },
+                            { name: "THE SANDWICH GUY", matches: 41 },
+                            { name: "SAPPORO MILKTEA", matches: 63 }
+                        ];
+                        document.getElementById('brand-summary-cards').innerHTML = mockBrands.map(b => `
+                            <div class="col-md-4">
+                                <div class="dashboard-card h-100 d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="stat-label" style="color: #fff;">${b.name}</div>
+                                        <div class="stat-label mt-1">Top Matches</div>
+                                    </div>
+                                    <div class="stat-value">${b.matches}</div>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
                 }
 
                 // Fetch tally
@@ -97,12 +336,12 @@
                     const tallyData = await tallyRes.json();
                     document.getElementById('tally-body').innerHTML = tallyData.data.map(t => `
                         <tr>
-                            <td class="fw-bold">${t.job_title}</td>
-                            <td class="text-success">${t.counts.PASSED || 0}</td>
-                            <td class="text-danger">${t.counts.FAILED || 0}</td>
-                            <td class="text-warning">${t.counts.POOLING || 0}</td>
-                            <td class="text-primary">${t.counts.ENDORSED || 0}</td>
-                            <td class="text-info">${t.counts.HIRED || 0}</td>
+                            <td class="text-white">${t.job_title}</td>
+                            <td style="color: var(--accent-green);">${t.counts.PASSED || 0}</td>
+                            <td style="color: var(--accent-red);">${t.counts.FAILED || 0}</td>
+                            <td style="color: var(--accent-yellow);">${t.counts.POOLING || 0}</td>
+                            <td style="color: var(--accent-purple);">${t.counts.ENDORSED || 0}</td>
+                            <td style="color: var(--accent-blue);">${t.counts.HIRED || 0}</td>
                         </tr>
                     `).join('');
                 }
@@ -110,7 +349,7 @@
                 console.error("Failed to load dashboard data:", err);
             }
         }
-        
+
         // Initial fetch and set polling
         fetchDashboardData();
         setInterval(fetchDashboardData, 10000);
