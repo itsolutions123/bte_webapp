@@ -1,0 +1,68 @@
+body.careers-body {
+    background-color: #0a0a0a;
+    color: #ffffff;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+.careers-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 60px 20px;
+}
+
+.career-section {
+    padding: 60px 0;
+}
+
+.career-section h2 {
+    color: #cfa838; /* BTE Gold */
+    text-transform: uppercase;
+    font-size: 3rem;
+    margin: 0 0 10px 0;
+    letter-spacing: 2px;
+}
+
+.career-section p {
+    font-size: 1.2rem;
+    margin: 0;
+    font-weight: 300;
+}
+
+.left-align {
+    text-align: left;
+}
+
+.center-align {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.section-divider {
+    border: 0;
+    border-top: 1px solid #333333;
+    margin: 0;
+}
+
+.btn-outline {
+    display: inline-block;
+    margin-top: 30px;
+    padding: 15px 40px;
+    border: 2px solid #ffffff;
+    color: #ffffff;
+    background: transparent;
+    text-decoration: none;
+    text-transform: uppercase;
+    font-weight: bold;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-outline:hover {
+    background-color: #ffffff;
+    color: #0a0a0a;
+}
