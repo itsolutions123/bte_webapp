@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apply - BTE Careers</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="careers-body">
+    <div class="careers-container">
+        <header class="career-section center-align">
+            <h2>Application Form</h2>
+            <p>Complete the form below to submit your application.</p>
+        </header>
+
+        <div class="apply-container">
+            <form id="apply-form" action="/api/v1/public/apply" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="job_id" value="{{ job.id if job else '' }}">
+                <input type="hidden" name="terms_version" value="v1.0">
+
+                <!-- Personal Information -->
+                <div class="form-group">
+                    <label for="first_name">First Name</label>
+                    <input type="text" id="first_name" name="first_name" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="last_name">Last Name</label>
+                    <input type="text" id="last_name" name="last_name" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" name="phone" class="form-control" required>
+                </div>
+
+                <!-- Resume Upload -->
+                <div class="form-group">
+                    <label for="resume">Resume (PDF only)</label>
+                    <input type="file" id="resume" name="resume" accept="application/pdf" class="form-control" required>
+                </div>
+
+                <!-- Philippine Data Privacy Act (RA 10173) Compliance -->
+                <div class="form-group">
+                    <div class="privacy-notice-box">
+                        <h4>Data Privacy Notice (RA 10173)</h4>
+                        <p>In compliance with the Philippine Data Privacy Act of 2012 (Republic Act No. 10173), Bigtime Empire Corporation collects and processes your personal data solely for recruitment and employment evaluation purposes. Your personal information and resume will be securely stored and accessed only by authorized HR personnel. By checking the box below, you explicitly consent to the collection, processing, and retention of your data for this application process.</p>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="consent_agreed" name="consent_agreed" value="true" required>
+                        <label for="consent_agreed">
+                            I have read, understood, and agree to the Terms and Conditions and consent to the processing of my personal data under the Philippine Data Privacy Act (RA 10173).
+                        </label>
+                    </div>
+                </div>
+
+                <div class="center-align" style="margin-top: 30px;">
+                    <button type="submit" class="btn-outline">Submit Application</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

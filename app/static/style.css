@@ -66,3 +66,84 @@ body.careers-body {
     background-color: #ffffff;
     color: #0a0a0a;
 }
+
+/* Application Form & Compliance Styles */
+.apply-container {
+    max-width: 700px;
+    margin: 40px auto;
+    padding: 30px;
+    background-color: #121212;
+    border: 1px solid #333333;
+    border-radius: 4px;
+}
+
+.form-group {
+    margin-bottom: 24px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #e0e0e0;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    background-color: #1a1a1a;
+    border: 1px solid #333333;
+    color: #ffffff;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.form-control:focus {
+    border-color: #cfa838;
+    outline: none;
+}
+
+.privacy-notice-box {
+    background-color: #1a1a1a;
+    border: 1px solid #333333;
+    border-left: 4px solid #cfa838;
+    padding: 16px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #cccccc;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.privacy-notice-box h4 {
+    color: #cfa838;
+    margin-top: 0;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-top: 15px;
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    accent-color: #cfa838;
+    cursor: pointer;
+}
+
+.checkbox-group label {
+    font-size: 0.9rem;
+    color: #e0e0e0;
+    line-height: 1.4;
+    cursor: pointer;
+}
