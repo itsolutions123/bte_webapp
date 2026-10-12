@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTE Careers - HR Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { font-size: 0.9rem; background-color: #f8f9fa; }
+        .sidebar { min-height: 100vh; background-color: #343a40; color: white; padding-top: 1rem; }
+        .sidebar a { color: #adb5bd; text-decoration: none; display: block; padding: 0.5rem 1rem; }
+        .sidebar a:hover { color: white; background-color: #495057; }
+        .card-stats { border-left: 4px solid #0d6efd; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-2 d-none d-md-block sidebar">
+                <h5 class="px-3 mb-4 text-white">BTE Careers HR</h5>
+                <div id="sidebar-brands" class="mb-4">
+                    <h6 class="px-3 text-uppercase text-muted">Brands</h6>
+                    <div class="nav flex-column" id="brand-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-10 ms-sm-auto px-md-4 py-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Dashboard Summary</h1>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="row mb-4" id="summary-cards">
+                    <!-- Populated by JS -->
+                </div>
+
+                <!-- Live Tally Table -->
+                <h4 class="mb-3">Live Status Tally</h4>
+                <div class="table-responsive bg-white p-3 border rounded shadow-sm">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Job Title</th>
+                                <th>Passed</th>
+                                <th>Failed</th>
+                                <th>Pooling</th>
+                                <th>Endorsed</th>
+                                <th>Hired</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tally-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        async function fetchDashboardData() {
+            try {
+                // Fetch sidebar metadata
+                const sidebarRes = await fetch('/api/v1/admin/metadata/sidebar');
+                if (sidebarRes.ok) {
+                    const sidebarData = await sidebarRes.json();
+                    document.getElementById('brand-list').innerHTML = sidebarData.brands.map(b => 
+                        `<a class="nav-link" href="#">${b.name}</a>`
+                    ).join('');
+                }
+
+                // Fetch summary
+                const summaryRes = await fetch('/api/v1/admin/dashboard/summary');
+                if (summaryRes.ok) {
+                    const summaryData = await summaryRes.json();
+                    const stats = summaryData.overall_totals;
+                    const keysToRender = ['passed', 'failed', 'pooling', 'endorsed', 'hired', 'total_processed'];
+                    document.getElementById('summary-cards').innerHTML = keysToRender.map(k => `
+                        <div class="col-md-2 mb-3">
+                            <div class="card card-stats shadow-sm h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title text-uppercase text-muted mb-1" style="font-size: 0.75rem;">${k.replace('_', ' ')}</h6>
+                                    <h3 class="mb-0">${stats[k] || 0}</h3>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+
+                // Fetch tally
+                const tallyRes = await fetch('/api/v1/admin/dashboard/tally');
+                if (tallyRes.ok) {
+                    const tallyData = await tallyRes.json();
+                    document.getElementById('tally-body').innerHTML = tallyData.data.map(t => `
+                        <tr>
+                            <td class="fw-bold">${t.job_title}</td>
+                            <td class="text-success">${t.counts.PASSED || 0}</td>
+                            <td class="text-danger">${t.counts.FAILED || 0}</td>
+                            <td class="text-warning">${t.counts.POOLING || 0}</td>
+                            <td class="text-primary">${t.counts.ENDORSED || 0}</td>
+                            <td class="text-info">${t.counts.HIRED || 0}</td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (err) {
+                console.error("Failed to load dashboard data:", err);
+            }
+        }
+        
+        // Initial fetch and set polling
+        fetchDashboardData();
+        setInterval(fetchDashboardData, 10000);
+    </script>
+</body>
+</html>

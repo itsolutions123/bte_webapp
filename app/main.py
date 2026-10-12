@@ -8,7 +8,8 @@ app = FastAPI(title="BTE Careers API")
 # Note: Admin endpoints will require HR authentication middleware (coordinated with Security Gem)
 from app.routers import public
 app.include_router(public.router, prefix="/api/v1/public", tags=["Public"])
-# app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
+from app.routers import admin
+app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
@@ -28,6 +29,10 @@ async def serve_apply_page(request: Request, job_id: str = ""):
 @app.get("/careers", include_in_schema=False)
 async def serve_careers_board(request: Request):
     return templates.TemplateResponse(request=request, name="careers.html")
+
+@app.get("/admin", include_in_schema=False)
+async def serve_admin_dashboard(request: Request):
+    return templates.TemplateResponse(request=request, name="admin.html")
 
 @app.get("/health")
 async def health_check():

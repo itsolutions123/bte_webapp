@@ -79,3 +79,34 @@ class AdminApplicationDetailResponse(BaseModel):
 
 class AdminStatusPatchRequest(BaseModel):
     status: str
+
+
+class SidebarBrandItem(BaseModel):
+    id: UUID4
+    name: str
+    code: str = "BTE"
+
+class SidebarFormItem(BaseModel):
+    id: UUID4
+    name: str
+
+class SidebarMetadataResponse(BaseModel):
+    brands: List[SidebarBrandItem]
+    forms: List[SidebarFormItem]
+
+class OverallTotals(BaseModel):
+    passed: int = 0
+    failed: int = 0
+    pooling: int = 0
+    endorsed: int = 0
+    hired: int = 0
+    total_processed: int = 0
+
+class BrandSummaryItem(BaseModel):
+    brand_id: UUID4
+    brand_name: str
+    top_matches_count: int = 0
+
+class AdminSummaryResponse(BaseModel):
+    overall_totals: OverallTotals
+    brand_summaries: List[BrandSummaryItem]

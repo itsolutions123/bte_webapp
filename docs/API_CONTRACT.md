@@ -1,5 +1,5 @@
 # API Contract: BTE Careers
-*Last verified: 2026-10-12 (Docker container setup & endpoint health verified)*
+*Last verified: 2026-10-12 (Admin API wiring)
 
 ## Global Rules
 * All `/api/v1/admin/*` endpoints require HR authentication (cookie/token).

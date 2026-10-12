@@ -1,7 +1,7 @@
 # Project State: BTE Careers (ATS)
 
 **Last Updated:** 2026-10-12
-**Status:** Scaffolding & Container Infrastructure Complete
+**Status:** Admin API Wired & Scaffolding Complete
 
 ## Infrastructure & Environment
 - **Host:** ansible-srv (10.0.10.37)
@@ -12,14 +12,18 @@
 - **Resume Storage Path:** `./data/resumes/` (mounted at `/app/data/resumes`)
 
 ## Verified Active Endpoints
-- `GET /health` -> 200 OK (`{"status":"ok"}`)
-- `GET /careers` -> 200 OK (renders `careers.html`)
-- `GET /apply` -> 200 OK (renders `apply.html`)
+- `GET /health` -> 200 OK
+- `GET /careers` -> 200 OK
+- `GET /apply` -> 200 OK
+- `GET /admin` -> 200 OK (renders `admin.html`)
+- `GET /api/v1/admin/metadata/sidebar` -> 200 OK
+- `GET /api/v1/admin/dashboard/summary` -> 200 OK
+- `GET /api/v1/admin/dashboard/tally` -> 200 OK
 
 ## Key Technical Decisions & Fixes
 - Async database stack using `sqlalchemy[asyncio]` and `greenlet`.
-- Server-rendered Jinja2 templates using Starlette-compliant `TemplateResponse(request=request, name=...)` signature.
-- Removed obsolete `version` tag from `docker-compose.yml`.
+- Server-rendered Jinja2 templates using Starlette-compliant `TemplateResponse`.
+- Admin UI driven by vanilla JS `fetch()` polling to dedicated async API endpoints, strictly avoiding hardcoded business data.
 
 ## Next Steps
-- Handoff to **API Gem** to implement SQLAlchemy models (`app/models.py`) and backend endpoint logic for public apply flow and admin dashboard.
+- Handoff to **Structure / API Gem** to finalize the cross-app schema (such as question ordering and slug support) and implement the public job board and one-question-at-a-time apply wizard.
