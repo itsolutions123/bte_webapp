@@ -32,6 +32,13 @@ class Job(Base):
     questions = relationship("JobQuestion", back_populates="job")
     applications = relationship("Application", back_populates="job")
 
+class Form(Base):
+    __tablename__ = "forms"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    slug = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+
 class Applicant(Base):
     __tablename__ = "applicants"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

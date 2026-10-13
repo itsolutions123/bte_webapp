@@ -22,3 +22,11 @@
 - **Consent Logging:** Submissions must record the timestamp of application and the `terms_version` accepted. 
 - **IP Logging:** Strictly no IP logging. IP addresses will not be stored in the database to minimize PII footprint.
 - **Retention / Deletion:** Governed by the Philippine Data Privacy Act of 2012 (RA 10173). Personal data (resumes, answers, applicant details) will be permanently purged after 1 year, as they are no longer necessary for the purpose of the specific hiring cycle. Applicants may exercise their right to erasure under RA 10173 to request earlier deletion.
+
+## 5. Secrets, Configuration & Network Exposure
+- **No fallback credentials:** `docker-compose.yml` and application code must never define a default value for a password, key, token or database URL. Compose requires the value (`${DB_PASSWORD:?DB_PASSWORD must be set in .env}`) and the app raises an error if `DATABASE_URL` is missing, so a missing secret stops the start instead of silently using a guessable default. Non-secret defaults (such as database and user names) are allowed but must be listed as hardcodes in the audit.
+- **Where secrets live:** only in `.env` on the host (git-ignored, permissions `0600`). `.env.example` contains placeholders only and lists every required variable, including `DB_PASSWORD`. Secrets are never written into code, docs, commit messages or `PROJECT_STATE.md`.
+- **Before every commit:** `git status` must show no `.env`, key or credential files, and no tracked file may contain a live secret value.
+- **Database exposure:** Postgres is published on `127.0.0.1` only (`"127.0.0.1:5432:5432"`). The web container reaches it over the compose network (`db:5432`). No service may publish a database port on all interfaces.
+- **If a credential was ever committed or exposed:** rotate it. Change it inside Postgres first, then update `.env`, then restart the containers. Removing it from the file is not enough, because it stays in git history. A history rewrite is not needed once the value is dead.
+- **Testing database passwords:** the official Postgres image trusts loopback connections inside its own container, so a check run over `127.0.0.1` passes for any password. Test password authentication over the network (`-h db`).

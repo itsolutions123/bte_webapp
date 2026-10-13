@@ -1,14 +1,16 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from typing import Optional
+import re
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.database import get_db
-from app.models import Brand, Job, StatusCount, Parameter, Parameter
+from app.models import Brand, Job, StatusCount, Parameter, Parameter, Form
 from app.schemas import (
-    SidebarMetadataResponse, SidebarBrandItem, SidebarFormItem, SidebarFormItem, 
-    AdminSummaryResponse, OverallTotals, 
-    AdminTallyResponse, AdminTallyItem, JobCounts
+    SidebarMetadataResponse, SidebarBrandItem, SidebarFormItem, SidebarFormItem,
+    AdminSummaryResponse, OverallTotals,
+    AdminTallyResponse, AdminTallyItem, JobCounts,
+    FormCreateRequest, FormResponse,
 )
 
 router = APIRouter()
@@ -73,5 +75,27 @@ async def get_dashboard_tally(brand_id: Optional[str] = Query(None), db: AsyncSe
         AdminTallyItem(job_id=jid, job_title=data["title"], counts=data["counts"])
         for jid, data in job_dict.items()
     ]
-    
+
     return AdminTallyResponse(data=tally_items)
+
+def _slugify(name: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-")
+    return slug or "form"
+
+@router.post("/forms", response_model=FormResponse, status_code=status.HTTP_201_CREATED)
+async def create_form(payload: FormCreateRequest, db: AsyncSession = Depends(get_db)):
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="name must not be empty")
+
+    slug = _slugify(name)
+    existing = await db.execute(select(Form).where(Form.slug == slug))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="slug already taken")
+
+    form = Form(name=name, slug=slug)
+    db.add(form)
+    await db.commit()
+    await db.refresh(form)
+
+    return FormResponse(id=form.id, slug=form.slug, name=form.name)

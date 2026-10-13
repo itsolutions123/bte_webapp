@@ -84,6 +84,15 @@ class AdminStatusPatchRequest(BaseModel):
     status: str
 
 
+class FormCreateRequest(BaseModel):
+    name: str
+
+class FormResponse(BaseModel):
+    id: UUID4
+    slug: str
+    name: str
+
+
 class SidebarBrandItem(BaseModel):
     id: UUID4
     name: str

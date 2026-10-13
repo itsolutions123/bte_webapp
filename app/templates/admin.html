@@ -220,7 +220,7 @@
                 </div>
 
                 <div class="nav-section">
-                    FORMS <span>+</span>
+                    FORMS <span role="button" data-bs-toggle="modal" data-bs-target="#formBuilderModal" aria-label="Add form">+</span>
                 </div>
                 <div class="nav flex-column" id="form-list">
                     <!-- Populated by JS -->
@@ -280,6 +280,7 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         async function fetchDashboardData() {
             try {
@@ -374,6 +375,102 @@
 
         fetchDashboardData();
         setInterval(fetchDashboardData, 10000);
+
+        document.querySelectorAll('.form-element-btn').forEach(btn => {
+            btn.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', btn.textContent.trim());
+            });
+        });
+
+        const formContentsPanel = document.getElementById('form-contents-panel');
+        formContentsPanel.addEventListener('dragover', (e) => e.preventDefault());
+        formContentsPanel.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const label = e.dataTransfer.getData('text/plain');
+            if (!label) return;
+            document.getElementById('form-contents-placeholder').classList.add('d-none');
+            const list = document.getElementById('form-contents-list');
+            list.classList.remove('d-none');
+            const item = document.createElement('div');
+            item.className = 'border rounded p-3 mb-2';
+            item.innerHTML = `<span class="text-muted small fw-bold">${label}</span>`;
+            list.appendChild(item);
+        });
+
+        document.getElementById('form-save-btn').addEventListener('click', async () => {
+            const nameInput = document.getElementById('form-name-input');
+            const name = nameInput.value.trim();
+            const errorEl = document.getElementById('form-save-error');
+            errorEl.classList.add('d-none');
+            if (!name) {
+                errorEl.textContent = 'Form name is required.';
+                errorEl.classList.remove('d-none');
+                return;
+            }
+            try {
+                const res = await fetch('/api/v1/admin/forms', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                if (res.status === 201) {
+                    bootstrap.Modal.getInstance(document.getElementById('formBuilderModal')).hide();
+                    fetchDashboardData();
+                } else if (res.status === 409) {
+                    errorEl.textContent = 'A form with that name already exists.';
+                    errorEl.classList.remove('d-none');
+                } else {
+                    errorEl.textContent = 'Could not save the form. Please try again.';
+                    errorEl.classList.remove('d-none');
+                }
+            } catch (err) {
+                errorEl.textContent = 'Could not reach the server.';
+                errorEl.classList.remove('d-none');
+            }
+        });
+
+        document.getElementById('formBuilderModal').addEventListener('hidden.bs.modal', () => {
+            document.getElementById('form-name-input').value = '';
+            document.getElementById('form-contents-list').innerHTML = '';
+            document.getElementById('form-contents-list').classList.add('d-none');
+            document.getElementById('form-contents-placeholder').classList.remove('d-none');
+            document.getElementById('form-save-error').classList.add('d-none');
+        });
     </script>
+
+    <!-- Form Builder Modal (shell only -- not yet wired to the API) -->
+    <div class="modal fade" id="formBuilderModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
+                <div class="modal-header">
+                    <input type="text" id="form-name-input" class="form-control form-control-lg border-0 fw-bold" style="font-size: 1.25rem; box-shadow: none; max-width: 320px;" placeholder="Untitled Form">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="row g-0" style="min-height: 480px;">
+                        <div class="col-3 border-end p-3">
+                            <div class="fw-bold mb-3">Elements</div>
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-outline-secondary text-start form-element-btn" draggable="true">Yes / No Question</button>
+                                <button type="button" class="btn btn-outline-secondary text-start form-element-btn" draggable="true">Open ended</button>
+                                <button type="button" class="btn btn-outline-secondary text-start form-element-btn" draggable="true">Multiple Choice</button>
+                            </div>
+                        </div>
+                        <div class="col-9 p-4" id="form-contents-panel">
+                            <div class="text-center text-muted fw-bold" style="margin-top: 180px;" id="form-contents-placeholder">
+                                FORM CONTENTS
+                            </div>
+                            <div id="form-contents-list" class="d-none"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <span class="text-danger small me-auto d-none" id="form-save-error"></span>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-dark" id="form-save-btn">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

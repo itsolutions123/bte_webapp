@@ -1,5 +1,5 @@
 # API Contract: BTE Careers
-*Last verified: 2026-10-13 (on top of 9ae232a; admin forms endpoints and page route keyed by form id, still planned; public applicant routes not yet recorded)*
+*Last verified: 2026-10-13 (commit pending -- update short hash after push; POST /api/v1/admin/forms now implemented, remaining admin forms endpoints and page route keyed by form id still planned; public applicant routes not yet recorded)*
 
 ## Global Rules
 - All `/api/v1/admin/*` endpoints require HR authentication (cookie/token).
@@ -80,7 +80,7 @@
 
 ---
 
-## 3. Admin Forms API (PLANNED - not implemented)
+## 3. Admin Forms API (PARTIALLY IMPLEMENTED -- see per-endpoint status)
 
 All endpoints require HR authentication (see Global Rules). A form is a shared template: many jobs can use one form (`jobs.form_id`), and a job uses at most one. A form's questions are its `job_questions` rows. Question type is set at creation and cannot be changed (delete and re-add instead). The answer points (the admin cheat sheet) are never returned by public endpoints. Admin form endpoints are addressed by form id (`{form_id}`), matching the page route `/admin/forms/{form_id}`; the slug is returned as a field and is used only in public paths. Every `{form_id}`, `{job_id}` and `{question_id}` must be a valid UUID (422 otherwise); an unknown id returns 404.
 
@@ -94,6 +94,7 @@ All endpoints require HR authentication (see Global Rules). A form is a shared t
 - **Request:** JSON `{ "name": "string" }`
 - **Response (201 Created):** `{ "id": "uuid", "slug": "string", "name": "string" }`
 - **Errors:** 409 slug already taken; 422 invalid body.
+- **Status:** Implemented 2026-10-13 (`app/routers/admin.py`). No HR-auth check yet -- none of the admin endpoints enforce it today (existing gap, not introduced here); Security owns closing it.
 
 ### `GET /api/v1/admin/forms/{form_id}`
 - **Purpose:** Form detail for the editor: name, the jobs that use it, and all questions in order with their answer points (a form holds a small, bounded number of questions, so the list is not paginated).
