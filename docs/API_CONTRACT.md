@@ -1,5 +1,5 @@
 # API Contract: BTE Careers
-*Last verified: 2026-10-13 (commit pending -- update short hash after push; POST /api/v1/admin/forms now implemented, remaining admin forms endpoints and page route keyed by form id still planned; public applicant routes not yet recorded)*
+*Last verified: 2026-10-13 (cab1a44; POST /api/v1/admin/forms and GET /api/v1/admin/metadata/sidebar (forms from the forms table) now implemented, remaining admin forms endpoints and page route keyed by form id still planned; public applicant routes not yet recorded)*
 
 ## Global Rules
 - All `/api/v1/admin/*` endpoints require HR authentication (cookie/token).
@@ -67,7 +67,7 @@
 - **Response (200 OK):** Streams `application/pdf` via `FileResponse` (Rule 13.5)
 
 ### `GET /api/v1/admin/metadata/sidebar`
-- **Purpose:** Fetch dynamic lists of brands and forms for the left navigation. `forms` must come from the `forms` table (PLANNED). The code currently reads the legacy `parameters` table.
+- **Purpose:** Fetch dynamic lists of brands and forms for the left navigation. `forms` comes from the `forms` table (implemented 2026-10-13, `app/routers/admin.py`).
 - **Request:** None
 - **Response (200 OK):**
   `{ "brands": [ { "id": "uuid", "name": "string", "slug": "string", "code": "string" } ], "forms": [ { "id": "uuid", "name": "string", "slug": "string" } ] }`

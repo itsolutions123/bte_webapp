@@ -1,7 +1,7 @@
 # Project State: BTE Careers (ATS)
 
 **Last Updated:** 2026-10-13
-**Status:** Admin UI Redesigned & Admin API Wired
+**Status:** Admin UI Redesigned & Admin API Wired -- Form creation (name-only) live end-to-end
 
 ## Infrastructure & Environment
 - **Host:** ansible-srv (10.0.10.37)
@@ -19,6 +19,7 @@
 - `GET /api/v1/admin/metadata/sidebar` -> 200 OK
 - `GET /api/v1/admin/dashboard/summary` -> 200 OK
 - `GET /api/v1/admin/dashboard/tally` -> 200 OK
+- `POST /api/v1/admin/forms` -> 201 Created (verified 2026-10-13)
 
 ## Key Technical Decisions & Fixes
 - Async database stack using `sqlalchemy[asyncio]` and `greenlet`.
@@ -63,6 +64,9 @@
 - Security incident (2026-10-12/13): GitGuardian flagged the fallback DB password in docker-compose.yml. Cause: `DB_PASSWORD` was unset in `.env`, so the live DB ran on the stock default, and Postgres 5432 was published on all interfaces. Fixed: DB role password rotated; `DB_PASSWORD` is required in docker-compose.yml (no fallback); `app/database.py` has no `DATABASE_URL` fallback; 5432 is bound to 127.0.0.1. Committed in ab9bae3. Postgres trusts loopback connections inside its container, so password checks must go over the network (`-h db`). Remaining: mark the GitGuardian alert resolved from its dashboard, and add `DB_PASSWORD` to `.env.example`.
 - Admin forms endpoints are keyed by form id (`/api/v1/admin/forms/{form_id}/...`) and the page route is `/admin/forms/{form_id}`; recorded in API_CONTRACT.md on 2026-10-13 (section 3 still PLANNED). The slug stays a response field and is used only in public paths.
 - Row counts 2026-10-13: jobs, job_questions, applications and answers are all empty, so the `job_questions` reshape needs no backfill. Remaining schema work is HELD until the question editor step: migration 003 (job_questions: form_id, question_type, options, nullable parameter_id, idx_jq_form_order), 004 (answer_points and its index), 005 (applications.brand_points, answers.is_passed nullable, idx_answers_application_id), and dropping `job_id` and `expected_answer` last with explicit confirmation. The drop breaks `GET /api/v1/public/jobs/{job_id}/questions` and `POST /apply` until they are rewritten for forms.
+- Form Builder modal shipped (admin.html, FORMS "+", committed cab1a44): editable form name, drag-and-drop element palette (Yes/No, Open-ended, Multiple Choice -- Checkbox excluded by decision), drop zone is visual-only for now (dragged elements are not yet persisted as questions -- no question-text/options/answer-points UI exists yet). Save calls `POST /api/v1/admin/forms` with the name, shows a Bootstrap toast on success, and refreshes the sidebar.
+- Bug found and fixed 2026-10-13: the inline `<script>` in admin.html originally ran before the modal/toast markup existed in the DOM (script tag preceded that markup in source order), so `document.getElementById(...).addEventListener` threw on page load and silently broke the Save button after a fresh reload. Fixed by wrapping the modal-dependent JS in a `DOMContentLoaded` listener.
+- `GET /api/v1/admin/metadata/sidebar` now reads the `forms` table instead of the legacy `parameters` table (resolves the Known Mismatch recorded 2026-10-12, see below).
 
 ## OPEN Decisions
 - `/admin` vs `/admin/home`: Dashboard is `/admin/home` (decided 2026-10-12). Assumed `/admin` stays as an alias; not yet confirmed.
@@ -88,12 +92,12 @@
 - `app/main.py` serves only `/admin`. `/admin/home`, `/admin/brands/...`, `/admin/forms/...` and `/admin/applicants/...` are not implemented.
 - The contract lists admin application endpoints (list, detail, status patch, resume) that are not in `app/routers/admin.py`.
 - Route param naming differs: the v4 preamble says `{UID}`, the contract says `{application_id}`.
-- The sidebar `forms` list is filled from the legacy `parameters` table (app/routers/admin.py), not a forms table.
+- RESOLVED 2026-10-13: the sidebar `forms` list now reads the `forms` table (app/routers/admin.py), not the legacy `parameters` table.
 - Bugs in `POST /apply` (not fixed): a rejected job lookup leaves an orphaned PDF on disk; an unanswered hard-requirement question never sets the fail flag; invalid `answers` JSON and unknown question ids are silently ignored. The contract now requires 422 for these.
 - Hardcodes: brand `code` is `name[:3].upper()` with a "BTE" schema default; `consent_agreed` defaults True and `terms_version` defaults "v1.0" in app/models.py; in `POST /apply` the 5 MB limit, the default `/data/resumes` path (docker-compose.yml:27 mounts `./data/resumes` to `/app/data/resumes`; whether an env var overrides the default is UNVERIFIED), the 8192 chunk size, the status strings, and a score of 100 for a form with no questions.
 - Cosmetic duplicates (committed in 2451ad7): `Parameter, Parameter` and `SidebarFormItem, SidebarFormItem` imports in admin.py; `slug: str` twice in SidebarBrandItem and SidebarFormItem in schemas.py.
 - Indexes in SCHEMA.md but not in app/models.py: `idx_jq_form_order`, `idx_jobs_form_id`, `idx_answer_points_question_id`, `idx_answers_application_id`.
-- Dashboard (app/templates/admin.html): the Dashboard, Applicants, brand and form sidebar links are `href="#"` and the two "+" markers are plain spans, so nothing opens yet.
+- Dashboard (app/templates/admin.html): the Dashboard, Applicants, brand and form sidebar links are still `href="#"`. The FORMS "+" now opens the Form Builder modal (2026-10-13); the BRANDS "+" is still a plain span, so nothing opens there yet.
 - Dashboard brand cards read `summaryData.brand_matches` (`name`, `matches`), but the contract says `brand_summaries` (`brand_name`, `top_matches_count`). Which side is wrong is UNVERIFIED (the dashboard/summary code in admin.py has not been read).
 - Dashboard pass rate shows 0% with "0/1" while every count is 0. A denominator of 1 looks like a fallback value (UNVERIFIED, code not read).
 - Security: admin.html puts brand and form names into `innerHTML` unescaped in the sidebar fetch code. This needs escaping before the "+" create buttons exist.
@@ -105,8 +109,8 @@
 
 ## Next Steps
 1. DONE: docs and the slug, display_order and consent code are committed (2451ad7). The admin.html mock-data removal and these doc updates are committed on 2026-10-12 after that.
-   Done 2026-10-13: schema-change mechanism decided (option A), migrations 001 and 002 applied, DB password incident fixed (committed in ab9bae3). Next: the forms-creation slice. The admin forms contract is recorded (by form id); then the Forms page shell, form list and form create.
+   Done 2026-10-13: schema-change mechanism decided (option A), migrations 001 and 002 applied, DB password incident fixed (committed in ab9bae3). Forms-creation slice DONE: Form Builder modal shell, `POST /api/v1/admin/forms`, sidebar switched to the `forms` table, Save-success toast (committed cab1a44 and this session's follow-up commit). Next: turn the dropped elements into real persisted questions (needs question-text/options/answer-points UI and `POST /api/v1/admin/forms/{form_id}/questions`), then the `/admin/forms/{form_id}` page itself.
 2. Security: decide admin auth and review the Open ended sensitive-data example.
 3. Design: build the Brands and Forms page shells with "+" buttons using placeholder content only, plus the apply wizard layouts (Yes/No, A-D, Open ended).
 4. Structure/API: migration plan for forms, answer_points and `jobs.form_id` (contract-first, destructive steps confirmed).
-5. Wire one feature at a time: form list, form create, question editor, answer points, attach jobs, submissions, then the matching engine rewrite.
+5. Wire one feature at a time: form create DONE; next is the question editor (persisting dropped elements as real `job_questions` rows with text/options/answer points), then answer points, attach jobs, submissions, then the matching engine rewrite.
