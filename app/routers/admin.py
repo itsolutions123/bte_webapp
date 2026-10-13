@@ -7,14 +7,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.database import get_db
-from app.models import Brand, Job, StatusCount, Parameter, Parameter, Form, JobQuestion
+from app.models import Brand, Job, StatusCount, Parameter, Parameter, Form, JobQuestion, Answer, Answer
 from app.schemas import (
     SidebarMetadataResponse, SidebarBrandItem, SidebarFormItem, SidebarFormItem,
     AdminSummaryResponse, OverallTotals,
     AdminTallyResponse, AdminTallyItem, JobCounts,
     FormCreateRequest, FormResponse, FormArchiveResponse,
     FormListItem, FormListResponse,
-    QuestionCreateRequest, QuestionResponse,
+    QuestionCreateRequest, QuestionResponse, QuestionUpdateRequest,
+    JobSummaryItem, FormDetailResponse,
 )
 
 router = APIRouter()
@@ -221,6 +222,49 @@ async def list_forms(
     return FormListResponse(data=items, total=total)
 
 
+@router.get("/forms/{form_id}", response_model=FormDetailResponse)
+async def get_form_detail(form_id: str, db: AsyncSession = Depends(get_db)):
+    try:
+        form_uuid = uuid.UUID(form_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="form_id must be a valid UUID")
+
+    result = await db.execute(select(Form).where(Form.id == form_uuid))
+    form = result.scalar_one_or_none()
+    if form is None:
+        raise HTTPException(status_code=404, detail="form not found")
+
+    jobs_result = await db.execute(
+        select(Job, Brand.name)
+        .join(Brand, Job.brand_id == Brand.id)
+        .where(Job.form_id == form_uuid)
+    )
+    jobs = [
+        JobSummaryItem(id=j.id, slug=j.slug, title=j.title, brand_name=brand_name)
+        for j, brand_name in jobs_result.all()
+    ]
+
+    questions_result = await db.execute(
+        select(JobQuestion)
+        .where(JobQuestion.form_id == form_uuid)
+        .order_by(JobQuestion.display_order)
+    )
+    questions = [
+        QuestionResponse(
+            id=q.id,
+            display_order=q.display_order,
+            question_type=q.question_type,
+            question_text=q.question_text,
+            options=q.options,
+            is_hard_requirement=q.is_hard_requirement,
+            answer_points=[],  # answer_points table does not exist yet (SCHEMA.md held migration)
+        )
+        for q in questions_result.scalars().all()
+    ]
+
+    return FormDetailResponse(id=form.id, slug=form.slug, name=form.name, jobs=jobs, questions=questions)
+
+
 QUESTION_TYPES = {"YES_NO", "MULTIPLE_CHOICE", "OPEN_ENDED"}
 
 
@@ -296,3 +340,100 @@ async def create_question(form_id: str, payload: QuestionCreateRequest, db: Asyn
         is_hard_requirement=bool(question.is_hard_requirement),
         answer_points=[],
     )
+
+
+@router.patch("/forms/{form_id}/questions/{question_id}", response_model=QuestionResponse)
+async def update_question(form_id: str, question_id: str, payload: QuestionUpdateRequest, db: AsyncSession = Depends(get_db)):
+    try:
+        form_uuid = uuid.UUID(form_id)
+        question_uuid = uuid.UUID(question_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="form_id and question_id must be valid UUIDs")
+
+    result = await db.execute(select(Form).where(Form.id == form_uuid))
+    form = result.scalar_one_or_none()
+    if form is None:
+        raise HTTPException(status_code=404, detail="form not found")
+    if form.archived_at is not None:
+        raise HTTPException(status_code=409, detail="form is archived and read-only")
+
+    q_result = await db.execute(
+        select(JobQuestion).where(JobQuestion.id == question_uuid, JobQuestion.form_id == form_uuid)
+    )
+    question = q_result.scalar_one_or_none()
+    if question is None:
+        raise HTTPException(status_code=404, detail="question not found")
+
+    if payload.answer_points:
+        raise HTTPException(status_code=422, detail="answer points are not supported yet")
+    if payload.is_hard_requirement:
+        raise HTTPException(status_code=422, detail="is_hard_requirement needs answer points, which are not supported yet")
+
+    if payload.question_text is not None:
+        text = payload.question_text.strip()
+        if not text:
+            raise HTTPException(status_code=422, detail="question_text must not be empty")
+        question.question_text = text
+
+    if payload.options is not None:
+        options = [o.strip() for o in payload.options]
+        if any(not o for o in options):
+            raise HTTPException(status_code=422, detail="option labels must not be empty")
+
+        qtype = question.question_type
+        if qtype == "YES_NO":
+            if len(options) != 2:
+                raise HTTPException(status_code=422, detail="YES_NO options must be exactly 2 labels")
+            if options[0].lower() == options[1].lower():
+                raise HTTPException(status_code=422, detail="the two YES_NO labels must be different")
+        elif qtype == "MULTIPLE_CHOICE":
+            if len(options) != 4:
+                raise HTTPException(status_code=422, detail="MULTIPLE_CHOICE requires exactly 4 options")
+        else:
+            raise HTTPException(status_code=422, detail="OPEN_ENDED takes no options")
+
+        question.options = options
+
+    await db.commit()
+    await db.refresh(question)
+
+    return QuestionResponse(
+        id=question.id,
+        display_order=question.display_order,
+        question_type=question.question_type,
+        question_text=question.question_text,
+        options=question.options,
+        is_hard_requirement=bool(question.is_hard_requirement),
+        answer_points=[],
+    )
+
+
+@router.delete("/forms/{form_id}/questions/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_question(form_id: str, question_id: str, db: AsyncSession = Depends(get_db)):
+    try:
+        form_uuid = uuid.UUID(form_id)
+        question_uuid = uuid.UUID(question_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="form_id and question_id must be valid UUIDs")
+
+    result = await db.execute(select(Form).where(Form.id == form_uuid))
+    form = result.scalar_one_or_none()
+    if form is None:
+        raise HTTPException(status_code=404, detail="form not found")
+
+    q_result = await db.execute(
+        select(JobQuestion).where(JobQuestion.id == question_uuid, JobQuestion.form_id == form_uuid)
+    )
+    question = q_result.scalar_one_or_none()
+    if question is None:
+        raise HTTPException(status_code=404, detail="question not found")
+
+    answer_check = await db.execute(
+        select(Answer.id).where(Answer.job_question_id == question_uuid).limit(1)
+    )
+    if answer_check.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=409, detail="question already has applicant answers")
+
+    await db.delete(question)
+    await db.commit()
+    return None

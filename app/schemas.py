@@ -154,6 +154,12 @@ class QuestionCreateRequest(BaseModel):
     is_hard_requirement: bool = False
     answer_points: Optional[List[Any]] = None
 
+class QuestionUpdateRequest(BaseModel):
+    question_text: Optional[str] = None
+    options: Optional[List[str]] = None
+    is_hard_requirement: Optional[bool] = None
+    answer_points: Optional[List[Any]] = None
+
 class AnswerPointItem(BaseModel):
     answer_value: str
     target_type: str
@@ -169,3 +175,18 @@ class QuestionResponse(BaseModel):
     options: Optional[List[str]] = None
     is_hard_requirement: bool = False
     answer_points: List[AnswerPointItem] = []
+
+
+class JobSummaryItem(BaseModel):
+    id: UUID4
+    slug: str
+    title: str
+    brand_name: str
+
+
+class FormDetailResponse(BaseModel):
+    id: UUID4
+    slug: str
+    name: str
+    jobs: List[JobSummaryItem] = []
+    questions: List[QuestionResponse] = []

@@ -8,13 +8,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link href="/static/admin-sidebar.css" rel="stylesheet">
     <style>
-        .top-bar {
-            padding: 1.5rem 0;
-            margin-bottom: 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
         .search-box, .date-box {
             background-color: var(--bg-card);
             border: 1px solid var(--border-light);
@@ -112,19 +105,14 @@
     <div class="container-fluid p-0">
         <div class="row g-0">
             {% include '_sidebar.html' %}
-            <main class="col-md-10 px-4 pb-5">
-                <!-- Top Nav (unwired, shell only - matches dashboard) -->
-                <div class="top-bar">
-                    <div class="d-flex gap-3">
-                        <input type="text" class="search-box" placeholder="Search...">
-                        <input type="date" class="date-box">
-                    </div>
-                    <button class="btn-profile">PROFILE</button>
-                </div>
-
+            <main class="col-md-10 px-4 pt-4 pb-5">
                 <div class="form-detail-card">
-                    <!-- Form name is fetched client-side from the forms list (see script below) -->
-                    <div class="form-detail-title" id="form-title">FORM NAME</div>
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <!-- Form name is fetched client-side from the forms list (see script below) -->
+                        <div class="form-detail-title" id="form-title">FORM NAME</div>
+                        <!-- Opens the form builder modal on this form (admin-sidebar.js: openFormBuilderForEdit) -->
+                        <button type="button" class="btn btn-sm btn-outline-dark fw-bold" id="form-edit-btn">Edit</button>
+                    </div>
 
                     <div id="bulk-delete-bar">
                         <span><span id="selected-count">0</span> selected</span>
@@ -177,6 +165,7 @@
         </div>
     </div>
 
+    {% include '_form_builder.html' %}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/admin-sidebar.js"></script>
     <script>
@@ -198,6 +187,11 @@
             }
         }
         fetchFormName();
+
+        document.getElementById('form-edit-btn').addEventListener('click', function () {
+            const formId = window.location.pathname.split('/').filter(Boolean).pop();
+            if (window.openFormBuilderForEdit) window.openFormBuilderForEdit(formId);
+        });
     </script>
 </body>
 </html>

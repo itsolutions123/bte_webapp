@@ -1,5 +1,5 @@
 # API Contract: BTE Careers
-*Last verified: 2026-10-13 (ab34919 — POST /forms/{form_id}/questions implemented and verified live, Form Builder Save wired and verified in the browser, YES_NO two-label rule stored via options; sidebar forms ordered alphabetically by name; archive endpoint call site (admin-sidebar.js); PATCH rename endpoint and its sidebar call site; archive endpoint, sidebar exclusion and forms list (with archived filter) implemented, rename implemented; POST /api/v1/admin/forms and GET /api/v1/admin/metadata/sidebar (forms from the forms table) now implemented, remaining admin forms endpoints and page route keyed by form id still planned; public applicant routes not yet recorded)*
+*Last verified: 2026-10-13 (ab34919 + uncommitted: form detail page status, GET /forms/{form_id} status corrected — POST /forms/{form_id}/questions implemented and verified live, Form Builder Save wired and verified in the browser, YES_NO two-label rule stored via options; sidebar forms ordered alphabetically by name; archive endpoint call site (admin-sidebar.js); PATCH rename endpoint and its sidebar call site; archive endpoint, sidebar exclusion and forms list (with archived filter) implemented, rename implemented; POST /api/v1/admin/forms and GET /api/v1/admin/metadata/sidebar (forms from the forms table) now implemented, remaining admin forms endpoints and page route keyed by form id still planned; public applicant routes not yet recorded)*
 
 ## Global Rules
 - All `/api/v1/admin/*` endpoints require HR authentication (cookie/token).
@@ -89,7 +89,7 @@ All endpoints require HR authentication (see Global Rules). A form is a shared t
 - **Request:** Query `?archived=false|true&page=1&limit=20` (`archived` defaults to false; `page` >= 1; `limit` 1-100, default 20; out-of-range values return 422)
 - **Response (200 OK):** `{ "data": [ { "id": "uuid", "slug": "string", "name": "string", "job_count": int, "archived_at": "timestamp or null" } ], "total": int }`
 - **Notes:** Every value is computed per request from the database (`total` = count of forms matching the `archived` filter; `job_count` = count of `jobs` rows with that `form_id`); nothing is static. `question_count` is intentionally omitted until `job_questions` has a `form_id` (held migration); it will be added back to this item then. Ordered by `created_at` ascending (archived list: by `archived_at` descending).
-- **Status:** Implemented 2026-10-13 (`app/routers/admin.py`). Verified live: active total 3, archived total 1, `limit=0` returns 422. Call site: `archive.html` calls `?archived=true&limit=1` and renders `total` as the Forms count on `/admin/archive`. Also called by `admin_form_detail.html` (`/admin/forms/{form_id}`) with `?archived=false&limit=100`, client-side matched by `id`, to render the page title -- a temporary stand-in for the dedicated `GET /api/v1/admin/forms/{form_id}` endpoint below, which stays unimplemented until this page's question-editor section is built. Known limit: if active forms ever exceed 100, this lookup can miss a match. No HR-auth check yet (existing gap; Security owns it).
+- **Status:** Implemented 2026-10-13 (`app/routers/admin.py`). Verified live: active total 3, archived total 1, `limit=0` returns 422. Call site: `archive.html` calls `?archived=true&limit=1` and renders `total` as the Forms count on `/admin/archive`. Also called by `admin_form_detail.html` (`/admin/forms/{form_id}`) with `?archived=false&limit=100`, client-side matched by `id`, to render the page title -- a temporary stand-in for the dedicated `GET /api/v1/admin/forms/{form_id}` endpoint below, which is now implemented (see below) and is called by this page's Edit button (see below); the title lookup stays as is. Known limit: if active forms ever exceed 100, this lookup can miss a match. No HR-auth check yet (existing gap; Security owns it).
 
 ### `POST /api/v1/admin/forms`
 - **Purpose:** Create an empty form (the "+" button). The slug is generated server-side from the name.
@@ -102,6 +102,7 @@ All endpoints require HR authentication (see Global Rules). A form is a shared t
 - **Purpose:** Form detail for the editor: name, the jobs that use it, and all questions in order with their answer points (a form holds a small, bounded number of questions, so the list is not paginated).
 - **Response (200 OK):** `{ "id": "uuid", "slug": "string", "name": "string", "jobs": [ { "id": "uuid", "slug": "string", "title": "string", "brand_name": "string" } ], "questions": [ { "id": "uuid", "display_order": int, "question_type": "YES_NO|MULTIPLE_CHOICE|OPEN_ENDED", "question_text": "string", "options": ["string"] or null, "is_hard_requirement": bool, "answer_points": [ { "answer_value": "YES|NO|A|B|C|D", "target_type": "BRAND|FAIL", "brand_id": "uuid or null", "brand_name": "string or null", "points": int } ] } ] }`
 - **Errors:** 404 form not found.
+- **Status:** Implemented 2026-10-13 (`app/routers/admin.py`, `get_form_detail`). `answer_points` is always `[]` in every question -- the `answer_points` table does not exist in the live DB yet (confirmed via `\dt`, SCHEMA.md held migration), so no AnswerPoint query runs. Verified live: 422 malformed id, 404 unknown id, 200 real form (`zz save check 3`: empty `jobs`, one YES_NO question with its options and `answer_points: []`). Call site: `app/static/admin-sidebar.js` (`openFormBuilderForEdit`, opened by the Edit button on `/admin/forms/{form_id}`; shows `question_text` and `options` read-only). Verified in the browser 2026-10-13: existing questions load, new ones save and appear on reopen. No HR-auth check yet (existing gap; Security owns it).
 
 ### `PATCH /api/v1/admin/forms/{form_id}`
 - **Purpose:** Rename a form. The slug is regenerated from the new name; the `id` never changes. Jobs link by `jobs.form_id`, so they show the new name automatically. Any old public path using the previous slug stops resolving.
@@ -140,7 +141,7 @@ All endpoints require HR authentication (see Global Rules). A form is a shared t
 - **Purpose:** Add a question with its answer points. `display_order` is assigned server-side as last + 1.
 - **Request:** JSON `{ "question_type": "YES_NO|MULTIPLE_CHOICE|OPEN_ENDED", "question_text": "string", "options": ["A text", "B text", "C text", "D text"], "is_hard_requirement": bool, "answer_points": [ { "answer_value": "A", "target_type": "BRAND", "brand_id": "uuid", "points": 1 }, { "answer_value": "B", "target_type": "FAIL" } ] }`
 - **Rules:**
-  * `YES_NO`: optional `options` of exactly 2 non-empty, distinct label texts (e.g. ["Own a car", "Do not own a car"]). `options[0]` is the display label for `YES`, `options[1]` for `NO`; omitted or null means the labels Yes / No. `answer_value` is always "YES" or "NO" and scoring is unchanged (implemented 2026-10-13 in POST questions; PATCH not yet).
+  * `YES_NO`: optional `options` of exactly 2 non-empty, distinct label texts (e.g. ["Own a car", "Do not own a car"]). `options[0]` is the display label for `YES`, `options[1]` for `NO`; omitted or null means the labels Yes / No. `answer_value` is always "YES" or "NO" and scoring is unchanged (implemented 2026-10-13 in POST and PATCH questions).
   * `MULTIPLE_CHOICE`: exactly 4 `options`; `answer_value` is "A" to "D".
   * `OPEN_ENDED`: no `options`, no `answer_points`, `is_hard_requirement` must be false.
   * `target_type` `BRAND` requires an existing `brand_id` and `points` of 1 or more. `FAIL` takes no `brand_id`, and its `points` value is ignored (any FAIL row marks that choice as failing).
@@ -160,11 +161,13 @@ All endpoints require HR authentication (see Global Rules). A form is a shared t
 - **Purpose:** Edit a question. `question_type` cannot be changed.
 - **Request:** JSON, any subset of `question_text`, `options`, `is_hard_requirement`, `answer_points`. When `answer_points` is sent it REPLACES the question's whole set. The same rules apply.
 - **Response (200 OK):** the updated question object.
+- **Status:** Implemented 2026-10-13 (`app/routers/admin.py`, `update_question`). Same interim limit as create: non-empty `answer_points` or `is_hard_requirement: true` returns 422 (table doesn't exist yet). `question_type` is immutable (not in the request schema). Verified live: 200 question_text update and revert (on `zz save check 3`'s real question), 404 unknown question id. `options` on YES_NO (exactly 2 distinct labels) is implemented and verified in the browser 2026-10-13 (labels edited on an existing question persisted and reload correctly). The 422 paths for `options` are enforced in code but not exercised via direct API calls; the browser editor also blocks equal labels client-side. Call site: `app/static/admin-sidebar.js` (Form Builder, Edit on a loaded Yes / No card sends `question_text` and `options`; applies immediately, not on the modal's Save).
 
 ### `DELETE /api/v1/admin/forms/{form_id}/questions/{question_id}`
 - **Purpose:** Delete a question and its answer points.
 - **Response:** 204 No Content.
 - **Errors:** 409 if the question already has applicant answers.
+- **Status:** Implemented 2026-10-13 (`app/routers/admin.py`, `delete_question`). Note: no archived-form check on this endpoint (unlike POST/PATCH) -- the contract's Errors list for DELETE never specified one, so none was added; flagged for confirmation. Verified live: 404 unknown question id. 204 success path not yet tested against a real row (destructive; needs a throwaway question first, not run without explicit confirmation).
 
 ### `POST /api/v1/admin/forms/{form_id}/questions/reorder`
 - **Purpose:** Set the question order. The body must list every question id of this form exactly once.
@@ -193,7 +196,7 @@ A form's submissions are the applications for the jobs that use it: `GET /api/v1
 - **Response:** `text/html`
 
 ### `GET /admin/forms/{form_id}`
-- **Purpose:** Form view: shows the form and its submissions (applications for the jobs that use the form), with the question editor. PLANNED.
+- **Purpose:** Form view: shows the form and its submissions (applications for the jobs that use the form), with the question editor. Page implemented 2026-10-13 (`app/templates/admin_form_detail.html`), verified in the browser: form name from the forms list, placeholder submission rows, disabled Edit button (shell). Submissions and the question editor are not wired yet.
 - **Response:** `text/html`
 
 ### `GET /admin/applicants/{application_id}`

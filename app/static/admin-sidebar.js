@@ -24,6 +24,9 @@
         const a = document.createElement('a');
         a.href = '/admin/forms/' + f.id;
         a.textContent = f.name; // textContent: names are never parsed as HTML
+        if (window.location.pathname === a.getAttribute('href')) {
+            a.classList.add('active');
+        }
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'form-menu-btn';
@@ -281,7 +284,7 @@
             document.getElementById('element-choice-b').value = card.dataset.choiceB;
         }
 
-        document.getElementById('element-confirm-btn').addEventListener('click', function () {
+        document.getElementById('element-confirm-btn').addEventListener('click', async function () {
             const errorEl = document.getElementById('element-modal-error');
             const name = document.getElementById('element-name-input').value.trim();
             const choiceA = document.getElementById('element-choice-a').value.trim();
@@ -297,6 +300,36 @@
                 return;
             }
             if (editingCard) {
+                if (editingCard.dataset.questionId) {
+                    // Existing question: PATCH first, update the card only on success
+                    const confirmBtn = document.getElementById('element-confirm-btn');
+                    confirmBtn.disabled = true;
+                    try {
+                        const res = await fetch('/api/v1/admin/forms/' + encodeURIComponent(savedFormId) + '/questions/' + encodeURIComponent(editingCard.dataset.questionId), {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ question_text: name, options: [choiceA, choiceB] })
+                        });
+                        if (!res.ok) {
+                            let detail = '';
+                            try {
+                                const body = await res.json();
+                                if (typeof body.detail === 'string') detail = body.detail;
+                            } catch (e) { /* no JSON body */ }
+                            if (res.status === 404) errorEl.textContent = 'This question no longer exists.';
+                            else if (res.status === 409) errorEl.textContent = 'This form is archived and cannot be edited.';
+                            else errorEl.textContent = 'Could not save the question' + (detail ? ' (' + detail + ')' : '') + '.';
+                            errorEl.classList.remove('d-none');
+                            return;
+                        }
+                    } catch (err) {
+                        errorEl.textContent = 'Could not reach the server.';
+                        errorEl.classList.remove('d-none');
+                        return;
+                    } finally {
+                        confirmBtn.disabled = false;
+                    }
+                }
                 editingCard.dataset.name = name;
                 editingCard.dataset.choiceA = choiceA;
                 editingCard.dataset.choiceB = choiceB;
@@ -381,6 +414,78 @@
             item.appendChild(span);
             list.appendChild(item);
         });
+
+        // Edit mode: open the builder on an existing form (GET /api/v1/admin/forms/{form_id}).
+        // Loaded questions are read-only for now; cards added afterwards are saved by the normal Save.
+        window.openFormBuilderForEdit = async function (formId) {
+            const showToast = function (msg) {
+                document.getElementById('form-created-toast-body').textContent = msg;
+                new bootstrap.Toast(document.getElementById('form-created-toast')).show();
+            };
+            let form;
+            try {
+                const res = await fetch('/api/v1/admin/forms/' + encodeURIComponent(formId));
+                if (!res.ok) {
+                    showToast(res.status === 404 ? 'This form no longer exists.' : 'Could not load the form.');
+                    return;
+                }
+                form = await res.json();
+            } catch (err) {
+                showToast('Could not reach the server.');
+                return;
+            }
+            savedFormId = form.id;
+            savedFormName = form.name;
+            const nameInput = document.getElementById('form-name-input');
+            nameInput.value = form.name;
+            nameInput.readOnly = true;
+            document.getElementById('form-save-error').classList.add('d-none');
+            const list = document.getElementById('form-contents-list');
+            list.textContent = '';
+            (form.questions || []).forEach(function (q) {
+                const card = document.createElement('div');
+                card.className = 'border rounded p-3 mb-2';
+                card.dataset.elementType = q.question_type;
+                card.dataset.questionId = q.id;
+                card.dataset.saved = '1';
+                const title = document.createElement('div');
+                title.className = 'fw-bold element-title';
+                title.textContent = q.question_text;
+                const labels = (q.options && q.options.length) ? q.options : (q.question_type === 'YES_NO' ? ['Yes', 'No'] : []);
+                const header = document.createElement('div');
+                header.className = 'd-flex justify-content-between align-items-start gap-2';
+                header.appendChild(title);
+                if (q.question_type === 'YES_NO') {
+                    card.dataset.name = q.question_text;
+                    card.dataset.choiceA = labels[0];
+                    card.dataset.choiceB = labels[1];
+                    const editBtn = document.createElement('button');
+                    editBtn.type = 'button';
+                    editBtn.className = 'btn btn-sm btn-outline-secondary element-edit-btn flex-shrink-0';
+                    editBtn.textContent = 'Edit';
+                    editBtn.setAttribute('aria-label', 'Edit question');
+                    editBtn.addEventListener('click', function () { editElement(card); });
+                    header.appendChild(editBtn);
+                }
+                card.appendChild(header);
+                if (labels.length) {
+                    const chips = document.createElement('div');
+                    chips.className = 'd-flex gap-2 mt-2 element-choices';
+                    labels.forEach(function (label) {
+                        const chip = document.createElement('span');
+                        chip.className = 'border rounded px-3 py-1 small text-muted';
+                        chip.textContent = label;
+                        chips.appendChild(chip);
+                    });
+                    card.appendChild(chips);
+                }
+                list.appendChild(card);
+            });
+            const hasCards = list.children.length > 0;
+            list.classList.toggle('d-none', !hasCards);
+            document.getElementById('form-contents-placeholder').classList.toggle('d-none', hasCards);
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        };
 
         document.getElementById('form-save-btn').addEventListener('click', async function () {
             const name = document.getElementById('form-name-input').value.trim();
