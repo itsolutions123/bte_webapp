@@ -38,6 +38,11 @@ async def serve_admin_dashboard(request: Request):
 async def serve_admin_archive(request: Request):
     return templates.TemplateResponse(request=request, name="archive.html")
 
+@app.get("/admin/forms/{form_id}", include_in_schema=False)
+async def serve_admin_form_detail(request: Request, form_id: str):
+    # Shell only (section 8): form_id is accepted but not used to fetch data yet.
+    return templates.TemplateResponse(request=request, name="admin_form_detail.html")
+
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}

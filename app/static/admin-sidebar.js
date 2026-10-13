@@ -22,7 +22,7 @@
         row.className = 'form-row';
         row.dataset.formId = f.id;
         const a = document.createElement('a');
-        a.href = '#';
+        a.href = '/admin/forms/' + f.id;
         a.textContent = f.name; // textContent: names are never parsed as HTML
         const btn = document.createElement('button');
         btn.type = 'button';

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTE Careers - Form Submissions</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="/static/admin-sidebar.css" rel="stylesheet">
+    <style>
+        .top-bar {
+            padding: 1.5rem 0;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .search-box, .date-box {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-light);
+            box-shadow: var(--soft-shadow);
+            color: var(--text-main);
+            padding: 0.6rem 1.2rem;
+            border-radius: 12px;
+            font-family: inherit;
+        }
+        .search-box:focus, .date-box:focus {
+            outline: none;
+            border-color: var(--accent-gold);
+        }
+        .form-detail-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 20px;
+            box-shadow: var(--soft-shadow);
+            padding: 1.5rem;
+        }
+        .form-detail-title {
+            font-size: 1.1rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            margin-bottom: 1.25rem;
+        }
+        .submissions-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .submissions-toolbar .search-box { width: 250px; }
+        .submission-count {
+            color: var(--text-muted);
+            font-weight: 700;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+        .icon-btn {
+            background: none;
+            border: 1px solid var(--border-light);
+            border-radius: 10px;
+            width: 38px;
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+        .icon-btn:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
+        .table { color: var(--text-main); margin-bottom: 0; }
+        .table th {
+            border-bottom: 2px solid var(--border-light);
+            color: var(--text-muted);
+            font-weight: 800;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            padding: 1rem 0.5rem;
+        }
+        .table td {
+            border-bottom: 1px solid var(--border-light);
+            background-color: transparent;
+            vertical-align: middle;
+            font-weight: 700;
+            padding: 1rem 0.5rem;
+        }
+        .status-pill {
+            background-color: var(--bg-main);
+            border: 1px solid var(--border-light);
+            color: var(--text-muted);
+            font-weight: 700;
+            padding: 0.3rem 0.7rem;
+            border-radius: 10px;
+            font-size: 0.7rem;
+        }
+        #bulk-delete-bar {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            background-color: var(--bg-main);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 0.6rem 1rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid p-0">
+        <div class="row g-0">
+            {% include '_sidebar.html' %}
+            <main class="col-md-10 px-4 pb-5">
+                <!-- Top Nav (unwired, shell only - matches dashboard) -->
+                <div class="top-bar">
+                    <div class="d-flex gap-3">
+                        <input type="text" class="search-box" placeholder="Search...">
+                        <input type="date" class="date-box">
+                    </div>
+                    <button class="btn-profile">PROFILE</button>
+                </div>
+
+                <div class="form-detail-card">
+                    <!-- Form name is fetched client-side from the forms list (see script below) -->
+                    <div class="form-detail-title" id="form-title">FORM NAME</div>
+
+                    <div id="bulk-delete-bar">
+                        <span><span id="selected-count">0</span> selected</span>
+                        <button class="btn btn-sm btn-outline-danger fw-bold">Delete</button>
+                    </div>
+
+                    <div class="submissions-toolbar">
+                        <div class="d-flex gap-3">
+                            <input type="text" class="search-box" placeholder="Search...">
+                            <input type="date" class="date-box">
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="submission-count">0 submissions</span>
+                            <button class="icon-btn" aria-label="Export" title="Export">&#8595;</button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-borderless table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th style="width: 2.5rem;"><input type="checkbox" aria-label="Select all"></th>
+                                    <th>Submitted by</th>
+                                    <th>Date &amp; Time</th>
+                                    <th>Status</th>
+                                    <th style="width: 3rem;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Two obviously-fake placeholder rows; real submissions wire in a later step -->
+                                <tr>
+                                    <td><input type="checkbox" aria-label="Select submission"></td>
+                                    <td>—</td>
+                                    <td>MM/DD/YYYY, --:--</td>
+                                    <td><span class="status-pill">—</span></td>
+                                    <td><button class="icon-btn" aria-label="View" title="View" disabled>&#128065;</button></td>
+                                </tr>
+                                <tr>
+                                    <td><input type="checkbox" aria-label="Select submission"></td>
+                                    <td>—</td>
+                                    <td>MM/DD/YYYY, --:--</td>
+                                    <td><span class="status-pill">—</span></td>
+                                    <td><button class="icon-btn" aria-label="View" title="View" disabled>&#128065;</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/admin-sidebar.js"></script>
+    <script>
+        async function fetchFormName() {
+            const formId = window.location.pathname.split('/').filter(Boolean).pop();
+            const titleEl = document.getElementById('form-title');
+            try {
+                const res = await fetch('/api/v1/admin/forms?archived=false&limit=100');
+                if (res.ok) {
+                    const data = await res.json();
+                    const form = (data.data || []).find(f => f.id === formId);
+                    titleEl.textContent = form ? form.name : 'Form not found';
+                } else {
+                    titleEl.textContent = 'Unable to load form name';
+                }
+            } catch (err) {
+                console.error('Failed to load form name:', err);
+                titleEl.textContent = 'Unable to load form name';
+            }
+        }
+        fetchFormName();
+    </script>
+</body>
+</html>

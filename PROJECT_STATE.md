@@ -1,7 +1,7 @@
 # Project State: BTE Careers (ATS)
 
 **Last Updated:** 2026-10-13
-**Status:** Admin UI Redesigned & Admin API Wired -- Form creation (name-only) live end-to-end
+**Status:** Admin UI Redesigned & Admin API Wired -- Form creation (name-only) live end-to-end; `/admin/forms/{form_id}` page started (shell + title wiring)
 
 ## Infrastructure & Environment
 - **Host:** ansible-srv (10.0.10.37)
@@ -89,7 +89,7 @@
 - `app/models.py` JobQuestion still has `job_id`, a NOT NULL `parameter_id` and a NOT NULL `expected_answer`, and no `question_type` or `options`.
 - The matching engine in `POST /apply` (app/routers/public.py, lines 98-258) scores with `expected_answer` (line 182). It must be rewritten for answer points, required answers and brand points, as its own contract-first step.
 - `GET /api/v1/public/jobs/{job_id}/questions` returns no question type or options.
-- `app/main.py` serves `/admin` and `/admin/archive` (static shell, added 2026-10-13). `/admin/home`, `/admin/brands/...`, `/admin/forms/...` and `/admin/applicants/...` are not implemented.
+- `app/main.py` serves `/admin`, `/admin/archive` and, as of this session, `/admin/forms/{form_id}` (shell + title wiring only -- see Session Log below). `/admin/home`, `/admin/brands/...` and `/admin/applicants/...` are still not implemented.
 - The contract lists admin application endpoints (list, detail, status patch, resume) that are not in `app/routers/admin.py`.
 - Route param naming differs: the v4 preamble says `{UID}`, the contract says `{application_id}`.
 - RESOLVED 2026-10-13: the sidebar `forms` list now reads the `forms` table (app/routers/admin.py), not the legacy `parameters` table.
@@ -165,7 +165,7 @@
 - DECIDED (user, option A): a YES_NO question carries exactly 2 editable choice labels in `job_questions.options`; `answer_value` stays YES / NO and scoring is unchanged. No migration needed (`options` is already nullable JSONB). Null falls back to Yes / No. Recorded in `docs/SCHEMA.md` (options rule) and `docs/API_CONTRACT.md` (POST questions rules, Last verified). Contract only, NOT implemented. Assumption, not yet confirmed by the user: labels must be non-empty and distinct.
 - OPEN: Save persistence. `POST /api/v1/admin/forms/{form_id}/questions` is contract-only. Grep found `Form` and `JobQuestion` models (`app/models.py:36`, `:68`) but no AnswerPoint model and no schema for creating questions; whether an `answer_points` table exists is UNVERIFIED. The builder collects no answer points or hard-requirement flag, and the contract does not say whether a question without answer points is allowed (UNVERIFIED).
 - OPEN: Multiple Choice allowing 2 or more options is undecided (contract and SCHEMA.md still say exactly 4, A to D). Edit and Delete use text buttons; icons later. `/admin` vs `/admin/home` mismatch still open (`app/main.py:33` serves `/admin`, `:37` serves `/admin/archive`).
-- PARKED: wireframe for a per-form Submissions page (search, date picker, bulk-delete checkboxes with the Delete button only after selecting, export icon, View per row showing the applicant's answers). No contract or schema yet; Structure first.
+- PARKED, then started 2026-10-13 (see Session Log below): wireframe for a per-form Submissions page (search, date picker, bulk-delete checkboxes with the Delete button only after selecting, export icon, View per row showing the applicant's answers). Shell built; submissions data and bulk-delete/export/View wiring are still contract-only.
 - Hardcodes: none new. The YES / NO defaults are the editor's initial input values (JS and HTML).
 
 ## Session Log 2026-10-13 (form builder Save: Yes/No questions persisted)
@@ -178,3 +178,14 @@
 - OPEN: edit or delete questions on an existing form (PATCH/DELETE question endpoints are contract only); Open ended and Multiple Choice elements; Multiple Choice allowing 2 or more options is undecided (contract says exactly 4); the form view page (per-form Submissions wireframe, scope to confirm); `/admin` vs `/admin/home` mismatch (v4 section 3).
 - Test data (all throwaway): forms `zz question test` (archived, 2 questions), `zz null check` (archived, 1 question), `zz save check 3` (1 question), and question-less forms `zz save check`, `zz save check 2`, `1111`, `test form 1 - save`, `TEST 5`, `TEST 6`.
 - Hardcodes: none new. The question-type set and endpoint paths are fixed by the contract.
+
+## Session Log 2026-10-13 (form submissions page: UI shell + title wiring, step 2 of N)
+- DONE (shell, section 8 step 1): new route `GET /admin/forms/{form_id}` (`app/main.py`, `serve_admin_form_detail`) renders new template `app/templates/admin_form_detail.html`. Follows the shared-sidebar layout rules (`_sidebar.html` inside `row`/`col-md-10`, no page-local sidebar markup). Static shell only: top bar (search/date, unwired, matches Dashboard), a card with title, bulk-delete bar markup (hidden, unwired), toolbar (search/date/export icon, unwired), and a submissions table with two obviously-fake placeholder rows ("--" fields, "MM/DD/YYYY, --:--"), a static "0 submissions" count, and a disabled View icon button per row.
+- DONE (nav fix, required for the page to be reachable): `app/static/admin-sidebar.js` `formRow()` previously set `a.href = '#'` for every sidebar form link (dead link). Changed to `a.href = '/admin/forms/' + f.id`.
+- BUG FOUND AND FIXED during this step: the first version of the template put `{% include '_sidebar.html' %}` outside `container-fluid`/`row` with a `offset-md-2` hack on `main`. `.sidebar` has no `position: fixed` (confirmed in `admin-sidebar.css`) -- it only lays out correctly as a flex child of `.row` alongside `main`. Outside the row it just stacks in normal flow (full `min-height: 100vh`), pushing all page content below the fold -- a blank-looking page. Fixed by moving the include back inside `row`, matching the Admin layout rules above exactly (sidebar + `main.col-md-10`, no offset).
+- DONE (feature-wiring step 1 of this page, section 8 step 2): page title now fetches the real form name client-side via the already-implemented `GET /api/v1/admin/forms?archived=false&limit=100` (the list endpoint), matching by `id` from the URL path. Call-site note and a known limit (misses a match if active forms ever exceed 100) added to `docs/API_CONTRACT.md`.
+- DECISION (user, explicit): the dedicated `GET /api/v1/admin/forms/{form_id}` detail endpoint (already contracted -- name + jobs + questions + answer_points, built for the future question-editor section of this page) is deliberately NOT implemented yet. Reusing the list endpoint for just the name was chosen as the smaller step; the detail endpoint stays contract-only until the question-editor section of this page is actually built.
+- DECISION (user, explicit): the `/admin` -> `/admin/home` rename (v4 section 3, Structure's stated priority #1) is deliberately deferred again. `/admin/forms/{form_id}` was added alongside the existing `/admin`, not as part of a route restructure.
+- STILL PLACEHOLDER: submission rows and count (real data needs `GET /api/v1/admin/applications?form_id=`, not yet contracted with pagination per 18.2), bulk-delete bar (hidden, no JS), export icon (no JS), View button (disabled, no target route -- `/admin/applicants/{application_id}` is still unimplemented per the Known Mismatches above).
+- Hardcodes: "FORM NAME" placeholder removed (now live); "0 submissions" and the two placeholder rows remain, intentional until the next feature-wiring step.
+- Docs needing update: `docs/API_CONTRACT.md` done (call-site note, this session). `docs/SCHEMA.md`: no change (no schema touched). The submissions list endpoint itself (pagination params, response shape) is still undecided -- Structure handoff needed before that step.
