@@ -7,13 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.database import get_db
-from app.models import Brand, Job, StatusCount, Parameter, Parameter, Form
+from app.models import Brand, Job, StatusCount, Parameter, Parameter, Form, JobQuestion
 from app.schemas import (
     SidebarMetadataResponse, SidebarBrandItem, SidebarFormItem, SidebarFormItem,
     AdminSummaryResponse, OverallTotals,
     AdminTallyResponse, AdminTallyItem, JobCounts,
     FormCreateRequest, FormResponse, FormArchiveResponse,
     FormListItem, FormListResponse,
+    QuestionCreateRequest, QuestionResponse,
 )
 
 router = APIRouter()
@@ -218,3 +219,80 @@ async def list_forms(
         for f in forms
     ]
     return FormListResponse(data=items, total=total)
+
+
+QUESTION_TYPES = {"YES_NO", "MULTIPLE_CHOICE", "OPEN_ENDED"}
+
+
+@router.post("/forms/{form_id}/questions", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED)
+async def create_question(form_id: str, payload: QuestionCreateRequest, db: AsyncSession = Depends(get_db)):
+    try:
+        form_uuid = uuid.UUID(form_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="form_id must be a valid UUID")
+
+    text = payload.question_text.strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="question_text must not be empty")
+
+    qtype = payload.question_type
+    if qtype not in QUESTION_TYPES:
+        raise HTTPException(status_code=422, detail="question_type must be YES_NO, MULTIPLE_CHOICE or OPEN_ENDED")
+
+    options = None
+    if payload.options is not None:
+        options = [o.strip() for o in payload.options]
+        if any(not o for o in options):
+            raise HTTPException(status_code=422, detail="option labels must not be empty")
+
+    if qtype == "YES_NO":
+        if options is not None:
+            if len(options) != 2:
+                raise HTTPException(status_code=422, detail="YES_NO options must be exactly 2 labels")
+            if options[0].lower() == options[1].lower():
+                raise HTTPException(status_code=422, detail="the two YES_NO labels must be different")
+    elif qtype == "MULTIPLE_CHOICE":
+        if options is None or len(options) != 4:
+            raise HTTPException(status_code=422, detail="MULTIPLE_CHOICE requires exactly 4 options")
+    else:
+        if options is not None:
+            raise HTTPException(status_code=422, detail="OPEN_ENDED takes no options")
+
+    if payload.answer_points:
+        raise HTTPException(status_code=422, detail="answer points are not supported yet")
+    if payload.is_hard_requirement:
+        raise HTTPException(status_code=422, detail="is_hard_requirement needs answer points, which are not supported yet")
+
+    result = await db.execute(select(Form).where(Form.id == form_uuid))
+    form = result.scalar_one_or_none()
+    if form is None:
+        raise HTTPException(status_code=404, detail="form not found")
+    if form.archived_at is not None:
+        raise HTTPException(status_code=409, detail="form is archived and read-only")
+
+    max_result = await db.execute(
+        select(func.coalesce(func.max(JobQuestion.display_order), 0)).where(JobQuestion.form_id == form_uuid)
+    )
+    next_order = max_result.scalar_one() + 1
+
+    question = JobQuestion(
+        form_id=form_uuid,
+        question_type=qtype,
+        question_text=text,
+        options=options,
+        is_hard_requirement=False,
+        display_order=next_order,
+    )
+    db.add(question)
+    await db.commit()
+    await db.refresh(question)
+
+    return QuestionResponse(
+        id=question.id,
+        display_order=question.display_order,
+        question_type=question.question_type,
+        question_text=question.question_text,
+        options=question.options,
+        is_hard_requirement=bool(question.is_hard_requirement),
+        answer_points=[],
+    )

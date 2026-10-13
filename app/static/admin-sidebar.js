@@ -253,6 +253,8 @@
         // Element editor overlay (Yes / No)
         const elOverlay = document.getElementById('element-modal-overlay');
         let editingCard = null;
+        let savedFormId = null;
+        let savedFormName = '';
         function closeElementEditor() {
             editingCard = null;
             elOverlay.style.display = 'none';
@@ -389,28 +391,70 @@
                 errorEl.classList.remove('d-none');
                 return;
             }
+            const cards = Array.from(document.getElementById('form-contents-list').children);
+            if (cards.some(function (c) { return c.dataset.elementType !== 'YES_NO'; })) {
+                errorEl.textContent = 'Only Yes / No questions can be saved for now. Remove the other elements first.';
+                errorEl.classList.remove('d-none');
+                return;
+            }
+            const saveBtn = document.getElementById('form-save-btn');
+            saveBtn.disabled = true;
             try {
-                const res = await fetch('/api/v1/admin/forms', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: name })
-                });
-                if (res.status === 201) {
-                    const data = await res.json();
-                    bootstrap.Modal.getInstance(modalEl).hide();
-                    document.getElementById('form-created-toast-body').textContent = 'Form "' + data.name + '" is created successfully!';
-                    new bootstrap.Toast(document.getElementById('form-created-toast')).show();
-                    refreshSidebar();
-                } else if (res.status === 409) {
-                    errorEl.textContent = 'A form with that name already exists.';
-                    errorEl.classList.remove('d-none');
-                } else {
-                    errorEl.textContent = 'Could not save the form. Please try again.';
-                    errorEl.classList.remove('d-none');
+                if (!savedFormId) {
+                    const res = await fetch('/api/v1/admin/forms', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: name })
+                    });
+                    if (res.status === 201) {
+                        const data = await res.json();
+                        savedFormId = data.id;
+                        savedFormName = data.name;
+                        document.getElementById('form-name-input').readOnly = true;
+                    } else if (res.status === 409) {
+                        errorEl.textContent = 'A form with that name already exists.';
+                        errorEl.classList.remove('d-none');
+                        return;
+                    } else {
+                        errorEl.textContent = 'Could not save the form. Please try again.';
+                        errorEl.classList.remove('d-none');
+                        return;
+                    }
                 }
+                for (const card of cards) {
+                    if (card.dataset.saved === '1') continue;
+                    const qres = await fetch('/api/v1/admin/forms/' + savedFormId + '/questions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            question_type: 'YES_NO',
+                            question_text: card.dataset.name,
+                            options: [card.dataset.choiceA, card.dataset.choiceB]
+                        })
+                    });
+                    if (qres.status !== 201) {
+                        let detail = '';
+                        try {
+                            const body = await qres.json();
+                            if (typeof body.detail === 'string') detail = body.detail;
+                        } catch (e) { /* no JSON body */ }
+                        errorEl.textContent = 'The form was created, but "' + card.dataset.name + '" could not be saved' + (detail ? ' (' + detail + ')' : '') + '. Press Save to retry the remaining questions.';
+                        errorEl.classList.remove('d-none');
+                        return;
+                    }
+                    card.dataset.saved = '1';
+                    card.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+                }
+                const createdName = savedFormName;
+                bootstrap.Modal.getInstance(modalEl).hide();
+                document.getElementById('form-created-toast-body').textContent = 'Form "' + createdName + '" is created successfully!';
+                new bootstrap.Toast(document.getElementById('form-created-toast')).show();
+                refreshSidebar();
             } catch (err) {
                 errorEl.textContent = 'Could not reach the server.';
                 errorEl.classList.remove('d-none');
+            } finally {
+                saveBtn.disabled = false;
             }
         });
 
@@ -420,6 +464,9 @@
             document.getElementById('form-contents-list').classList.add('d-none');
             document.getElementById('form-contents-placeholder').classList.remove('d-none');
             document.getElementById('form-save-error').classList.add('d-none');
+            savedFormId = null;
+            savedFormName = '';
+            document.getElementById('form-name-input').readOnly = false;
             closeElementEditor();
         });
     }

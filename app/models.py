@@ -68,11 +68,14 @@ class Parameter(Base):
 class JobQuestion(Base):
     __tablename__ = "job_questions"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    job_id = Column(UUID(as_uuid=True), ForeignKey("jobs.id"), nullable=False)
-    parameter_id = Column(UUID(as_uuid=True), ForeignKey("parameters.id"), nullable=False)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("jobs.id"), nullable=True)
+    parameter_id = Column(UUID(as_uuid=True), ForeignKey("parameters.id"), nullable=True)
+    form_id = Column(UUID(as_uuid=True), ForeignKey("forms.id"), nullable=True)
     display_order = Column(Integer, nullable=False, default=0)
+    question_type = Column(String, nullable=True)
     question_text = Column(String, nullable=False)
-    expected_answer = Column(String, nullable=False)
+    options = Column(JSONB(none_as_null=True), nullable=True)
+    expected_answer = Column(String, nullable=True)
     is_hard_requirement = Column(Boolean, default=False)
 
     job = relationship("Job", back_populates="questions")

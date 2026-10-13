@@ -144,3 +144,28 @@ class BrandSummaryItem(BaseModel):
 class AdminSummaryResponse(BaseModel):
     overall_totals: OverallTotals
     brand_summaries: List[BrandSummaryItem]
+
+
+# --- Admin: form questions (docs/API_CONTRACT.md section 3, POST /forms/{form_id}/questions) ---
+class QuestionCreateRequest(BaseModel):
+    question_type: str
+    question_text: str
+    options: Optional[List[str]] = None
+    is_hard_requirement: bool = False
+    answer_points: Optional[List[Any]] = None
+
+class AnswerPointItem(BaseModel):
+    answer_value: str
+    target_type: str
+    brand_id: Optional[UUID4] = None
+    brand_name: Optional[str] = None
+    points: int = 1
+
+class QuestionResponse(BaseModel):
+    id: UUID4
+    display_order: int
+    question_type: str
+    question_text: str
+    options: Optional[List[str]] = None
+    is_hard_requirement: bool = False
+    answer_points: List[AnswerPointItem] = []
