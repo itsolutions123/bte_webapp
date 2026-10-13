@@ -76,7 +76,7 @@
     }
     window.refreshSidebar = refreshSidebar;
 
-    // Form 3-dot menu: open/close only (Rename and Archive are wired in later steps)
+    // Form 3-dot menu: open/close only (Archive is wired in a later step)
     document.addEventListener('click', function (e) {
         const btn = e.target.closest('.form-menu-btn');
         document.querySelectorAll('.form-menu').forEach(function (m) {
@@ -86,6 +86,94 @@
             owner.setAttribute('aria-expanded', open);
         });
     });
+
+    // Rename form: the Edit button in a form's 3-dot menu opens a small modal; Save calls PATCH
+    const renameModalEl = document.getElementById('renameFormModal');
+    if (renameModalEl) {
+        const renameInput = document.getElementById('rename-form-input');
+        const renameError = document.getElementById('rename-form-error');
+        const renameSaveBtn = document.getElementById('rename-form-save-btn');
+        let renameFormId = null;
+        let renameOriginal = '';
+
+        const showRenameError = function (msg) {
+            renameError.textContent = msg;
+            renameError.classList.remove('d-none');
+        };
+
+        document.addEventListener('click', function (e) {
+            const item = e.target.closest('.form-menu-item[data-action="rename"]');
+            if (!item) return;
+            const row = item.closest('.form-row');
+            if (!row) return;
+            renameFormId = row.dataset.formId;
+            renameOriginal = row.querySelector('a').textContent;
+            renameInput.value = renameOriginal;
+            renameError.classList.add('d-none');
+            bootstrap.Modal.getOrCreateInstance(renameModalEl).show();
+        });
+
+        renameModalEl.addEventListener('shown.bs.modal', function () {
+            renameInput.focus();
+            renameInput.select();
+        });
+
+        renameInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                renameSaveBtn.click();
+            }
+        });
+
+        renameSaveBtn.addEventListener('click', async function () {
+            const name = renameInput.value.trim();
+            renameError.classList.add('d-none');
+            if (!name) {
+                showRenameError('Form name is required.');
+                return;
+            }
+            if (name === renameOriginal) {
+                bootstrap.Modal.getInstance(renameModalEl).hide();
+                return;
+            }
+            renameSaveBtn.disabled = true;
+            try {
+                const res = await fetch('/api/v1/admin/forms/' + encodeURIComponent(renameFormId), {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name })
+                });
+                if (res.status === 200) {
+                    const data = await res.json();
+                    bootstrap.Modal.getInstance(renameModalEl).hide();
+                    const toastEl = document.getElementById('form-created-toast');
+                    if (toastEl) {
+                        document.getElementById('form-created-toast-body').textContent = 'Form renamed to "' + data.name + '".';
+                        new bootstrap.Toast(toastEl).show();
+                    }
+                    refreshSidebar();
+                } else if (res.status === 409) {
+                    const body = await res.json().catch(function () { return {}; });
+                    if (String(body.detail || '').toLowerCase().indexOf('archived') !== -1) {
+                        showRenameError('This form is archived and cannot be renamed.');
+                    } else {
+                        showRenameError('A form with that name already exists.');
+                    }
+                } else if (res.status === 404) {
+                    showRenameError('This form no longer exists.');
+                    refreshSidebar();
+                } else if (res.status === 422) {
+                    showRenameError('Please enter a valid form name.');
+                } else {
+                    showRenameError('Could not rename the form. Please try again.');
+                }
+            } catch (err) {
+                showRenameError('Could not reach the server.');
+            } finally {
+                renameSaveBtn.disabled = false;
+            }
+        });
+    }
 
     // Form Builder modal
     const modalEl = document.getElementById('formBuilderModal');

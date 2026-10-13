@@ -1,5 +1,5 @@
 # API Contract: BTE Careers
-*Last verified: 2026-10-13 (ef43bfd + PATCH rename endpoint; archive endpoint, sidebar exclusion and forms list (with archived filter) implemented, rename implemented; POST /api/v1/admin/forms and GET /api/v1/admin/metadata/sidebar (forms from the forms table) now implemented, remaining admin forms endpoints and page route keyed by form id still planned; public applicant routes not yet recorded)*
+*Last verified: 2026-10-13 (5a125d3 + PATCH rename endpoint and its sidebar call site; archive endpoint, sidebar exclusion and forms list (with archived filter) implemented, rename implemented; POST /api/v1/admin/forms and GET /api/v1/admin/metadata/sidebar (forms from the forms table) now implemented, remaining admin forms endpoints and page route keyed by form id still planned; public applicant routes not yet recorded)*
 
 ## Global Rules
 - All `/api/v1/admin/*` endpoints require HR authentication (cookie/token).
@@ -108,7 +108,7 @@ All endpoints require HR authentication (see Global Rules). A form is a shared t
 - **Request:** JSON `{ "name": "string" }`
 - **Response (200 OK):** `{ "id": "uuid", "slug": "string", "name": "string" }`
 - **Errors:** 404 form not found; 409 the new slug is already used by another form (archived forms keep their slug, so they count); 409 the form is archived (archived forms are read-only); 422 empty or invalid name. A name that yields the form's own current slug is allowed.
-- **Status:** Implemented 2026-10-13 (`app/routers/admin.py`, `rename_form`). Verified live: 422 malformed id, 404 unknown id, 422 blank name, 409 slug clash, 200 rename (slug regenerated), 200 same-slug rename. The 409 for an archived form is untested (no archived form id was available). No HR-auth check yet (existing gap; Security owns it).
+- **Status:** Implemented 2026-10-13 (`app/routers/admin.py`, `rename_form`). Verified live: 422 malformed id, 404 unknown id, 422 blank name, 409 slug clash, 200 rename (slug regenerated), 200 same-slug rename. The 409 for an archived form is untested (no archived form id was available). Call site: `app/static/admin-sidebar.js` (Save in the rename modal, shared by `/admin` and `/admin/archive`); verified in the browser on `/admin` 2026-10-13 (rename saves, toast shows, sidebar refreshes). No HR-auth check yet (existing gap; Security owns it).
 
 ### `POST /api/v1/admin/forms/{form_id}/archive`
 - **Purpose:** Archive a form. Sets `forms.archived_at` to now. The form leaves the sidebar and the default forms list and appears only under Archive > Forms. It is never served on public paths.
