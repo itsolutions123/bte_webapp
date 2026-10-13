@@ -51,7 +51,7 @@ Each job points to at most one form through `jobs.form_id`. The applicant picks 
 - `display_order` (Integer, Not Null) - Sequence in the one-question-at-a-time wizard
 - `question_type` (String, Not Null) - One of `YES_NO`, `MULTIPLE_CHOICE`, `OPEN_ENDED`
 - `question_text` (String)
-- `options` (JSONB, nullable) - `MULTIPLE_CHOICE`: array of exactly 4 option texts in order A-D. Otherwise null (Yes/No labels are fixed)
+- `options` (JSONB, nullable) - `MULTIPLE_CHOICE`: array of exactly 4 option texts in order A-D. `YES_NO`: array of exactly 2 label texts, `options[0]` is the display label for answer `YES` and `options[1]` for `NO`; null falls back to the labels Yes / No. `OPEN_ENDED`: null
 - `is_hard_requirement` (Boolean) - Must be false for `OPEN_ENDED`
 - `expected_answer` is REMOVED: "wrong" is now defined by FAIL points on an answer choice (see answer_points).
 

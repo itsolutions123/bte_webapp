@@ -1,5 +1,5 @@
 # API Contract: BTE Careers
-*Last verified: 2026-10-13 (77046ab + sidebar forms ordered alphabetically by name; archive endpoint call site (admin-sidebar.js); PATCH rename endpoint and its sidebar call site; archive endpoint, sidebar exclusion and forms list (with archived filter) implemented, rename implemented; POST /api/v1/admin/forms and GET /api/v1/admin/metadata/sidebar (forms from the forms table) now implemented, remaining admin forms endpoints and page route keyed by form id still planned; public applicant routes not yet recorded)*
+*Last verified: 2026-10-13 (77046ab + YES_NO two-label rule recorded (contract only, not implemented); sidebar forms ordered alphabetically by name; archive endpoint call site (admin-sidebar.js); PATCH rename endpoint and its sidebar call site; archive endpoint, sidebar exclusion and forms list (with archived filter) implemented, rename implemented; POST /api/v1/admin/forms and GET /api/v1/admin/metadata/sidebar (forms from the forms table) now implemented, remaining admin forms endpoints and page route keyed by form id still planned; public applicant routes not yet recorded)*
 
 ## Global Rules
 - All `/api/v1/admin/*` endpoints require HR authentication (cookie/token).
@@ -140,7 +140,7 @@ All endpoints require HR authentication (see Global Rules). A form is a shared t
 - **Purpose:** Add a question with its answer points. `display_order` is assigned server-side as last + 1.
 - **Request:** JSON `{ "question_type": "YES_NO|MULTIPLE_CHOICE|OPEN_ENDED", "question_text": "string", "options": ["A text", "B text", "C text", "D text"], "is_hard_requirement": bool, "answer_points": [ { "answer_value": "A", "target_type": "BRAND", "brand_id": "uuid", "points": 1 }, { "answer_value": "B", "target_type": "FAIL" } ] }`
 - **Rules:**
-  * `YES_NO`: no `options`; `answer_value` is "YES" or "NO".
+  * `YES_NO`: optional `options` of exactly 2 non-empty, distinct label texts (e.g. ["Own a car", "Do not own a car"]). `options[0]` is the display label for `YES`, `options[1]` for `NO`; omitted or null means the labels Yes / No. `answer_value` is always "YES" or "NO" and scoring is unchanged (planned 2026-10-13, not yet implemented).
   * `MULTIPLE_CHOICE`: exactly 4 `options`; `answer_value` is "A" to "D".
   * `OPEN_ENDED`: no `options`, no `answer_points`, `is_hard_requirement` must be false.
   * `target_type` `BRAND` requires an existing `brand_id` and `points` of 1 or more. `FAIL` takes no `brand_id`, and its `points` value is ignored (any FAIL row marks that choice as failing).

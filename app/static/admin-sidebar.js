@@ -250,6 +250,118 @@
             });
         });
 
+        // Element editor overlay (Yes / No)
+        const elOverlay = document.getElementById('element-modal-overlay');
+        let editingCard = null;
+        function closeElementEditor() {
+            editingCard = null;
+            elOverlay.style.display = 'none';
+        }
+        function openElementEditor() {
+            editingCard = null;
+            document.getElementById('element-name-input').value = '';
+            document.getElementById('element-choice-a').value = 'YES';
+            document.getElementById('element-choice-b').value = 'NO';
+            document.getElementById('element-modal-error').classList.add('d-none');
+            elOverlay.style.display = 'flex';
+            document.getElementById('element-name-input').focus();
+        }
+        document.querySelectorAll('.form-element-btn[data-element-type="YES_NO"]').forEach(function (btn) {
+            btn.addEventListener('click', openElementEditor);
+        });
+        document.getElementById('element-modal-close').addEventListener('click', closeElementEditor);
+
+        function editElement(card) {
+            openElementEditor();
+            editingCard = card;
+            document.getElementById('element-name-input').value = card.dataset.name;
+            document.getElementById('element-choice-a').value = card.dataset.choiceA;
+            document.getElementById('element-choice-b').value = card.dataset.choiceB;
+        }
+
+        document.getElementById('element-confirm-btn').addEventListener('click', function () {
+            const errorEl = document.getElementById('element-modal-error');
+            const name = document.getElementById('element-name-input').value.trim();
+            const choiceA = document.getElementById('element-choice-a').value.trim();
+            const choiceB = document.getElementById('element-choice-b').value.trim();
+            errorEl.classList.add('d-none');
+            let msg = '';
+            if (!name) msg = 'Question name is required.';
+            else if (!choiceA || !choiceB) msg = 'Both choices need a label.';
+            else if (choiceA.toLowerCase() === choiceB.toLowerCase()) msg = 'The two choices must be different.';
+            if (msg) {
+                errorEl.textContent = msg;
+                errorEl.classList.remove('d-none');
+                return;
+            }
+            if (editingCard) {
+                editingCard.dataset.name = name;
+                editingCard.dataset.choiceA = choiceA;
+                editingCard.dataset.choiceB = choiceB;
+                editingCard.querySelector('.element-title').textContent = name;
+                const chipWrap = editingCard.querySelector('.element-choices');
+                chipWrap.textContent = '';
+                [choiceA, choiceB].forEach(function (label) {
+                    const chip = document.createElement('span');
+                    chip.className = 'border rounded px-3 py-1 small text-muted';
+                    chip.textContent = label;
+                    chipWrap.appendChild(chip);
+                });
+                closeElementEditor();
+                return;
+            }
+            document.getElementById('form-contents-placeholder').classList.add('d-none');
+            const list = document.getElementById('form-contents-list');
+            list.classList.remove('d-none');
+            const card = document.createElement('div');
+            card.className = 'border rounded p-3 mb-2';
+            card.dataset.elementType = 'YES_NO';
+            card.dataset.name = name;
+            card.dataset.choiceA = choiceA;
+            card.dataset.choiceB = choiceB;
+            const title = document.createElement('div');
+            title.className = 'fw-bold element-title';
+            title.textContent = name;
+            const choices = document.createElement('div');
+            choices.className = 'd-flex gap-2 mt-2 element-choices';
+            [choiceA, choiceB].forEach(function (label) {
+                const chip = document.createElement('span');
+                chip.className = 'border rounded px-3 py-1 small text-muted';
+                chip.textContent = label;
+                choices.appendChild(chip);
+            });
+            const header = document.createElement('div');
+            header.className = 'd-flex justify-content-between align-items-start gap-2';
+            const actions = document.createElement('div');
+            actions.className = 'd-flex gap-2 flex-shrink-0';
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.className = 'btn btn-sm btn-outline-danger element-delete-btn';
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.setAttribute('aria-label', 'Delete question');
+            deleteBtn.addEventListener('click', function () {
+                card.remove();
+                if (!list.children.length) {
+                    list.classList.add('d-none');
+                    document.getElementById('form-contents-placeholder').classList.remove('d-none');
+                }
+            });
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.className = 'btn btn-sm btn-outline-secondary element-edit-btn';
+            editBtn.textContent = 'Edit';
+            editBtn.setAttribute('aria-label', 'Edit question');
+            editBtn.addEventListener('click', function () { editElement(card); });
+            actions.appendChild(editBtn);
+            actions.appendChild(deleteBtn);
+            header.appendChild(title);
+            header.appendChild(actions);
+            card.appendChild(header);
+            card.appendChild(choices);
+            list.appendChild(card);
+            closeElementEditor();
+        });
+
         const panel = document.getElementById('form-contents-panel');
         panel.addEventListener('dragover', function (e) { e.preventDefault(); });
         panel.addEventListener('drop', function (e) {
@@ -308,6 +420,7 @@
             document.getElementById('form-contents-list').classList.add('d-none');
             document.getElementById('form-contents-placeholder').classList.remove('d-none');
             document.getElementById('form-save-error').classList.add('d-none');
+            closeElementEditor();
         });
     }
 
