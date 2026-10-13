@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTE Careers - Archive</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #f4f6f8;
+            --bg-card: #ffffff;
+            --text-main: #111111;
+            --text-muted: #6c757d;
+            --accent-gold: #d4af37;
+            --accent-black: #111111;
+            --border-light: #eaedf1;
+            --soft-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+        }
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: 'Nunito', sans-serif;
+            font-size: 0.9rem;
+        }
+        .sidebar {
+            background-color: var(--bg-card);
+            border-right: 1px solid var(--border-light);
+            min-height: 100vh;
+            padding: 2rem 1.5rem;
+            z-index: 10;
+        }
+        .sidebar-brand {
+            font-weight: 800;
+            font-size: 1.2rem;
+            letter-spacing: 0.5px;
+            margin-bottom: 2.5rem;
+            color: var(--accent-black);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .sidebar-brand .logo-box {
+            width: 28px;
+            height: 28px;
+            background-color: var(--accent-gold);
+            border-radius: 8px;
+            display: inline-block;
+        }
+        .nav-section {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 800;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            padding-left: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+        }
+        .sidebar a {
+            color: var(--text-main);
+            text-decoration: none;
+            font-weight: 600;
+            display: block;
+            padding: 0.6rem 1rem;
+            border-radius: 12px;
+            margin-bottom: 6px;
+            transition: all 0.2s ease;
+        }
+        .sidebar a:hover {
+            background-color: #f8f9fa;
+            color: var(--accent-gold);
+        }
+        .sidebar a.active {
+            background-color: var(--accent-black);
+            color: var(--accent-gold);
+        }
+        /* Archive cards (SHELL: counts are placeholders, not wired) */
+        .archive-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            box-shadow: var(--soft-shadow);
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .archive-card-title { font-weight: 800; font-size: 1.1rem; }
+        .archive-card-count { font-weight: 800; font-size: 1.4rem; color: var(--text-muted); }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row g-0">
+            <nav class="col-md-2 sidebar d-none d-md-block">
+                <div class="sidebar-brand">
+                    <span class="logo-box"></span>
+                    BIGTIME EMPIRE
+                </div>
+
+                <div class="nav-section">WORKSPACE</div>
+                <div class="nav flex-column">
+                    <a href="/admin">Dashboard</a>
+                    <a href="#">Applicants</a>
+                </div>
+
+                <div class="nav-section">BRANDS</div>
+                <div class="nav flex-column" id="brand-list">
+                    <span class="px-3 text-muted small fw-bold">Loading...</span>
+                </div>
+
+                <div class="nav-section">FORMS</div>
+                <div class="nav flex-column" id="form-list">
+                    <span class="px-3 text-muted small fw-bold">Loading...</span>
+                </div>
+
+                <div class="nav flex-column mt-4">
+                    <a href="/admin/archive" class="active">Archive</a>
+                </div>
+            </nav>
+
+            <main class="col-md-10 px-4 pb-5">
+                <h4 class="fw-bold mt-4 mb-4">Archive Assets</h4>
+                <div class="d-flex flex-column gap-3">
+                    <div class="archive-card">
+                        <span class="archive-card-title">Forms</span>
+                        <span class="archive-card-count" id="archive-forms-count">&mdash;</span>
+                    </div>
+                    <div class="archive-card">
+                        <span class="archive-card-title">Applicants</span>
+                        <span class="archive-card-count" id="archive-applicants-count">&mdash;</span>
+                    </div>
+                    <div class="archive-card">
+                        <span class="archive-card-title">Brands</span>
+                        <span class="archive-card-count" id="archive-brands-count">&mdash;</span>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        function fillList(id, items) {
+            const box = document.getElementById(id);
+            box.textContent = '';
+            (items || []).forEach(function (item) {
+                const a = document.createElement('a');
+                a.href = '#';
+                a.textContent = item.name;
+                box.appendChild(a);
+            });
+        }
+        async function loadSidebar() {
+            try {
+                const res = await fetch('/api/v1/admin/metadata/sidebar');
+                if (!res.ok) return;
+                const data = await res.json();
+                fillList('brand-list', data.brands);
+                fillList('form-list', data.forms);
+            } catch (err) {
+                console.error('Sidebar load failed:', err);
+            }
+        }
+        loadSidebar();
+    </script>
+</body>
+</html>

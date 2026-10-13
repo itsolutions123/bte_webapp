@@ -89,7 +89,7 @@
 - `app/models.py` JobQuestion still has `job_id`, a NOT NULL `parameter_id` and a NOT NULL `expected_answer`, and no `question_type` or `options`.
 - The matching engine in `POST /apply` (app/routers/public.py, lines 98-258) scores with `expected_answer` (line 182). It must be rewritten for answer points, required answers and brand points, as its own contract-first step.
 - `GET /api/v1/public/jobs/{job_id}/questions` returns no question type or options.
-- `app/main.py` serves only `/admin`. `/admin/home`, `/admin/brands/...`, `/admin/forms/...` and `/admin/applicants/...` are not implemented.
+- `app/main.py` serves `/admin` and `/admin/archive` (static shell, added 2026-10-13). `/admin/home`, `/admin/brands/...`, `/admin/forms/...` and `/admin/applicants/...` are not implemented.
 - The contract lists admin application endpoints (list, detail, status patch, resume) that are not in `app/routers/admin.py`.
 - Route param naming differs: the v4 preamble says `{UID}`, the contract says `{application_id}`.
 - RESOLVED 2026-10-13: the sidebar `forms` list now reads the `forms` table (app/routers/admin.py), not the legacy `parameters` table.
@@ -114,3 +114,10 @@
 3. Design: build the Brands and Forms page shells with "+" buttons using placeholder content only, plus the apply wizard layouts (Yes/No, A-D, Open ended).
 4. Structure/API: migration plan for forms, answer_points and `jobs.form_id` (contract-first, destructive steps confirmed).
 5. Wire one feature at a time: form create DONE; next is the question editor (persisting dropped elements as real `job_questions` rows with text/options/answer points), then answer points, attach jobs, submissions, then the matching engine rewrite.
+\n
+## Session Log 2026-10-13 (sidebar 3-dot menu and Archive page shells)
+- Forms sidebar: each form row has a 3-dot button with a floating menu (edit/rename icon, archive icon). SHELL ONLY: the icons do nothing. Rename and archive are not wired.
+- Archive page: new route `GET /admin/archive` (app/main.py) serving `app/templates/archive.html`, plus an "Archive" link under Forms in the admin.html sidebar. Static shell: "Archive Assets" with three cards (Forms, Applicants, Brands), counts are placeholder dashes. Card list DECIDED: Forms, Applicants and Brands. The page route is a decided design, not an API endpoint.
+- No new API endpoint. `archive.html` reuses `GET /api/v1/admin/metadata/sidebar` for the sidebar lists, rendered with `textContent` (no unescaped innerHTML).
+- Open (Structure handoff): archive field for forms (archived_at vs is_archived), applicants and brands (brands and applicants tables not checked for an archive field, UNVERIFIED); rename and archive endpoints; archive count and list endpoints; the sidebar query must exclude archived forms (`select(Form)` in admin.py has no filter today). Add `/admin/archive` to the v4 preamble section 3 route list.
+- Hardcodes and flags: sidebar CSS and markup are duplicated in archive.html (candidate for a shared base template later); Bootstrap CDN URLs and fixed `/api/v1/admin/...` paths repeated; unescaped `${f.name}` in the admin.html sidebar render is still open; the sidebar endpoint is unbounded (18.2).

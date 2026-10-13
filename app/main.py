@@ -34,6 +34,10 @@ async def serve_careers_board(request: Request):
 async def serve_admin_dashboard(request: Request):
     return templates.TemplateResponse(request=request, name="admin.html")
 
+@app.get("/admin/archive", include_in_schema=False)
+async def serve_admin_archive(request: Request):
+    return templates.TemplateResponse(request=request, name="archive.html")
+
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
