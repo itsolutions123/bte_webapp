@@ -256,13 +256,20 @@
         // Element editor overlay (Yes / No)
         const elOverlay = document.getElementById('element-modal-overlay');
         let editingCard = null;
+        let editorType = 'YES_NO';
         let savedFormId = null;
+        let editMode = false;
         let savedFormName = '';
         function closeElementEditor() {
             editingCard = null;
             elOverlay.style.display = 'none';
         }
-        function openElementEditor() {
+        function openElementEditor(type) {
+            editorType = type === 'OPEN_ENDED' ? 'OPEN_ENDED' : 'YES_NO';
+            const isOpen = editorType === 'OPEN_ENDED';
+            document.getElementById('element-modal-title').textContent = isOpen ? 'Open Ended' : 'Yes / No Question';
+            document.getElementById('element-choices-label').classList.toggle('d-none', isOpen);
+            document.getElementById('element-choices-row').classList.toggle('d-none', isOpen);
             editingCard = null;
             document.getElementById('element-name-input').value = '';
             document.getElementById('element-choice-a').value = 'YES';
@@ -272,12 +279,15 @@
             document.getElementById('element-name-input').focus();
         }
         document.querySelectorAll('.form-element-btn[data-element-type="YES_NO"]').forEach(function (btn) {
-            btn.addEventListener('click', openElementEditor);
+            btn.addEventListener('click', function () { openElementEditor('YES_NO'); });
         });
         document.getElementById('element-modal-close').addEventListener('click', closeElementEditor);
+        document.querySelectorAll('.form-element-btn[data-element-type="OPEN_ENDED"]').forEach(function (btn) {
+            btn.addEventListener('click', function () { openElementEditor('OPEN_ENDED'); });
+        });
 
         function editElement(card) {
-            openElementEditor();
+            openElementEditor(card.dataset.elementType);
             editingCard = card;
             document.getElementById('element-name-input').value = card.dataset.name;
             document.getElementById('element-choice-a').value = card.dataset.choiceA;
@@ -292,14 +302,21 @@
             errorEl.classList.add('d-none');
             let msg = '';
             if (!name) msg = 'Question name is required.';
-            else if (!choiceA || !choiceB) msg = 'Both choices need a label.';
-            else if (choiceA.toLowerCase() === choiceB.toLowerCase()) msg = 'The two choices must be different.';
+            else if (editorType === 'YES_NO' && (!choiceA || !choiceB)) msg = 'Both choices need a label.';
+            else if (editorType === 'YES_NO' && choiceA.toLowerCase() === choiceB.toLowerCase()) msg = 'The two choices must be different.';
             if (msg) {
                 errorEl.textContent = msg;
                 errorEl.classList.remove('d-none');
                 return;
             }
             if (editingCard) {
+                if (editorType === 'OPEN_ENDED' && !editingCard.dataset.questionId) {
+                    // New (unsaved) Open ended card: DOM-only, Save creates it
+                    editingCard.dataset.name = name;
+                    editingCard.querySelector('.element-title').textContent = name;
+                    closeElementEditor();
+                    return;
+                }
                 if (editingCard.dataset.questionId) {
                     // Existing question: PATCH first, update the card only on success
                     const confirmBtn = document.getElementById('element-confirm-btn');
@@ -308,7 +325,7 @@
                         const res = await fetch('/api/v1/admin/forms/' + encodeURIComponent(savedFormId) + '/questions/' + encodeURIComponent(editingCard.dataset.questionId), {
                             method: 'PATCH',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ question_text: name, options: [choiceA, choiceB] })
+                            body: JSON.stringify(editorType === 'OPEN_ENDED' ? { question_text: name } : { question_text: name, options: [choiceA, choiceB] })
                         });
                         if (!res.ok) {
                             let detail = '';
@@ -330,6 +347,13 @@
                         confirmBtn.disabled = false;
                     }
                 }
+                if (editorType === 'OPEN_ENDED') {
+                    // Saved Open ended card: PATCH succeeded above, update the card and stop
+                    editingCard.dataset.name = name;
+                    editingCard.querySelector('.element-title').textContent = name;
+                    closeElementEditor();
+                    return;
+                }
                 editingCard.dataset.name = name;
                 editingCard.dataset.choiceA = choiceA;
                 editingCard.dataset.choiceB = choiceB;
@@ -350,7 +374,7 @@
             list.classList.remove('d-none');
             const card = document.createElement('div');
             card.className = 'border rounded p-3 mb-2';
-            card.dataset.elementType = 'YES_NO';
+            card.dataset.elementType = editorType;
             card.dataset.name = name;
             card.dataset.choiceA = choiceA;
             card.dataset.choiceB = choiceB;
@@ -392,7 +416,7 @@
             header.appendChild(title);
             header.appendChild(actions);
             card.appendChild(header);
-            card.appendChild(choices);
+            if (editorType === 'YES_NO') card.appendChild(choices);
             list.appendChild(card);
             closeElementEditor();
         });
@@ -435,6 +459,7 @@
                 return;
             }
             savedFormId = form.id;
+            editMode = true;
             savedFormName = form.name;
             const nameInput = document.getElementById('form-name-input');
             nameInput.value = form.name;
@@ -455,10 +480,12 @@
                 const header = document.createElement('div');
                 header.className = 'd-flex justify-content-between align-items-start gap-2';
                 header.appendChild(title);
-                if (q.question_type === 'YES_NO') {
+                if (q.question_type === 'YES_NO' || q.question_type === 'OPEN_ENDED') {
                     card.dataset.name = q.question_text;
-                    card.dataset.choiceA = labels[0];
-                    card.dataset.choiceB = labels[1];
+                    if (q.question_type === 'YES_NO') {
+                        card.dataset.choiceA = labels[0];
+                        card.dataset.choiceB = labels[1];
+                    }
                     const editBtn = document.createElement('button');
                     editBtn.type = 'button';
                     editBtn.className = 'btn btn-sm btn-outline-secondary element-edit-btn flex-shrink-0';
@@ -497,8 +524,8 @@
                 return;
             }
             const cards = Array.from(document.getElementById('form-contents-list').children);
-            if (cards.some(function (c) { return c.dataset.elementType !== 'YES_NO'; })) {
-                errorEl.textContent = 'Only Yes / No questions can be saved for now. Remove the other elements first.';
+            if (cards.some(function (c) { return c.dataset.saved !== '1' && c.dataset.elementType !== 'YES_NO' && c.dataset.elementType !== 'OPEN_ENDED'; })) {
+                errorEl.textContent = 'Only Yes / No and Open ended questions can be saved for now. Remove the other elements first.';
                 errorEl.classList.remove('d-none');
                 return;
             }
@@ -531,11 +558,9 @@
                     const qres = await fetch('/api/v1/admin/forms/' + savedFormId + '/questions', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            question_type: 'YES_NO',
-                            question_text: card.dataset.name,
-                            options: [card.dataset.choiceA, card.dataset.choiceB]
-                        })
+                        body: JSON.stringify(card.dataset.elementType === 'OPEN_ENDED'
+                            ? { question_type: 'OPEN_ENDED', question_text: card.dataset.name }
+                            : { question_type: 'YES_NO', question_text: card.dataset.name, options: [card.dataset.choiceA, card.dataset.choiceB] })
                     });
                     if (qres.status !== 201) {
                         let detail = '';
@@ -552,7 +577,7 @@
                 }
                 const createdName = savedFormName;
                 bootstrap.Modal.getInstance(modalEl).hide();
-                document.getElementById('form-created-toast-body').textContent = 'Form "' + createdName + '" is created successfully!';
+                document.getElementById('form-created-toast-body').textContent = editMode ? 'Edited Successfully' : 'Form "' + createdName + '" is created successfully!';
                 new bootstrap.Toast(document.getElementById('form-created-toast')).show();
                 refreshSidebar();
             } catch (err) {
@@ -572,6 +597,7 @@
             savedFormId = null;
             savedFormName = '';
             document.getElementById('form-name-input').readOnly = false;
+            editMode = false;
             closeElementEditor();
         });
     }
