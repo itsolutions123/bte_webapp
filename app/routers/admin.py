@@ -104,6 +104,41 @@ async def create_form(payload: FormCreateRequest, db: AsyncSession = Depends(get
     return FormResponse(id=form.id, slug=form.slug, name=form.name)
 
 
+@router.patch("/forms/{form_id}", response_model=FormResponse)
+async def rename_form(form_id: str, payload: FormCreateRequest, db: AsyncSession = Depends(get_db)):
+    try:
+        form_uuid = uuid.UUID(form_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="form_id must be a valid UUID")
+
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="name must not be empty")
+    slug = _slugify(name)
+    if not slug:
+        raise HTTPException(status_code=422, detail="name must contain letters or numbers")
+
+    result = await db.execute(select(Form).where(Form.id == form_uuid))
+    form = result.scalar_one_or_none()
+    if form is None:
+        raise HTTPException(status_code=404, detail="form not found")
+    if form.archived_at is not None:
+        raise HTTPException(status_code=409, detail="form is archived and read-only")
+
+    clash = await db.execute(
+        select(Form.id).where(Form.slug == slug, Form.id != form_uuid)
+    )
+    if clash.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=409, detail="slug already taken")
+
+    form.name = name
+    form.slug = slug
+    await db.commit()
+    await db.refresh(form)
+
+    return FormResponse(id=form.id, slug=form.slug, name=form.name)
+
+
 @router.post("/forms/{form_id}/archive", response_model=FormArchiveResponse)
 async def archive_form(form_id: str, db: AsyncSession = Depends(get_db)):
     try:
