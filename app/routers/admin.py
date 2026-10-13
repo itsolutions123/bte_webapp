@@ -24,7 +24,11 @@ async def get_sidebar_metadata(db: AsyncSession = Depends(get_db)):
     brands = brand_result.scalars().all()
     brand_items = [SidebarBrandItem(id=b.id, name=b.name, slug=b.slug, code=b.name[:3].upper()) for b in brands]
 
-    form_result = await db.execute(select(Form).where(Form.archived_at.is_(None)))
+    form_result = await db.execute(
+        select(Form)
+        .where(Form.archived_at.is_(None))
+        .order_by(func.lower(Form.name), Form.name)
+    )
     forms = form_result.scalars().all()
     form_items = [SidebarFormItem(id=f.id, name=f.name, slug=f.slug) for f in forms]
 

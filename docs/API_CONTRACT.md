@@ -1,5 +1,5 @@
 # API Contract: BTE Careers
-*Last verified: 2026-10-13 (5a125d3 + PATCH rename endpoint and its sidebar call site; archive endpoint, sidebar exclusion and forms list (with archived filter) implemented, rename implemented; POST /api/v1/admin/forms and GET /api/v1/admin/metadata/sidebar (forms from the forms table) now implemented, remaining admin forms endpoints and page route keyed by form id still planned; public applicant routes not yet recorded)*
+*Last verified: 2026-10-13 (77046ab + sidebar forms ordered alphabetically by name; archive endpoint call site (admin-sidebar.js); PATCH rename endpoint and its sidebar call site; archive endpoint, sidebar exclusion and forms list (with archived filter) implemented, rename implemented; POST /api/v1/admin/forms and GET /api/v1/admin/metadata/sidebar (forms from the forms table) now implemented, remaining admin forms endpoints and page route keyed by form id still planned; public applicant routes not yet recorded)*
 
 ## Global Rules
 - All `/api/v1/admin/*` endpoints require HR authentication (cookie/token).
@@ -67,7 +67,7 @@
 - **Response (200 OK):** Streams `application/pdf` via `FileResponse` (Rule 13.5)
 
 ### `GET /api/v1/admin/metadata/sidebar`
-- **Purpose:** Fetch dynamic lists of brands and forms for the left navigation. `forms` comes from the `forms` table (implemented 2026-10-13, `app/routers/admin.py`). Archived forms (`archived_at IS NOT NULL`) are excluded (implemented 2026-10-13). Called by two pages: `admin.html` and `archive.html` (`/admin/archive`, added 2026-10-13); no contract change.
+- **Purpose:** Fetch dynamic lists of brands and forms for the left navigation. `forms` comes from the `forms` table (implemented 2026-10-13, `app/routers/admin.py`). Archived forms (`archived_at IS NOT NULL`) are excluded (implemented 2026-10-13). Forms are ordered alphabetically by name, case-insensitive, with `name` as the tie-break, so a renamed form moves to its alphabetical position on the next sidebar refresh (decided 2026-10-13). Called by two pages: `admin.html` and `archive.html` (`/admin/archive`, added 2026-10-13); no contract change.
 - **Request:** None
 - **Response (200 OK):**
   `{ "brands": [ { "id": "uuid", "name": "string", "slug": "string", "code": "string" } ], "forms": [ { "id": "uuid", "name": "string", "slug": "string" } ] }`
@@ -114,7 +114,7 @@ All endpoints require HR authentication (see Global Rules). A form is a shared t
 - **Purpose:** Archive a form. Sets `forms.archived_at` to now. The form leaves the sidebar and the default forms list and appears only under Archive > Forms. It is never served on public paths.
 - **Response (200 OK):** `{ "id": "uuid", "slug": "string", "name": "string", "archived_at": "timestamp" }`
 - **Errors:** 404 form not found; 409 the form is already archived; 409 any job still uses the form (`jobs.form_id`), with the job count in the detail. Detach the jobs first.
-- **Status:** Implemented 2026-10-13 (`app/routers/admin.py`; migration 003 applied). Verified live: 422 malformed id, 404 unknown id, 200 success, 409 already archived. The 409 for jobs still using the form is untested because no jobs exist yet. No HR-auth check yet (existing gap; Security owns it).
+- **Status:** Implemented 2026-10-13 (`app/routers/admin.py`; migration 003 applied). Verified live: 422 malformed id, 404 unknown id, 200 success, 409 already archived. The 409 for jobs still using the form is untested because no jobs exist yet. Call site: `app/static/admin-sidebar.js` (Archive confirm modal, shared by `/admin` and `/admin/archive`); verified in the browser on `/admin/archive` 2026-10-13 (archive succeeds, toast shows, sidebar refreshes, Archive page Forms count updates). No HR-auth check yet (existing gap; Security owns it).
 
 ### `DELETE /api/v1/admin/forms/{form_id}`
 - **Purpose:** Delete a form.

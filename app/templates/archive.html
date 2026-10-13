@@ -64,6 +64,7 @@
                 console.error('Archive counts load failed:', err);
             }
         }
+        document.addEventListener('forms:changed', loadArchiveCounts);
         loadArchiveCounts();
     </script>
 </body>

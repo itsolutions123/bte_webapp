@@ -76,7 +76,7 @@
     }
     window.refreshSidebar = refreshSidebar;
 
-    // Form 3-dot menu: open/close only (Archive is wired in a later step)
+    // Form 3-dot menu: open/close only (the Rename and Archive handlers are below)
     document.addEventListener('click', function (e) {
         const btn = e.target.closest('.form-menu-btn');
         document.querySelectorAll('.form-menu').forEach(function (m) {
@@ -171,6 +171,72 @@
                 showRenameError('Could not reach the server.');
             } finally {
                 renameSaveBtn.disabled = false;
+            }
+        });
+    }
+
+    // Archive form: the Archive button in a form's 3-dot menu opens a confirm modal; Confirm calls the archive endpoint
+    const archiveModalEl = document.getElementById('archiveFormModal');
+    if (archiveModalEl) {
+        const archiveNameEl = document.getElementById('archive-form-name');
+        const archiveError = document.getElementById('archive-form-error');
+        const archiveConfirmBtn = document.getElementById('archive-form-confirm-btn');
+        let archiveFormId = null;
+
+        const showArchiveError = function (msg) {
+            archiveError.textContent = msg;
+            archiveError.classList.remove('d-none');
+        };
+
+        document.addEventListener('click', function (e) {
+            const item = e.target.closest('.form-menu-item[data-action="archive"]');
+            if (!item) return;
+            const row = item.closest('.form-row');
+            if (!row) return;
+            archiveFormId = row.dataset.formId;
+            archiveNameEl.textContent = row.querySelector('a').textContent;
+            archiveError.classList.add('d-none');
+            bootstrap.Modal.getOrCreateInstance(archiveModalEl).show();
+        });
+
+        archiveConfirmBtn.addEventListener('click', async function () {
+            archiveError.classList.add('d-none');
+            archiveConfirmBtn.disabled = true;
+            try {
+                const res = await fetch('/api/v1/admin/forms/' + encodeURIComponent(archiveFormId) + '/archive', {
+                    method: 'POST'
+                });
+                if (res.status === 200) {
+                    const data = await res.json();
+                    bootstrap.Modal.getInstance(archiveModalEl).hide();
+                    const toastEl = document.getElementById('form-created-toast');
+                    if (toastEl) {
+                        document.getElementById('form-created-toast-body').textContent = 'Form "' + data.name + '" archived.';
+                        new bootstrap.Toast(toastEl).show();
+                    }
+                    refreshSidebar();
+                    document.dispatchEvent(new CustomEvent('forms:changed'));
+                } else if (res.status === 409) {
+                    const body = await res.json().catch(function () { return {}; });
+                    const detail = String(body.detail || '');
+                    if (detail.toLowerCase().indexOf('already archived') !== -1) {
+                        showArchiveError('This form is already archived.');
+                        refreshSidebar();
+                    } else if (detail.indexOf('job(s)') !== -1) {
+                        showArchiveError('Cannot archive: ' + detail);
+                    } else {
+                        showArchiveError('Could not archive the form.');
+                    }
+                } else if (res.status === 404) {
+                    showArchiveError('This form no longer exists.');
+                    refreshSidebar();
+                } else {
+                    showArchiveError('Could not archive the form. Please try again.');
+                }
+            } catch (err) {
+                showArchiveError('Could not reach the server.');
+            } finally {
+                archiveConfirmBtn.disabled = false;
             }
         });
     }
