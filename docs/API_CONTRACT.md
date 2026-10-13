@@ -1,5 +1,5 @@
 # API Contract: BTE Careers
-*Last verified: 2026-10-13 (3122843 + Archive page shell; POST /api/v1/admin/forms and GET /api/v1/admin/metadata/sidebar (forms from the forms table) now implemented, remaining admin forms endpoints and page route keyed by form id still planned; public applicant routes not yet recorded)*
+*Last verified: 2026-10-13 (3122843 + Archive page shell; archive endpoint, sidebar exclusion and forms list (with archived filter) implemented, rename still planned; POST /api/v1/admin/forms and GET /api/v1/admin/metadata/sidebar (forms from the forms table) now implemented, remaining admin forms endpoints and page route keyed by form id still planned; public applicant routes not yet recorded)*
 
 ## Global Rules
 - All `/api/v1/admin/*` endpoints require HR authentication (cookie/token).
@@ -67,7 +67,7 @@
 - **Response (200 OK):** Streams `application/pdf` via `FileResponse` (Rule 13.5)
 
 ### `GET /api/v1/admin/metadata/sidebar`
-- **Purpose:** Fetch dynamic lists of brands and forms for the left navigation. `forms` comes from the `forms` table (implemented 2026-10-13, `app/routers/admin.py`). Called by two pages: `admin.html` and `archive.html` (`/admin/archive`, added 2026-10-13); no contract change.
+- **Purpose:** Fetch dynamic lists of brands and forms for the left navigation. `forms` comes from the `forms` table (implemented 2026-10-13, `app/routers/admin.py`). Archived forms (`archived_at IS NOT NULL`) are excluded (implemented 2026-10-13). Called by two pages: `admin.html` and `archive.html` (`/admin/archive`, added 2026-10-13); no contract change.
 - **Request:** None
 - **Response (200 OK):**
   `{ "brands": [ { "id": "uuid", "name": "string", "slug": "string", "code": "string" } ], "forms": [ { "id": "uuid", "name": "string", "slug": "string" } ] }`
@@ -85,9 +85,11 @@
 All endpoints require HR authentication (see Global Rules). A form is a shared template: many jobs can use one form (`jobs.form_id`), and a job uses at most one. A form's questions are its `job_questions` rows. Question type is set at creation and cannot be changed (delete and re-add instead). The answer points (the admin cheat sheet) are never returned by public endpoints. Admin form endpoints are addressed by form id (`{form_id}`), matching the page route `/admin/forms/{form_id}`; the slug is returned as a field and is used only in public paths. Every `{form_id}`, `{job_id}` and `{question_id}` must be a valid UUID (422 otherwise); an unknown id returns 404.
 
 ### `GET /api/v1/admin/forms`
-- **Purpose:** Paginated list of forms for the Forms module.
-- **Request:** Query `?page=1&limit=20`
-- **Response (200 OK):** `{ "data": [ { "id": "uuid", "slug": "string", "name": "string", "question_count": int, "job_count": int } ], "total": int }`
+- **Purpose:** Paginated list of forms. By default returns active forms only (`archived_at IS NULL`) for the Forms module. With `archived=true` it returns archived forms only, for the Archive page (Forms category); `total` is the count shown on the right side of that category.
+- **Request:** Query `?archived=false|true&page=1&limit=20` (`archived` defaults to false; `page` >= 1; `limit` 1-100, default 20; out-of-range values return 422)
+- **Response (200 OK):** `{ "data": [ { "id": "uuid", "slug": "string", "name": "string", "job_count": int, "archived_at": "timestamp or null" } ], "total": int }`
+- **Notes:** Every value is computed per request from the database (`total` = count of forms matching the `archived` filter; `job_count` = count of `jobs` rows with that `form_id`); nothing is static. `question_count` is intentionally omitted until `job_questions` has a `form_id` (held migration); it will be added back to this item then. Ordered by `created_at` ascending (archived list: by `archived_at` descending).
+- **Status:** Implemented 2026-10-13 (`app/routers/admin.py`). Verified live: active total 3, archived total 1, `limit=0` returns 422. Call site: `archive.html` calls `?archived=true&limit=1` and renders `total` as the Forms count on `/admin/archive`. No HR-auth check yet (existing gap; Security owns it).
 
 ### `POST /api/v1/admin/forms`
 - **Purpose:** Create an empty form (the "+" button). The slug is generated server-side from the name.
@@ -102,9 +104,16 @@ All endpoints require HR authentication (see Global Rules). A form is a shared t
 - **Errors:** 404 form not found.
 
 ### `PATCH /api/v1/admin/forms/{form_id}`
-- **Purpose:** Rename a form. The slug does NOT change on rename (stable URLs).
+- **Purpose:** Rename a form. The slug is regenerated from the new name; the `id` never changes. Jobs link by `jobs.form_id`, so they show the new name automatically. Any old public path using the previous slug stops resolving.
 - **Request:** JSON `{ "name": "string" }`
 - **Response (200 OK):** `{ "id": "uuid", "slug": "string", "name": "string" }`
+- **Errors:** 404 form not found; 409 the new slug is already used by another form (archived forms keep their slug, so they count); 409 the form is archived (archived forms are read-only); 422 empty or invalid name. A name that yields the form's own current slug is allowed.
+
+### `POST /api/v1/admin/forms/{form_id}/archive`
+- **Purpose:** Archive a form. Sets `forms.archived_at` to now. The form leaves the sidebar and the default forms list and appears only under Archive > Forms. It is never served on public paths.
+- **Response (200 OK):** `{ "id": "uuid", "slug": "string", "name": "string", "archived_at": "timestamp" }`
+- **Errors:** 404 form not found; 409 the form is already archived; 409 any job still uses the form (`jobs.form_id`), with the job count in the detail. Detach the jobs first.
+- **Status:** Implemented 2026-10-13 (`app/routers/admin.py`; migration 003 applied). Verified live: 422 malformed id, 404 unknown id, 200 success, 409 already archived. The 409 for jobs still using the form is untested because no jobs exist yet. No HR-auth check yet (existing gap; Security owns it).
 
 ### `DELETE /api/v1/admin/forms/{form_id}`
 - **Purpose:** Delete a form.

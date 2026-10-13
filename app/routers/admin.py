@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from typing import Optional
 import re
+import uuid
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
@@ -10,7 +12,8 @@ from app.schemas import (
     SidebarMetadataResponse, SidebarBrandItem, SidebarFormItem, SidebarFormItem,
     AdminSummaryResponse, OverallTotals,
     AdminTallyResponse, AdminTallyItem, JobCounts,
-    FormCreateRequest, FormResponse,
+    FormCreateRequest, FormResponse, FormArchiveResponse,
+    FormListItem, FormListResponse,
 )
 
 router = APIRouter()
@@ -21,7 +24,7 @@ async def get_sidebar_metadata(db: AsyncSession = Depends(get_db)):
     brands = brand_result.scalars().all()
     brand_items = [SidebarBrandItem(id=b.id, name=b.name, slug=b.slug, code=b.name[:3].upper()) for b in brands]
 
-    form_result = await db.execute(select(Form))
+    form_result = await db.execute(select(Form).where(Form.archived_at.is_(None)))
     forms = form_result.scalars().all()
     form_items = [SidebarFormItem(id=f.id, name=f.name, slug=f.slug) for f in forms]
 
@@ -99,3 +102,80 @@ async def create_form(payload: FormCreateRequest, db: AsyncSession = Depends(get
     await db.refresh(form)
 
     return FormResponse(id=form.id, slug=form.slug, name=form.name)
+
+
+@router.post("/forms/{form_id}/archive", response_model=FormArchiveResponse)
+async def archive_form(form_id: str, db: AsyncSession = Depends(get_db)):
+    try:
+        form_uuid = uuid.UUID(form_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="form_id must be a valid UUID")
+
+    result = await db.execute(select(Form).where(Form.id == form_uuid))
+    form = result.scalar_one_or_none()
+    if form is None:
+        raise HTTPException(status_code=404, detail="form not found")
+    if form.archived_at is not None:
+        raise HTTPException(status_code=409, detail="form is already archived")
+
+    job_count_result = await db.execute(
+        select(func.count()).select_from(Job).where(Job.form_id == form_uuid)
+    )
+    job_count = job_count_result.scalar_one()
+    if job_count > 0:
+        raise HTTPException(
+            status_code=409,
+            detail=f"{job_count} job(s) still use this form; detach them first",
+        )
+
+    form.archived_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(form)
+
+    return FormArchiveResponse(
+        id=form.id, slug=form.slug, name=form.name, archived_at=form.archived_at
+    )
+
+
+@router.get("/forms", response_model=FormListResponse)
+async def list_forms(
+    archived: bool = Query(False),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    if archived:
+        flt = Form.archived_at.is_not(None)
+        order = Form.archived_at.desc()
+    else:
+        flt = Form.archived_at.is_(None)
+        order = Form.created_at.asc()
+
+    total_result = await db.execute(select(func.count()).select_from(Form).where(flt))
+    total = total_result.scalar_one()
+
+    result = await db.execute(
+        select(Form).where(flt).order_by(order).offset((page - 1) * limit).limit(limit)
+    )
+    forms = result.scalars().all()
+
+    counts = {}
+    if forms:
+        count_result = await db.execute(
+            select(Job.form_id, func.count())
+            .where(Job.form_id.in_([f.id for f in forms]))
+            .group_by(Job.form_id)
+        )
+        counts = {form_id: n for form_id, n in count_result.all()}
+
+    items = [
+        FormListItem(
+            id=f.id,
+            slug=f.slug,
+            name=f.name,
+            job_count=counts.get(f.id, 0),
+            archived_at=f.archived_at,
+        )
+        for f in forms
+    ]
+    return FormListResponse(data=items, total=total)

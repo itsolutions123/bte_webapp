@@ -27,6 +27,7 @@ class Job(Base):
     pooling_threshold = Column(Integer, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=utc_now)
+    form_id = Column(UUID(as_uuid=True), ForeignKey("forms.id"), nullable=True)
     
     brand = relationship("Brand", back_populates="jobs")
     questions = relationship("JobQuestion", back_populates="job")
@@ -38,6 +39,7 @@ class Form(Base):
     slug = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utc_now)
+    archived_at = Column(DateTime(timezone=True), nullable=True)
 
 class Applicant(Base):
     __tablename__ = "applicants"

@@ -1,0 +1,100 @@
+/* Shared admin sidebar styles. Used by every admin module via _sidebar.html. Do not duplicate in page templates. */
+:root {
+    --bg-main: #f4f6f8;
+    --bg-card: #ffffff;
+    --text-main: #111111;
+    --text-muted: #6c757d;
+
+    /* Gold, Black, White Palette */
+    --accent-gold: #d4af37;
+    --accent-black: #111111;
+    --accent-white: #ffffff;
+    --border-light: #eaedf1;
+
+    /* Soft Box Shadows */
+    --soft-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.9rem;
+}
+
+/* Sidebar Styling */
+.sidebar {
+    background-color: var(--bg-card);
+    border-right: 1px solid var(--border-light);
+    min-height: 100vh;
+    padding: 2rem 1.5rem;
+    z-index: 10;
+}
+.sidebar-brand {
+    font-weight: 800;
+    font-size: 1.2rem;
+    letter-spacing: 0.5px;
+    margin-bottom: 2.5rem;
+    color: var(--accent-black);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.sidebar-brand .logo-box {
+    width: 28px;
+    height: 28px;
+    background-color: var(--accent-gold);
+    border-radius: 8px;
+    display: inline-block;
+}
+.nav-section {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 800;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    padding-left: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+}
+.sidebar a {
+    color: var(--text-main);
+    text-decoration: none;
+    font-weight: 600;
+    display: block;
+    padding: 0.6rem 1rem;
+    border-radius: 12px;
+    margin-bottom: 6px;
+    transition: all 0.2s ease;
+}
+.sidebar a:hover {
+    background-color: #f8f9fa;
+    color: var(--accent-gold);
+}
+.sidebar a.active {
+    background-color: var(--accent-black);
+    color: var(--accent-gold);
+}
+
+/* Form row: 3-dot button + floating menu */
+.form-row { position: relative; display: flex; align-items: center; }
+.form-row > a { flex: 1; min-width: 0; }
+.form-menu-btn {
+    background: none; border: 0; color: var(--text-muted);
+    font-size: 1.2rem; line-height: 1; padding: 0.25rem 0.6rem;
+    border-radius: 8px; margin-bottom: 6px; cursor: pointer;
+}
+.form-menu-btn:hover { background-color: #f8f9fa; color: var(--accent-black); }
+.form-menu {
+    position: absolute; right: 0; top: 100%; z-index: 20;
+    display: flex; gap: 4px; padding: 6px;
+    background-color: var(--bg-card); border: 1px solid var(--border-light);
+    border-radius: 12px; box-shadow: var(--soft-shadow);
+}
+.form-menu[hidden] { display: none; }
+.form-menu-item {
+    background: none; border: 0; color: var(--text-main);
+    padding: 0.4rem 0.55rem; border-radius: 8px; cursor: pointer; line-height: 1;
+}
+.form-menu-item:hover { background-color: #f8f9fa; color: var(--accent-gold); }

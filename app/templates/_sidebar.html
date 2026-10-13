@@ -1,0 +1,31 @@
+{# Shared admin sidebar. The including page sets: {% set active_page = 'dashboard' %} or 'archive'. #}
+<nav class="col-md-2 sidebar d-none d-md-block">
+    <div class="sidebar-brand">
+        <span class="logo-box"></span>
+        BIGTIME EMPIRE
+    </div>
+
+    <div class="nav-section">WORKSPACE</div>
+    <div class="nav flex-column">
+        <a href="/admin" class="{% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
+        <a href="#">Applicants</a>
+    </div>
+
+    <div class="nav-section">
+        BRANDS <span>+</span>
+    </div>
+    <div class="nav flex-column" id="brand-list">
+        <span class="px-3 text-muted small fw-bold">Loading...</span>
+    </div>
+
+    <div class="nav-section">
+        FORMS <span role="button" data-bs-toggle="modal" data-bs-target="#formBuilderModal" aria-label="Add form">+</span>
+    </div>
+    <div class="nav flex-column" id="form-list">
+        <span class="px-3 text-muted small fw-bold">Loading...</span>
+    </div>
+
+    <div class="nav flex-column mt-4">
+        <a href="/admin/archive" class="{% if active_page == 'archive' %}active{% endif %}">Archive</a>
+    </div>
+</nav>

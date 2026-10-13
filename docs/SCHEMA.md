@@ -34,6 +34,7 @@
 - `slug` (String, Unique, Indexed) - e.g., "general-screening"; used in API paths such as /forms/{form_slug}/jobs/{job_id}; admin page URLs use the form id (/admin/forms/{form-UID})
 - `name` (String, Not Null) - e.g., "IT Recruitment"
 - `created_at` (Timestamp)
+- `archived_at` (Timestamp with time zone, Nullable, Indexed `idx_forms_archived_at`) - NULL = active; set = archived (migration 003, applied 2026-10-13). Archived forms are hidden from the sidebar and the default forms list, appear only under Archive > Forms, and keep their slug reserved. A form can't be archived while any job still uses it (`jobs.form_id`).
 
 Each job points to at most one form through `jobs.form_id`. The applicant picks a job from the website posting and answers that job's form.
 
@@ -115,5 +116,6 @@ Scoring rules (enforced by the API, recorded in API_CONTRACT.md):
 - `idx_applicant_email` ON applicants (email)
 - `idx_jq_form_order` ON job_questions (form_id, display_order)
 - `idx_jobs_form_id` ON jobs (form_id)
+- `idx_forms_archived_at` ON forms (archived_at)
 - `idx_answer_points_question_id` ON answer_points (question_id)
 - `idx_answers_application_id` ON answers (application_id)

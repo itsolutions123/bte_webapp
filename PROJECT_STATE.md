@@ -114,10 +114,24 @@
 3. Design: build the Brands and Forms page shells with "+" buttons using placeholder content only, plus the apply wizard layouts (Yes/No, A-D, Open ended).
 4. Structure/API: migration plan for forms, answer_points and `jobs.form_id` (contract-first, destructive steps confirmed).
 5. Wire one feature at a time: form create DONE; next is the question editor (persisting dropped elements as real `job_questions` rows with text/options/answer points), then answer points, attach jobs, submissions, then the matching engine rewrite.
-\n
+
 ## Session Log 2026-10-13 (sidebar 3-dot menu and Archive page shells)
 - Forms sidebar: each form row has a 3-dot button with a floating menu (edit/rename icon, archive icon). SHELL ONLY: the icons do nothing. Rename and archive are not wired.
 - Archive page: new route `GET /admin/archive` (app/main.py) serving `app/templates/archive.html`, plus an "Archive" link under Forms in the admin.html sidebar. Static shell: "Archive Assets" with three cards (Forms, Applicants, Brands), counts are placeholder dashes. Card list DECIDED: Forms, Applicants and Brands. The page route is a decided design, not an API endpoint.
 - No new API endpoint. `archive.html` reuses `GET /api/v1/admin/metadata/sidebar` for the sidebar lists, rendered with `textContent` (no unescaped innerHTML).
 - Open (Structure handoff): archive field for forms (archived_at vs is_archived), applicants and brands (brands and applicants tables not checked for an archive field, UNVERIFIED); rename and archive endpoints; archive count and list endpoints; the sidebar query must exclude archived forms (`select(Form)` in admin.py has no filter today). Add `/admin/archive` to the v4 preamble section 3 route list.
-- Hardcodes and flags: sidebar CSS and markup are duplicated in archive.html (candidate for a shared base template later); Bootstrap CDN URLs and fixed `/api/v1/admin/...` paths repeated; unescaped `${f.name}` in the admin.html sidebar render is still open; the sidebar endpoint is unbounded (18.2).
+- Hardcodes and flags: sidebar CSS and markup are now shared (see Admin layout rules below) but still duplicated in admin.html until its switch-over; Bootstrap CDN URLs and fixed `/api/v1/admin/...` paths repeated; unescaped `${f.name}` in the admin.html sidebar render is still open; the sidebar endpoint is unbounded (18.2).
+
+## Admin layout rules (decided 2026-10-13)
+- Every admin module uses the shared sidebar. No page composes its own sidebar markup, sidebar CSS or sidebar JS.
+- Shared files: `app/templates/_sidebar.html` (nav), `app/templates/_form_builder.html` (Form Builder modal and created toast), `app/static/admin-sidebar.css` (palette tokens, body, sidebar and form-row styles), `app/static/admin-sidebar.js` (sidebar render via `textContent`, `refreshSidebar()`, 3-dot menu open/close, Form Builder modal save).
+- A page sets `{% set active_page = 'dashboard' %}` or `'archive'` before including `_sidebar.html`. New modules add their own value and a matching `{% if %}` in `_sidebar.html`.
+- Page wrapper for every module: `div.container-fluid.p-0` > `div.row.g-0` > `_sidebar.html` + `main.col-md-10.px-4.pb-5`. A plain `container-fluid` adds 12px side padding and shifts the page (found on Archive, fixed).
+- Page load order: Bootstrap 5.3.0 CSS, Nunito font, `/static/admin-sidebar.css`, page-only CSS; at the end of body: `_form_builder.html`, Bootstrap 5.3.0 bundle, `/static/admin-sidebar.js`, page script. Page scripts call `refreshSidebar()` and must not define their own sidebar loaders.
+
+## Session Log 2026-10-13 (shared sidebar consolidation, step 1 of 3)
+- DONE: four shared files created; `archive.html` switched to them (own sidebar CSS, nav markup and `fillList`/`loadSidebar` removed; Bootstrap JS bundle added; wrapper changed to `container-fluid p-0`). Archive now shows "+" buttons, kebab menus and the Form Builder modal like the Dashboard.
+- Archive Forms count is wired to `GET /api/v1/admin/forms?archived=true&limit=1` (`data.total`). Applicants and Brands counts are still placeholder dashes.
+- Step 2 (pending): switch `admin.html` to the shared files, removing its sidebar, kebab, modal and toast code while keeping the dashboard summary and tally code. The modal save handler there calls `fetchDashboardData()`; shared JS calls `refreshSidebar()` instead. admin.html's unescaped `innerHTML` sidebar render goes away at that step. Consider a shared base template for the wrapper at the same time.
+- Step 3 (pending): wire Rename and Archive once in `admin-sidebar.js`.
+- Other pending: migration 003 (`forms.archived_at`) applied; held reshape plan shifts to 004-006; `Form.archived_at` and `Job.form_id` mapped in models; dev runs with `--reload` and a bind mount; throwaway archived row `zz archive test` exists in forms; jobs-409 untested; `/admin` vs `/admin/home` mismatch (v4 section 3) still open; shared CSS differences vs the old copies were whitespace noise plus the archive-only `.archive-card` rules (kept in archive.html).

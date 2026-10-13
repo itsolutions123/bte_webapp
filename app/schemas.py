@@ -92,6 +92,23 @@ class FormResponse(BaseModel):
     slug: str
     name: str
 
+class FormArchiveResponse(BaseModel):
+    id: UUID4
+    slug: str
+    name: str
+    archived_at: datetime
+
+class FormListItem(BaseModel):
+    id: UUID4
+    slug: str
+    name: str
+    job_count: int
+    archived_at: Optional[datetime] = None
+
+class FormListResponse(BaseModel):
+    data: List[FormListItem]
+    total: int
+
 
 class SidebarBrandItem(BaseModel):
     id: UUID4
