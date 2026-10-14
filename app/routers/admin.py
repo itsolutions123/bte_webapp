@@ -7,12 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.database import get_db
+from app.timeutil import to_app_tz
 from app.models import Brand, Job, StatusCount, Parameter, Parameter, Form, JobQuestion, Answer, Answer
 from app.schemas import (
     SidebarMetadataResponse, SidebarBrandItem, SidebarFormItem, SidebarFormItem,
     AdminSummaryResponse, OverallTotals,
     AdminTallyResponse, AdminTallyItem, JobCounts,
     BrandCreateRequest, BrandResponse,
+    JobCreateRequest, JobResponse,
     FormCreateRequest, FormResponse, FormArchiveResponse,
     FormListItem, FormListResponse,
     QuestionCreateRequest, QuestionResponse, QuestionUpdateRequest,
@@ -114,6 +116,48 @@ async def create_brand(payload: BrandCreateRequest, db: AsyncSession = Depends(g
     await db.refresh(brand)
 
     return BrandResponse(id=brand.id, name=brand.name, slug=brand.slug)
+
+@router.post("/brands/{brand_id}/jobs", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
+async def create_job(brand_id: uuid.UUID, payload: JobCreateRequest, db: AsyncSession = Depends(get_db)):
+    title = payload.title.strip()
+    if not title:
+        raise HTTPException(status_code=422, detail="title must not be empty")
+
+    # Label only: not unique, never used for lookups (the id is the job identifier).
+    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    if not slug:
+        raise HTTPException(status_code=422, detail="title must contain at least one letter or number")
+
+    brand = await db.get(Brand, brand_id)
+    if brand is None:
+        raise HTTPException(status_code=404, detail="brand not found")
+
+    description = (payload.description or "").strip() or None
+    requirements = (payload.requirements or "").strip() or None
+
+    job = Job(
+        brand_id=brand.id,
+        title=title,
+        slug=slug,
+        description=description,
+        requirements=requirements,
+        is_active=payload.is_active,
+    )
+    db.add(job)
+    await db.commit()
+    await db.refresh(job)
+
+    return JobResponse(
+        id=job.id,
+        brand_id=job.brand_id,
+        title=job.title,
+        slug=job.slug,
+        description=job.description,
+        requirements=job.requirements,
+        is_active=job.is_active,
+        form_id=job.form_id,
+        created_at=to_app_tz(job.created_at),
+    )
 
 @router.post("/forms", response_model=FormResponse, status_code=status.HTTP_201_CREATED)
 async def create_form(payload: FormCreateRequest, db: AsyncSession = Depends(get_db)):

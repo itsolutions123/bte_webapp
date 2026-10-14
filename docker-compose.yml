@@ -29,6 +29,7 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:?DB_PASSWORD must be set in .env}@db:5432/${DB_NAME:-bte_careers}
+      - APP_TIMEZONE=Asia/Manila
     depends_on:
       - db
     deploy:

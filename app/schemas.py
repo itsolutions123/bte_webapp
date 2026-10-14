@@ -118,6 +118,23 @@ class BrandResponse(BaseModel):
     name: str
     slug: str
 
+class JobCreateRequest(BaseModel):
+    title: str
+    description: Optional[str] = None
+    requirements: Optional[str] = None
+    is_active: bool = False
+
+class JobResponse(BaseModel):
+    id: UUID4
+    brand_id: UUID4
+    title: str
+    slug: str
+    description: Optional[str] = None
+    requirements: Optional[str] = None
+    is_active: bool
+    form_id: Optional[UUID4] = None
+    created_at: datetime
+
 class SidebarBrandItem(BaseModel):
     id: UUID4
     name: str

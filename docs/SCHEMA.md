@@ -11,14 +11,15 @@
 - `id` (UUID, Primary Key)
 - `brand_id` (UUID, Foreign Key -> brands.id)
 - `form_id` (UUID, Foreign Key -> forms.id, nullable, Indexed) - The shared form applicants answer for this job. Many jobs can use one form.
-- `slug` (String, Unique, Indexed) - e.g., "marketing-oic"
+- `slug` (String, Indexed, NOT unique since migration 005) - e.g., "marketing-oic". A label only, generated from the title; the id is the job identifier and titles may repeat.
 - `title` (String) - e.g., "Cashier", "Marketing OIC"
 - `description` (Text)
+- `requirements` (Text, nullable) - the Requirements part of the public job posting (migration 005)
 - `pass_threshold` (Integer) - e.g., 75 (Percentage required to pass)
 - `pooling_threshold` (Integer) - e.g., 70
-  - DECIDED 2026-10-14 (user), NOT migrated yet: the pass/fail thresholds belong on the form, not on the job, and will be set up later. Both threshold columns are NOT NULL with no default in the live table today, so a job cannot be created until they are made optional or moved (OPEN, see PROJECT_STATE.md); dropping them is destructive and needs explicit confirmation. The public posting's Requirements field has no column yet; a nullable `requirements` Text column is proposed (migration 005), not decided.
-- `is_active` (Boolean)
-- `created_at` (Timestamp)
+  - DECIDED 2026-10-14 (user): the pass/fail thresholds belong on the form, not on the job, and will be set up later. Migration 005 (applied 2026-10-14) made both columns NULLABLE so a job can be created without them. They are NOT dropped (dropping is destructive and needs explicit confirmation). While they are NULL, scoring in `app/routers/public.py` (lines 201-203) fails on apply (OPEN, Structure).
+- `is_active` (Boolean) - the publish state (decided 2026-10-14): true = published (shown on the public board); false = draft or unpublished (stored the same way). Editing a published job sets it to false.
+- `created_at` (Timestamp with time zone) - stored in UTC; API responses show it in PHT (+08:00), see API_CONTRACT.md Global Rules (Timestamps). The same convention applies to every timestamp column.
 
 **`applicants`**
 - `id` (UUID, Primary Key)
