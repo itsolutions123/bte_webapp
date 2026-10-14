@@ -26,7 +26,10 @@
 - `first_name` (String)
 - `last_name` (String)
 - `email` (String, Unique, Indexed)
-- `phone` (String, Indexed)
+- `phone` (String, Indexed) - shown as "Contact number" in the UI
+- `address` (String, nullable) - PROPOSED 2026-10-14, not migrated yet. Copied from the standard `address` form element on apply.
+- `gender` (String, nullable) - PROPOSED 2026-10-14, not migrated yet. Copied from the standard `gender` form element. Sensitive: Security decides who may see it and how long it is kept (SECURITY.md update pending).
+- `date_of_birth` (Date, nullable) - PROPOSED 2026-10-14, not migrated yet. Decided by the user: the date of birth is stored, not an age; the applicant page shows the age calculated from it. Sensitive PII: Security decides access and retention.
 - `created_at` (Timestamp)
 
 ## 2. Forms, Questions & Points
@@ -55,6 +58,8 @@ Each job points to at most one form through `jobs.form_id`. The applicant picks 
 - `question_text` (String)
 - `options` (JSONB, nullable) - `MULTIPLE_CHOICE`: array of 3 or more `{"id": "string", "text": "string"}` objects; `id` is a stable, server-assigned identifier (not shown to applicants) that `answer_points.answer_value` and applicant answers reference, so it must not change when an option is edited. `YES_NO`: array of exactly 2 label texts, `options[0]` is the display label for answer `YES` and `options[1]` for `NO`; null falls back to the labels Yes / No. `OPEN_ENDED`: null
 - `is_hard_requirement` (Boolean) - Must be false for `OPEN_ENDED`
+- `is_required` (Boolean, Not Null) - PROPOSED 2026-10-14, not migrated yet. The applicant must answer this question to submit. Backfill for existing rows: true for `YES_NO` and `MULTIPLE_CHOICE`, false for `OPEN_ENDED`. Not the same as `is_hard_requirement` (which auto-fails a wrong answer); `is_hard_requirement` true requires `is_required` true.
+- `field_key` (String, nullable) - PROPOSED 2026-10-14 (Option A, chosen by the user), not migrated yet. Marks a "standard" element: one of `address`, `gender`, `date_of_birth` (name, email and contact number stay fixed fields on apply, not form elements); NULL for ordinary questions. `question_type` is unchanged and must be `OPEN_ENDED`; `field_key` cannot change after create. A question with a `field_key` is excluded from scoring (not in the divisor, no FAIL row, `is_hard_requirement` must be false). On submit its value is saved as an ordinary answer AND copied to the matching `applicants` column. At most one question per `field_key` per form (partial unique index on (form_id, field_key) WHERE field_key IS NOT NULL, to be created in the same migration).
 - `expected_answer` is REMOVED: "wrong" is now defined by FAIL points on an answer choice (see answer_points).
 
 **`answer_points`** (the admin cheat sheet: what each answer choice is worth)
@@ -71,7 +76,7 @@ Scoring rules (enforced by the API, recorded in API_CONTRACT.md):
 - `calculated_score` = percent of scored questions (YES_NO and MULTIPLE_CHOICE) whose chosen answer has no FAIL row. OPEN_ENDED is excluded from the divisor. `pass_threshold`, `pooling_threshold` and statuses work as before.
 - `is_hard_requirement`: if the chosen answer has a FAIL row, the application gets `has_hard_fail_flag` and status FAILED.
 - Brand points are summed per brand per application and drive only the suggested-fit flag. They never change the score or status. The flag is derived: brands with the highest total above 0. More than one means a tie ("suited for both ..."). If no brand has points, no flag.
-- Assumption: every scored question must be answered to submit (the API rejects a submission with missing answers).
+- Required answers (PROPOSED 2026-10-14, target behaviour, NOT what the code does today): a question with `is_required` true must be answered to submit, and the API rejects a missing or blank required answer. An unanswered optional scored question is excluded from the divisor. The older claim that every scored question is always required was never enforced by the code.
 - Migration note (UNVERIFIED): existing rows have `job_id` and `expected_answer`. A migration must create a form per existing job, move its questions, convert each `expected_answer` into FAIL rows on the non-expected choices, and only then drop the old columns. Dropping them is destructive and needs your explicit confirmation.
 
 ## 3. Applications & Answers

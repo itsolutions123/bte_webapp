@@ -342,3 +342,24 @@
 - Backend and admin panel: no change this step. Hardcodes: added the named constant `JOB_SEARCH_DEBOUNCE_MS`. Still flagged: inline API path at three call sites, `brandId` expression repeated three times.
 - NOT COMMITTED YET: `migrations/007_jobs_title_trgm_index.sql`, `app/routers/admin.py`, `app/templates/admin_brand_detail.html`, `docs/API_CONTRACT.md`, `docs/SCHEMA.md`, `PROJECT_STATE.md`.
 - NEXT: commit. Search feature steps are complete; planner use of `idx_jobs_title_trgm` at scale is still NOT proven.
+
+## Session Log 2026-10-14 (Applicant page: standard form elements decided, schema documented)
+- DECIDED (user): applicant details come from the forms through "standard" elements (address, gender, date of birth; narrowed 2026-10-14, the user did not object: name, email and contact number stay fixed apply fields). Hybrid: the value is saved as an ordinary answer AND copied into the applicant's own column; the applicant page reads the columns.
+- DECIDED (user): Option A: nullable `job_questions.field_key`, `question_type` unchanged, questions with a `field_key` excluded from scoring. Date of birth is stored, not an age; the page shows the calculated age.
+- DONE (docs): `docs/SCHEMA.md` records `applicants.address`, `applicants.gender`, `applicants.date_of_birth` and `job_questions.field_key` as PROPOSED, NOT migrated. No code or migration yet.
+- OPEN (Structure): index on applicants columns deferred to the applicants list contract; SCHEMA.md vs models mismatch on `job_questions` (`form_id` and `question_type` Not Null in the doc but nullable in `app/models.py:74` and `:76`; `expected_answer` removed in the doc but still in the model); how the apply endpoint gets first name, last name and email today (UNVERIFIED, check `app/routers/public.py`).
+- OPEN (Security): who may see gender and date of birth, and retention.
+- OPEN (routes): the page-route revision (drop the `/admin` prefix, `/dashboard`, `/applicants`, `/brands/{id}`, `/forms/{id}`, `/archive`, `/login`) is still to be applied to this file and the docs. Plural `/applicants` was suggested, not yet confirmed.
+- NEXT: read `app/routers/public.py` apply and the matching `API_CONTRACT.md` sections, then contract the standard elements (question endpoints, apply, applicants list and detail) before any migration or code.
+- Backend, frontend and admin panel: no change. Hardcodes: none added.
+
+## Session Log 2026-10-14 (Applicant page: required flag and apply contract, docs only)
+- DECIDED (user): Option B for apply. Write the contracts first (docs only), then the apply rewrite is the first code step.
+- DECIDED (user): form elements can be marked required (`is_required`). Not the same as `is_hard_requirement`.
+- DONE (docs, all PROPOSED / NOT implemented): `docs/API_CONTRACT.md` records `is_required` and `field_key` on the public questions response, on create and PATCH, the standard-answer copy on apply, the scoring exclusions, an apply status note and "Last verified". `docs/SCHEMA.md` records `job_questions.is_required`, narrows `field_key` to `address`, `gender`, `date_of_birth`, and replaces the claim that missing answers are rejected.
+- PROPOSED defaults (the user may change them): `is_required` omitted means true for YES_NO and MULTIPLE_CHOICE and false for OPEN_ENDED; `is_hard_requirement` needs `is_required`; an unanswered optional scored question is skipped in the score; `field_key` only on OPEN_ENDED, one per form, immutable; `date_of_birth` as `YYYY-MM-DD`, a real past date; address, gender and date of birth are filled only if empty and never overwritten.
+- FOUND (code review of `submit_application` in `app/routers/public.py`, not run live): it still queries questions by `job_id`, compares to `expected_answer`, accepts missing answers, and reuses an existing applicant by email without updating it. A job whose questions belong to a form finds none and scores 100. The contract already described the target behaviour. Handoff to Structure, option B approved.
+- Hardcodes found, not removed: 5 MB resume limit, `/data/resumes` default path, chunk size, status strings and score formula in `public.py`. Also open: the resume file is written to disk before the job is checked (Security).
+- OPEN: Security rules for gender and date of birth (access, retention); `SCHEMA.md` scoring formula line may need a matching edit for optional questions; the page-route revision (drop the `/admin` prefix, `/dashboard`, `/applicants`, `/brands/{id}`, `/forms/{id}`, `/archive`, `/login`) is still to be applied.
+- NEXT: apply rewrite, first code step. Start with a read-only look at the `Application`, `Answer` and answer-points models and the matching migrations.
+- Backend, frontend and admin panel: no change. Hardcodes: none added.
