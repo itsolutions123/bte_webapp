@@ -192,14 +192,14 @@
                     const stats = summaryData.overall_totals || {};
                     
                     const passed = stats.passed || 0;
-                    const total = stats.total_processed || 1;
-                    const passRate = total > 0 && stats.total_processed !== undefined ? Math.round((passed / total) * 100) : 0;
+                    const total = stats.total_processed || 0;
+                    const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
                     
                     document.getElementById('main-summary').innerHTML = `
                         <div class="col pass-rate-box">
                             <div class="stat-label">Pass Rate</div>
                             <div class="stat-value" style="color: var(--accent-gold);">${passRate}%</div>
-                            <div class="pass-rate-sub">${passed}/${total === 1 && stats.total_processed === undefined ? 0 : total}</div>
+                            <div class="pass-rate-sub">${passed}/${total}</div>
                         </div>
                         <div class="col col-divider">
                             <div class="stat-label">Endorsed</div>
