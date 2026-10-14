@@ -277,3 +277,15 @@
 - OPEN: scoring with NULL thresholds (`app/routers/public.py:201-203`) will raise a TypeError on apply for jobs without thresholds (Structure decision pending). Admin endpoints have no auth dependency (Security Gem). `public.py:127` has a fallback path default. `SECRET_KEY` and `ENVIRONMENT` are in `.env.example` but read nowhere. `docs/API_CONTRACT.md` list row for applications shows `job_title` but `AdminApplicationListItem` has no such field (UNVERIFIED). `admin.py` imports `Parameter`, `Answer` and `SidebarFormItem` twice (cleanup).
 - Hardcodes found, not removed: inline `/api/v1/admin/brands/.../jobs` path and error texts in the brand page script; CDN URLs; placeholder job cards (intentional, unwired shell); slug regex duplicated between `create_brand` and `create_job`.
 - Docs: `docs/API_CONTRACT.md` updated (job-create contract and status, timestamps note, Last verified). `docs/SCHEMA.md` updated (jobs: `requirements`, nullable thresholds, non-unique slug, `is_active` as publish state, UTC storage shown in PHT). `docs/SECURITY.md`: no change.
+
+## Next: Brand page JOB LIST (feature step 2, not started)
+- Create Job (step 1) is COMMITTED and pushed to main as 3b07573 (2026-10-14).
+- Shell status: the brand page already has the shell (search box, "+ Add filter" and four placeholder filters, two placeholder "Job Title" cards). It stays a shell until each piece below is wired (Gem Prompts v4 section 8).
+- Start order (PROPOSED, not decided; one step per message, each verified before the next):
+  1. Read-only inspection: the brand page shell lines, the existing `GET /api/v1/admin/jobs` (a picker for attaching jobs to a form) in contract and code, so nothing is duplicated.
+  2. Contract first (rule 17.2) in `docs/API_CONTRACT.md`: a job list for one brand, paginated with `page` and `limit` (rules 13.2 and 18.2), each item with id, title, published state (`is_active`) and `created_at` in PHT. The path is not decided (for example `GET /api/v1/admin/brands/{brand_id}/jobs`).
+  3. Backend: that one endpoint, tested live with curl.
+  4. Wire only the job cards to it, replacing the placeholders. The page needs an empty state when a brand has no jobs.
+  5. Then, one at a time and each with its own contract: search, then each filter, then card click-through to a job page.
+- NOT in this step: job edit and publish/unpublish endpoints (the "editing unpublishes" rule applies when they are contracted), public posting endpoints, and how the website at :8086 reaches the API.
+- Test data: six throwaway rows in `jobs` (`zz job test` x2, `zz job published`, "Test" x3). Keep them until the list is verified; delete only after explicit confirmation naming the rows.
