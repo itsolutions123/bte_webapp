@@ -41,6 +41,8 @@ async def get_public_jobs(
             id=job_obj.id,
             slug=job_obj.slug,
             title=job_obj.title,
+            description=job_obj.description,
+            requirements=job_obj.requirements,
             brand_id=job_obj.brand_id,
             brand_name=brand_name,
             brand_slug=brand_slug

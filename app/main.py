@@ -4,6 +4,14 @@ from app.routers import public
 
 app = FastAPI(title="BTE Careers API")
 
+# CORS: allow the local bte-website frontend to call the public API directly (local-only LAN test, 2026-10-15)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://10.0.10.37:8086"],
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
+
 # Mount Routers
 # Note: Admin endpoints will require HR authentication middleware (coordinated with Security Gem)
 from app.routers import public

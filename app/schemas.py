@@ -7,6 +7,8 @@ class PublicJob(BaseModel):
     id: UUID4
     slug: str
     title: str
+    description: Optional[str] = None
+    requirements: Optional[str] = None
     brand_id: UUID4
     brand_name: str
     brand_slug: str
