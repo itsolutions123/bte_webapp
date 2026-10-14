@@ -135,6 +135,16 @@ class JobResponse(BaseModel):
     form_id: Optional[UUID4] = None
     created_at: datetime
 
+class BrandJobItem(BaseModel):
+    id: UUID4
+    title: str
+    is_active: bool
+    created_at: Optional[datetime] = None
+
+class BrandJobsResponse(BaseModel):
+    data: List[BrandJobItem]
+    total: int
+
 class SidebarBrandItem(BaseModel):
     id: UUID4
     name: str

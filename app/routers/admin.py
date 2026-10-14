@@ -14,7 +14,7 @@ from app.schemas import (
     AdminSummaryResponse, OverallTotals,
     AdminTallyResponse, AdminTallyItem, JobCounts,
     BrandCreateRequest, BrandResponse,
-    JobCreateRequest, JobResponse,
+    JobCreateRequest, JobResponse, BrandJobItem, BrandJobsResponse,
     FormCreateRequest, FormResponse, FormArchiveResponse,
     FormListItem, FormListResponse,
     QuestionCreateRequest, QuestionResponse, QuestionUpdateRequest,
@@ -158,6 +158,43 @@ async def create_job(brand_id: uuid.UUID, payload: JobCreateRequest, db: AsyncSe
         form_id=job.form_id,
         created_at=to_app_tz(job.created_at),
     )
+
+@router.get("/brands/{brand_id}/jobs", response_model=BrandJobsResponse)
+async def list_brand_jobs(
+    brand_id: uuid.UUID,
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    brand = await db.get(Brand, brand_id)
+    if brand is None:
+        raise HTTPException(status_code=404, detail="brand not found")
+
+    total_result = await db.execute(
+        select(func.count()).select_from(Job).where(Job.brand_id == brand_id)
+    )
+    total = total_result.scalar_one()
+
+    result = await db.execute(
+        select(Job)
+        .where(Job.brand_id == brand_id)
+        .order_by(Job.created_at.desc().nulls_last(), Job.id)
+        .offset((page - 1) * limit)
+        .limit(limit)
+    )
+    jobs = result.scalars().all()
+
+    items = [
+        BrandJobItem(
+            id=j.id,
+            title=j.title,
+            is_active=bool(j.is_active),
+            created_at=to_app_tz(j.created_at),
+        )
+        for j in jobs
+    ]
+    return BrandJobsResponse(data=items, total=total)
+
 
 @router.post("/forms", response_model=FormResponse, status_code=status.HTTP_201_CREATED)
 async def create_form(payload: FormCreateRequest, db: AsyncSession = Depends(get_db)):
