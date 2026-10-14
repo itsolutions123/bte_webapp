@@ -59,13 +59,24 @@ async def get_job_questions(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    # Fetch dynamic parameters/questions linked to this job
-    query = select(JobQuestion).where(JobQuestion.job_id == job_id).order_by(JobQuestion.display_order.asc())
-    result = await db.execute(query)
-    questions = result.scalars().all()
-    
+    # Questions come from the form the job uses (jobs.form_id); a job with no form returns an empty list
+    questions = []
+    if job.form_id is not None:
+        query = select(JobQuestion).where(JobQuestion.form_id == job.form_id).order_by(JobQuestion.display_order.asc())
+        result = await db.execute(query)
+        questions = result.scalars().all()
+
     return PublicJobQuestionsResponse(
-        data=[PublicJobQuestion(id=q.id, question_text=q.question_text, display_order=q.display_order) for q in questions]
+        data=[
+            PublicJobQuestion(
+                id=q.id,
+                question_text=q.question_text,
+                display_order=q.display_order,
+                question_type=q.question_type,
+                options=q.options,
+            )
+            for q in questions
+        ]
     )
 
 

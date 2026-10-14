@@ -19,6 +19,8 @@ class PublicJobQuestion(BaseModel):
     id: UUID4
     display_order: int
     question_text: str
+    question_type: Optional[str] = None
+    options: Optional[Any] = None
 
 class PublicJobQuestionsResponse(BaseModel):
     data: List[PublicJobQuestion]

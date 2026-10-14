@@ -373,3 +373,11 @@
 - FOUND (uncommitted, not from this session, UNVERIFIED): `app/routers/public.py` and `app/schemas.py` have local changes. `GET /public/jobs/{job_id}/questions` reads questions via `jobs.form_id` and returns `question_type` and `options`. Not part of the pass-rate commit. If committed, `API_CONTRACT.md` for that endpoint must be checked and updated in the same commit (17.3).
 - Backend: no change. Admin panel: `admin.html` only. Hardcodes removed: the `|| 1` fallback and the `total === 1` check. Still flagged: the two stubs above. Docs: no `API_CONTRACT.md`, `SCHEMA.md` or `SECURITY.md` change.
 - NEXT: confirm the route decision; decide what to do with the `public.py` and `schemas.py` changes; then the apply rewrite.
+
+## Session Log 2026-10-14 (public questions endpoint: form_id lookup verified live, contract updated)
+- DONE (backend, verified live): `GET /api/v1/public/jobs/{job_id}/questions` in `app/routers/public.py` reads questions through `jobs.form_id` (a job with no form returns an empty list) and returns `question_type` and `options`. `app/schemas.py` adds the two optional fields to `PublicJobQuestion`. These were local, uncommitted changes from an earlier session.
+- VERIFIED LIVE (curl): CASHIER was temporarily attached to Assessment Form: HTTP 200, 7 questions in `display_order` (4 YES_NO `["YES","NO"]`, 2 OPEN_ENDED `null`, 1 MULTIPLE_CHOICE with 5 `{id, text}` options). No answer points in the response. CASHIER was then set back to no form (`has_form` = f confirmed). NOT run live: the no-form empty list (code review only).
+- DONE (docs): `API_CONTRACT.md` has a Status bullet under the endpoint and a new "Last verified" entry. `is_required` and `field_key` are still PROPOSED and not in the response.
+- Frontend and admin panel: no change. Hardcodes: none added.
+- STILL OPEN: the page-route decision (Option A: docs follow the code; Option B: code moves to the new routes); `submit_application` in `public.py` still does not follow the apply contract (apply rewrite is the next code step); `brand_summaries=[]` stub and unused `date_from`/`date_to` on the dashboard summary; Security rules for gender and date of birth.
+- NEXT: commit this step, then the route decision, then the apply rewrite (read-only look at the `Application`, `Answer` and answer-points models and migrations first).
