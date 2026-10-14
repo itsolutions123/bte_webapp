@@ -16,6 +16,7 @@
 - `description` (Text)
 - `pass_threshold` (Integer) - e.g., 75 (Percentage required to pass)
 - `pooling_threshold` (Integer) - e.g., 70
+  - DECIDED 2026-10-14 (user), NOT migrated yet: the pass/fail thresholds belong on the form, not on the job, and will be set up later. Both threshold columns are NOT NULL with no default in the live table today, so a job cannot be created until they are made optional or moved (OPEN, see PROJECT_STATE.md); dropping them is destructive and needs explicit confirmation. The public posting's Requirements field has no column yet; a nullable `requirements` Text column is proposed (migration 005), not decided.
 - `is_active` (Boolean)
 - `created_at` (Timestamp)
 

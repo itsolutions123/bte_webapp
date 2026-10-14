@@ -85,6 +85,12 @@
 - Admin form endpoints: DECIDED 2026-10-13, keyed by form id (see Decisions Recorded 2026-10-13).
 - Public applicant routes and the form-questions endpoint by form id still need recording in API_CONTRACT.md (Structure handoff pending).
 - Which form questions feed the Applicants list columns (full name, address, age, gender).
+- Jobs (2026-10-14): a nullable `requirements` Text column on `jobs` (migration 005) is proposed for the posting's Requirements field; not decided or applied.
+- Jobs (2026-10-14): `pass_threshold` and `pooling_threshold` are NOT NULL with no default, so no job can be created. The user decided thresholds belong on the form and will be set up later. Open: make them nullable now (non-destructive, 0 rows) and move or drop them later (destructive, explicit confirmation). Where the code uses them is UNVERIFIED (grep not run yet).
+- Jobs (2026-10-14): the slug is generated from the title and is unique across all jobs (same format as brands and forms), so two brands cannot both have a job titled "Cashier" (409). The user asked for the same format; the consequence is recorded, not separately confirmed.
+- Website (2026-10-14): `bte-website` is an nginx container (`nginx:1.25-alpine`, 8086 to 8080) and `/careers` returns HTML (verified). It looks like a static page (UNVERIFIED), so the website would reach the API from the browser: CORS on this app for exactly `http://10.0.10.37:8086`, or an nginx proxy route on the website side. Not decided. The website source directory was not found under the home directory (UNVERIFIED).
+- Public posting endpoints (2026-10-14): `GET /api/v1/public/jobs` does not return description, requirements or whether the job has a form, and there is no single-job endpoint. Contract first, not decided.
+- Job create and list endpoints for the brand page (create from the modal, list for JOB LIST): not contracted yet.
 
 ## Known Mismatches (verified 2026-10-12)
 - The `forms` table and `jobs.form_id` are live (migrations 001 and 002, applied 2026-10-13). `answer_points` does not exist yet. UPDATE: migration 004 added `form_id`, `question_type` and `options` to `job_questions` and made `job_id`, `parameter_id` and `expected_answer` nullable (see the Save session log below); dropping `job_id` and `expected_answer` is still held.
@@ -244,9 +250,18 @@
 - Docs: `docs/API_CONTRACT.md` updated (endpoint verified, route note, `code` note, Last verified line). `docs/SCHEMA.md` and `docs/SECURITY.md`: no change.
 
 ## Session Log 2026-10-14 (Brands: heading from id, code removed, alphabetical order)
+- COMMITTED and pushed to main as d0622b1 (2026-10-14).
 - DONE (frontend): the brand page heading and browser tab title now come from the sidebar endpoint, matched by the brand id in the URL (`fetchBrandName()` in `app/templates/admin_brand_detail.html`); an unknown id shows "Brand not found". No new endpoint, no contract change.
 - DONE (backend): `code` removed from the sidebar brands response (`admin.py` and `SidebarBrandItem` in `schemas.py`); the response is now `{id, name, slug}`, matching the contract. Verified with curl (0 `code` keys).
 - DONE (backend): the sidebar brands query is ordered alphabetically by name, case-insensitive, name as tie-break (user decision, same as forms). Verified in the browser with two brands (Pares Retiro above TSG). Mixed-case sorting is not tested yet.
 - NOT YET DONE: jobs list, search, filters and Create Job on the brand page (the shell still shows placeholder job cards); the apply flow still has the two public-endpoint gaps from the 2026-10-14 form builder log.
 - Hardcodes found, not removed: inline `/api/v1/admin/metadata/sidebar` path in the brand page script; duplicate `slug: str` lines in `SidebarBrandItem` and `SidebarFormItem`; Bootstrap and font CDN URLs in `admin_brand_detail.html`; placeholder Job Title cards (intentional, unwired shell).
 - Docs: `docs/API_CONTRACT.md` updated (ordering note, `code` note, heading note, Last verified line). `docs/SCHEMA.md` and `docs/SECURITY.md`: no change.
+
+## Session Log 2026-10-14 (Create Job: scope and decisions, modal shell)
+- DONE (shell): the brand page "+ Create Job" button opens a static Create Job modal (`#createJobModal` in `app/templates/admin_brand_detail.html`) with Title, Description, Requirements and a disabled Confirm button, laid out from the user's wireframe. Not wired. Checked with curl (modal and button target present); the visual review by the user is pending. The placeholder job cards stay until the list step.
+- DECISIONS (user, explicit): (1) a job's Title, Description and Requirements are the public job posting, shown on the website at `http://10.0.10.37:8086/careers`; (2) the posting has an "apply here" button that opens the job's designated form; (3) the pass/fail thresholds belong on the form, not on the job, and will be set up later; (4) jobs use the same slug and id format as brands and forms; (5) the cross-app pause is lifted for job postings only. Recorded in `docs/API_CONTRACT.md` (Global Rules) and `docs/SCHEMA.md` (jobs).
+- VERIFIED this session: live `jobs` table has 0 rows, no `requirements` column, `pass_threshold` and `pooling_threshold` NOT NULL with no default, `slug` unique; `GET /admin/jobs` exists only as a picker for attaching jobs to a form; `bte-website` is an nginx container on 8086 and `/careers` answers HTTP 200 text/html.
+- NOT YET DONE: everything under the new OPEN Decisions items (migration 005, endpoints, website access approach); the modal Confirm and the JOB LIST are not wired.
+- Hardcodes found, not removed: placeholder Job Title cards in `admin_brand_detail.html` (intentional, unwired shell); Bootstrap and font CDN URLs there; inline `/api/v1/admin/...` paths.
+- Docs: `docs/API_CONTRACT.md` (Global Rules, Last verified), `docs/SCHEMA.md` (jobs note), `PROJECT_STATE.md` (OPEN Decisions, this log). `docs/SECURITY.md`: no change. The Gem Prompts v4 file is outside the repo and needs its section 4 updated by hand.
