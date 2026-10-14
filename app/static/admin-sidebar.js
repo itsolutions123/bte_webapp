@@ -56,8 +56,11 @@
         brandBox.textContent = '';
         (data.brands || []).forEach(function (b) {
             const a = document.createElement('a');
-            a.href = '#';
+            a.href = '/admin/brands/' + encodeURIComponent(b.id);
             a.textContent = b.name;
+            if (window.location.pathname === a.getAttribute('href')) {
+                a.classList.add('active');
+            }
             brandBox.appendChild(a);
         });
         formBox.textContent = '';
@@ -174,6 +177,71 @@
                 showRenameError('Could not reach the server.');
             } finally {
                 renameSaveBtn.disabled = false;
+            }
+        });
+    }
+
+    // Add brand: the BRANDS "+" in the sidebar opens a modal; Save calls POST /api/v1/admin/brands
+    const addBrandModalEl = document.getElementById('addBrandModal');
+    if (addBrandModalEl) {
+        const addBrandInput = document.getElementById('add-brand-name');
+        const addBrandError = document.getElementById('add-brand-error');
+        const addBrandSaveBtn = document.getElementById('add-brand-save-btn');
+
+        const showAddBrandError = function (msg) {
+            addBrandError.textContent = msg;
+            addBrandError.classList.remove('d-none');
+        };
+
+        addBrandModalEl.addEventListener('show.bs.modal', function () {
+            addBrandInput.value = '';
+            addBrandError.classList.add('d-none');
+        });
+        addBrandModalEl.addEventListener('shown.bs.modal', function () {
+            addBrandInput.focus();
+        });
+
+        const saveBrand = async function () {
+            addBrandError.classList.add('d-none');
+            const name = addBrandInput.value.trim();
+            if (!name) {
+                showAddBrandError('Please enter a brand name.');
+                return;
+            }
+            addBrandSaveBtn.disabled = true;
+            try {
+                const res = await fetch('/api/v1/admin/brands', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name })
+                });
+                if (res.status === 201) {
+                    const data = await res.json();
+                    bootstrap.Modal.getInstance(addBrandModalEl).hide();
+                    const toastEl = document.getElementById('form-created-toast');
+                    if (toastEl) {
+                        document.getElementById('form-created-toast-body').textContent = 'Brand "' + data.name + '" added.';
+                        new bootstrap.Toast(toastEl).show();
+                    }
+                    refreshSidebar();
+                } else if (res.status === 409) {
+                    showAddBrandError('A brand with that name already exists.');
+                } else if (res.status === 422) {
+                    showAddBrandError('Please enter a valid brand name.');
+                } else {
+                    showAddBrandError('Could not add the brand. Please try again.');
+                }
+            } catch (err) {
+                showAddBrandError('Could not reach the server.');
+            } finally {
+                addBrandSaveBtn.disabled = false;
+            }
+        };
+        addBrandSaveBtn.addEventListener('click', saveBrand);
+        addBrandInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveBrand();
             }
         });
     }

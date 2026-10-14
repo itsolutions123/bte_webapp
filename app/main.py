@@ -43,6 +43,11 @@ async def serve_admin_form_detail(request: Request, form_id: str):
     # Shell only (section 8): form_id is accepted but not used to fetch data yet.
     return templates.TemplateResponse(request=request, name="admin_form_detail.html")
 
+@app.get("/admin/brands/{brand_id}", include_in_schema=False)
+async def serve_admin_brand_detail(request: Request, brand_id: str):
+    # Shell only (section 8): brand_id is accepted but not used to fetch data yet.
+    return templates.TemplateResponse(request=request, name="admin_brand_detail.html")
+
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}

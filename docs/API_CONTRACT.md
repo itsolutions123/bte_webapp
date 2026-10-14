@@ -1,10 +1,11 @@
 # API Contract: BTE Careers
-*Last verified: 2026-10-14 (6228423 + this commit: MULTIPLE_CHOICE contract changed from a fixed 4-option, letter-keyed (A-D) scheme to a variable-length (3 or more), server-assigned-id-keyed scheme — options now `[{"id","text"}]` for MULTIPLE_CHOICE in question create/update/GET responses and the public questions endpoint; answer_points.answer_value and applicant answers use that id; admin application detail resolves applicant_answer back to option text. UNVERIFIED pending code + live test — see section 17 rule text and SCHEMA.md column comments)*
+*Last verified: 2026-10-14 (bbb9c70 + this commit: POST /api/v1/admin/brands implemented and verified live (create, duplicate 409, blank and symbols-only 422), Add brand modal wired, sidebar brand links open /admin/brands/{id} and highlight the current brand; sidebar response still returns `code` in the code (removal pending); 422 also returned when the name has no letters or numbers; earlier in the same series: brands contract recorded -- POST /api/v1/admin/brands, sidebar brands response without `code`, brand page route by `{brand_id}`, Sidebar rule; UNVERIFIED pending code + live test. Previous entry: 6228423 + this commit: MULTIPLE_CHOICE contract changed from a fixed 4-option, letter-keyed (A-D) scheme to a variable-length (3 or more), server-assigned-id-keyed scheme — options now `[{"id","text"}]` for MULTIPLE_CHOICE in question create/update/GET responses and the public questions endpoint; answer_points.answer_value and applicant answers use that id; admin application detail resolves applicant_answer back to option text. UNVERIFIED pending code + live test — see section 17 rule text and SCHEMA.md column comments)*
 
 ## Global Rules
 - All `/api/v1/admin/*` endpoints require HR authentication (cookie/token).
 - All list endpoints MUST include `page` and `limit` query parameters (Rule 13.2).
 - **Scope (local-only):** The app runs only at `10.0.10.37:8000` on the LAN. The apply wizard is hosted in `bte_webapp` (`/apply`). Cross-app work with `bigtimeempire.com` is paused.
+- **Sidebar rule (decided 2026-10-14):** The existing admin sidebar (`app/templates/_sidebar.html`, filled by `app/static/admin-sidebar.js` from `GET /api/v1/admin/metadata/sidebar`) is the ONLY admin sidebar and is the default for every admin page. It never changes structurally -- only its contents change (brand and form lists). Never create, propose or ask about a different or second sidebar; new admin pages include the shared `_sidebar.html`.
 
 ---
 
@@ -68,10 +69,21 @@
 - **Response (200 OK):** Streams `application/pdf` via `FileResponse` (Rule 13.5)
 
 ### `GET /api/v1/admin/metadata/sidebar`
-- **Purpose:** Fetch dynamic lists of brands and forms for the left navigation. `forms` comes from the `forms` table (implemented 2026-10-13, `app/routers/admin.py`). Archived forms (`archived_at IS NOT NULL`) are excluded (implemented 2026-10-13). Forms are ordered alphabetically by name, case-insensitive, with `name` as the tie-break, so a renamed form moves to its alphabetical position on the next sidebar refresh (decided 2026-10-13). Called by two pages: `admin.html` and `archive.html` (`/admin/archive`, added 2026-10-13); no contract change.
+- **Purpose:** Fetch dynamic lists of brands and forms for the left navigation. `code` was removed from the brands response (decided 2026-10-14: the `brands` table has no such column; verified 2026-10-14: `app/routers/admin.py` and `SidebarBrandItem` in `app/schemas.py` still return a derived `code`, removal pending; the frontend does not read it). `forms` comes from the `forms` table (implemented 2026-10-13, `app/routers/admin.py`). Archived forms (`archived_at IS NOT NULL`) are excluded (implemented 2026-10-13). Forms are ordered alphabetically by name, case-insensitive, with `name` as the tie-break, so a renamed form moves to its alphabetical position on the next sidebar refresh (decided 2026-10-13). Called by two pages: `admin.html` and `archive.html` (`/admin/archive`, added 2026-10-13); no contract change.
 - **Request:** None
 - **Response (200 OK):**
-  `{ "brands": [ { "id": "uuid", "name": "string", "slug": "string", "code": "string" } ], "forms": [ { "id": "uuid", "name": "string", "slug": "string" } ] }`
+  `{ "brands": [ { "id": "uuid", "name": "string", "slug": "string" } ], "forms": [ { "id": "uuid", "name": "string", "slug": "string" } ] }`
+
+### `POST /api/v1/admin/brands`
+- **Purpose:** Create a brand from the sidebar BRANDS "+" Add brand modal. Contract decided 2026-10-14; backend implemented and verified live 2026-10-14 (`app/routers/admin.py`): 201 create, 409 duplicate, 422 blank or symbols-only. The Add brand modal in the shared sidebar calls it (`app/static/admin-sidebar.js`).
+- **Auth:** HR authentication (see Global Rules).
+- **Request:** JSON `{ "name": "string" }` -- trimmed, required, must not be blank after trimming.
+- **Slug:** generated server-side from `name` (lowercase, runs of non-alphanumeric characters become a single hyphen, no leading or trailing hyphen; "TSG" becomes `tsg`). Never typed by the admin and never changes if the brand is renamed later.
+- **Response (201 Created):** `{ "id": "uuid", "name": "string", "slug": "string" }`
+- **Errors:**
+  * `409` if the name or the generated slug already exists (compared case-insensitively; no automatic `-2` suffix). The modal shows the message.
+  * `422` if `name` is missing or blank after trimming, or contains no letters or numbers (the generated slug would be empty).
+- **Client:** after success the Add brand modal closes and the sidebar refreshes through the existing `refreshSidebar()`. No schema change (uses the existing `brands` columns `id`, `name`, `slug`).
 
 ### `GET /api/v1/admin/dashboard/summary`
 - **Purpose:** Fetch overall application totals and brand-level top match summaries.
@@ -192,8 +204,8 @@ A form's submissions are the applications for the jobs that use it: `GET /api/v1
 - **Purpose:** Default dashboard entry point showing overall tally.
 - **Response:** `text/html`
 
-### `GET /admin/brands/{brand_slug}`
-- **Purpose:** Dashboard pre-filtered to a specific brand.
+### `GET /admin/brands/{brand_id}`
+- **Purpose:** Brand page (URL carries the brand id, same as forms; decided 2026-10-14): brand name, "+ Create Job" button, search, "+ Add filter" row and the brand's job cards, inside the shared sidebar layout. Shell implemented 2026-10-14 (`app/templates/admin_brand_detail.html`, route in `app/main.py`), verified in the browser with placeholder content: `brand_id` is accepted but not used yet. Name, jobs, search, filters and Create Job are not wired yet. Sidebar brand links open this route and the current brand is highlighted in the sidebar (verified in the browser 2026-10-14).
 - **Response:** `text/html`
 
 ### `GET /admin/forms/{form_id}`

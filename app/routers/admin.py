@@ -12,6 +12,7 @@ from app.schemas import (
     SidebarMetadataResponse, SidebarBrandItem, SidebarFormItem, SidebarFormItem,
     AdminSummaryResponse, OverallTotals,
     AdminTallyResponse, AdminTallyItem, JobCounts,
+    BrandCreateRequest, BrandResponse,
     FormCreateRequest, FormResponse, FormArchiveResponse,
     FormListItem, FormListResponse,
     QuestionCreateRequest, QuestionResponse, QuestionUpdateRequest,
@@ -90,6 +91,29 @@ async def get_dashboard_tally(brand_id: Optional[str] = Query(None), db: AsyncSe
 def _slugify(name: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-")
     return slug or "form"
+
+@router.post("/brands", response_model=BrandResponse, status_code=status.HTTP_201_CREATED)
+async def create_brand(payload: BrandCreateRequest, db: AsyncSession = Depends(get_db)):
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="name must not be empty")
+
+    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    if not slug:
+        raise HTTPException(status_code=422, detail="name must contain at least one letter or number")
+
+    existing = await db.execute(
+        select(Brand).where((func.lower(Brand.name) == name.lower()) | (Brand.slug == slug)).limit(1)
+    )
+    if existing.scalars().first():
+        raise HTTPException(status_code=409, detail="a brand with this name already exists")
+
+    brand = Brand(name=name, slug=slug)
+    db.add(brand)
+    await db.commit()
+    await db.refresh(brand)
+
+    return BrandResponse(id=brand.id, name=brand.name, slug=brand.slug)
 
 @router.post("/forms", response_model=FormResponse, status_code=status.HTTP_201_CREATED)
 async def create_form(payload: FormCreateRequest, db: AsyncSession = Depends(get_db)):

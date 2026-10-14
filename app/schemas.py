@@ -110,6 +110,14 @@ class FormListResponse(BaseModel):
     total: int
 
 
+class BrandCreateRequest(BaseModel):
+    name: str
+
+class BrandResponse(BaseModel):
+    id: UUID4
+    name: str
+    slug: str
+
 class SidebarBrandItem(BaseModel):
     id: UUID4
     name: str
