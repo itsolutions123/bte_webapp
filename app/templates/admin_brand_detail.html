@@ -96,16 +96,9 @@
                         <span class="filter-slot">&mdash;</span>
                     </div>
 
-                    <div id="job-list">
-                        <div class="job-card">
-                            <div class="job-card-title">Job Title</div>
-                            <div class="job-card-meta">&mdash;</div>
-                        </div>
-                        <div class="job-card">
-                            <div class="job-card-title">Job Title</div>
-                            <div class="job-card-meta">&mdash;</div>
-                        </div>
-                    </div>
+                    <div id="job-list"></div>
+                    <div class="text-muted d-none" id="job-list-empty">No jobs yet</div>
+                    <div class="text-danger small d-none" id="job-list-error"></div>
                 </div>
             </main>
         </div>
@@ -171,6 +164,45 @@
         }
         fetchBrandName();
 
+        // Job cards: rendered from GET /api/v1/admin/brands/{brand_id}/jobs (first page only, API default limit)
+        async function loadJobs() {
+            const brandId = window.location.pathname.split('/').filter(Boolean).pop();
+            const listEl = document.getElementById('job-list');
+            const emptyEl = document.getElementById('job-list-empty');
+            const errorEl = document.getElementById('job-list-error');
+            emptyEl.classList.add('d-none');
+            errorEl.classList.add('d-none');
+            try {
+                const res = await fetch('/api/v1/admin/brands/' + encodeURIComponent(brandId) + '/jobs');
+                if (!res.ok) {
+                    errorEl.textContent = res.status === 404 ? 'This brand no longer exists.' : 'Unable to load jobs.';
+                    errorEl.classList.remove('d-none');
+                    return;
+                }
+                const data = await res.json();
+                listEl.replaceChildren();
+                (data.data || []).forEach(function (job) {
+                    const card = document.createElement('div');
+                    card.className = 'job-card';
+                    const title = document.createElement('div');
+                    title.className = 'job-card-title';
+                    title.textContent = job.title;
+                    const meta = document.createElement('div');
+                    meta.className = 'job-card-meta';
+                    meta.textContent = (job.is_active ? 'Published' : 'Not published') + (job.created_at ? ' - ' + job.created_at.slice(0, 10) : '');
+                    card.appendChild(title);
+                    card.appendChild(meta);
+                    listEl.appendChild(card);
+                });
+                if (!data.total) emptyEl.classList.remove('d-none');
+            } catch (err) {
+                console.error('Failed to load jobs:', err);
+                errorEl.textContent = 'Could not reach the server.';
+                errorEl.classList.remove('d-none');
+            }
+        }
+        loadJobs();
+
         // Create Job: the dropdown only selects the state; Confirm saves via POST /api/v1/admin/brands/{brand_id}/jobs
         (function () {
             const modalEl = document.getElementById('createJobModal');
@@ -228,6 +260,7 @@
                     if (res.ok) {
                         const data = await res.json();
                         bootstrap.Modal.getInstance(modalEl).hide();
+                        loadJobs();
                         const toastEl = document.getElementById('form-created-toast');
                         if (toastEl) {
                             document.getElementById('form-created-toast-body').textContent = 'Job "' + data.title + '" created.';

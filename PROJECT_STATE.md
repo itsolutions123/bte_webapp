@@ -90,7 +90,7 @@
 - Jobs (2026-10-14): CLOSED, superseded. The user decided jobs are identified by id only. Migration 005 made `ix_jobs_slug` non-unique, so titles may repeat and there is no 409.
 - Website (2026-10-14): `bte-website` is an nginx container (`nginx:1.25-alpine`, 8086 to 8080) and `/careers` returns HTML (verified). It looks like a static page (UNVERIFIED), so the website would reach the API from the browser: CORS on this app for exactly `http://10.0.10.37:8086`, or an nginx proxy route on the website side. Not decided. The website source directory was not found under the home directory (UNVERIFIED).
 - Public posting endpoints (2026-10-14): `GET /api/v1/public/jobs` does not return description, requirements or whether the job has a form, and there is no single-job endpoint. Contract first, not decided.
-- Job endpoints for the brand page: the create endpoint is DONE (`POST /api/v1/admin/brands/{brand_id}/jobs`, verified live 2026-10-14). The list endpoint for the JOB LIST is DONE (`GET /api/v1/admin/brands/{brand_id}/jobs`, verified live 2026-10-14; the job cards are not wired to it yet). Job edit and publish/unpublish are not contracted yet.
+- Job endpoints for the brand page: the create endpoint is DONE (`POST /api/v1/admin/brands/{brand_id}/jobs`, verified live 2026-10-14). The list endpoint for the JOB LIST is DONE (`GET /api/v1/admin/brands/{brand_id}/jobs`, verified live 2026-10-14; the job cards on the brand page are wired to it and verified in the browser). Job edit and publish/unpublish are not contracted yet.
 
 ## Known Mismatches (verified 2026-10-12)
 - The `forms` table and `jobs.form_id` are live (migrations 001 and 002, applied 2026-10-13). `answer_points` does not exist yet. UPDATE: migration 004 added `form_id`, `question_type` and `options` to `job_questions` and made `job_id`, `parameter_id` and `expected_answer` nullable (see the Save session log below); dropping `job_id` and `expected_answer` is still held.
@@ -278,7 +278,7 @@
 - Hardcodes found, not removed: inline `/api/v1/admin/brands/.../jobs` path and error texts in the brand page script; CDN URLs; placeholder job cards (intentional, unwired shell); slug regex duplicated between `create_brand` and `create_job`.
 - Docs: `docs/API_CONTRACT.md` updated (job-create contract and status, timestamps note, Last verified). `docs/SCHEMA.md` updated (jobs: `requirements`, nullable thresholds, non-unique slug, `is_active` as publish state, UTC storage shown in PHT). `docs/SECURITY.md`: no change.
 
-## Brand page JOB LIST (feature step 2: contract, migration 006 and endpoint DONE and verified live 2026-10-14; job cards not wired yet)
+## Brand page JOB LIST (feature steps 2 and 3: contract, migration 006, endpoint and job cards DONE and verified 2026-10-14; search, filters and click-through not started)
 - Create Job (step 1) is COMMITTED and pushed to main as 3b07573 (2026-10-14).
 - Shell status: the brand page already has the shell (search box, "+ Add filter" and four placeholder filters, two placeholder "Job Title" cards). It stays a shell until each piece below is wired (Gem Prompts v4 section 8).
 - Start order (PROPOSED, not decided; one step per message, each verified before the next):
@@ -288,7 +288,7 @@
   4. Wire only the job cards to it, replacing the placeholders. The page needs an empty state when a brand has no jobs.
   5. Then, one at a time and each with its own contract: search, then each filter, then card click-through to a job page.
 - NOT in this step: job edit and publish/unpublish endpoints (the "editing unpublishes" rule applies when they are contracted), public posting endpoints, and how the website at :8086 reaches the API.
-- Test data: six throwaway rows in `jobs` (`zz job test` x2, `zz job published`, "Test" x3). Keep them until the list is verified; delete only after explicit confirmation naming the rows.
+- Test data: six throwaway rows in `jobs` (`zz job test` x2, `zz job published`, "Test" x3), all on Pares Retiro. The list is now verified, so they can be deleted, but only after explicit confirmation naming the rows. Jobs also created through the UI on 2026-10-14: "CASHIER" (TSG) and "Store Supervisor" (Sapporo Milktea). Not marked as throwaway; ask the user before treating them as test data.
 
 ## Session Log 2026-10-14 (Brand page job list: Structure decisions, contract, migration 006)
 - DECIDED (user): Option B. A brand-scoped `GET /api/v1/admin/brands/{brand_id}/jobs`, separate from the form-attach picker. Params `page` (>= 1) and `limit` (default 50, max 100). Order `created_at DESC NULLS LAST, id`. Null `is_active` is returned as false and null `created_at` as null. Card shows the title, "Published" or "Not published", and the created date. Empty state "No jobs yet".
@@ -307,3 +307,13 @@
 - Hardcodes found, not removed: `terms_version` default "v1.0" (`app/models.py:90`, Security or Structure owns it). Cosmetic, not touched: `slug: str` declared twice in `SidebarBrandItem` (`app/schemas.py`); duplicate imports of `Parameter`, `Answer` and `SidebarFormItem` in `app/routers/admin.py`.
 - Still open: `/admin` vs `/admin/home` mismatch (`app/main.py:33`) and the other items listed in the previous session log.
 - NEXT (feature step 3): wire only the job cards on `/admin/brands/{brand_id}` to this endpoint (replace the two placeholder cards, add the "No jobs yet" empty state). Start with a read-only look at `app/templates/admin_brand_detail.html` and its script.
+
+## Session Log 2026-10-14 (Brand page job list: job cards wired, refresh after Create Job)
+- DONE (frontend): `loadJobs()` in `app/templates/admin_brand_detail.html` fetches `GET /api/v1/admin/brands/{brand_id}/jobs` and renders one `.job-card` per job (title, "Published" or "Not published", created date from the first 10 characters of the +08:00 timestamp). Card text is set with `textContent`. The two placeholder cards were replaced by an empty `#job-list`, a hidden "No jobs yet" element and a hidden error element. No `limit` is sent, so only the first 50 jobs show (no pager yet).
+- DONE (bug fix): the Create Job success handler now calls `loadJobs()` after the modal closes, so a new job appears without a page reload.
+- VERIFIED IN BROWSER: Pares Retiro shows six cards newest first with correct Published and Not published labels; Sapporo Milktea and TSG showed "No jobs yet" before any jobs existed; creating "Store Supervisor" on Sapporo Milktea showed the toast and the card immediately.
+- Backend and admin panel: no change in this step.
+- Hardcodes found, not removed: the inline `/api/v1/admin/brands/.../jobs` path at two call sites (list and create); the `brandId` expression (`window.location.pathname.split('/').filter(Boolean).pop()`) repeated three times in the page script; CDN URLs. Not touched: `app/main.py:46-49` still has a "Shell only" comment on the brand page route, which is now stale.
+- Docs: `API_CONTRACT.md` Call site line and "Last verified" updated. `SCHEMA.md` and `SECURITY.md` need no change.
+- Still open: no pager (first 50 jobs only), `/admin` vs `/admin/home` mismatch (`app/main.py:33`), deleting the six throwaway `jobs` rows (needs explicit confirmation naming them), missing admin auth, and the other items in earlier session logs.
+- NEXT (needs a user choice, one at a time, each with its own contract): search box, then each filter, then card click-through to a job page.
