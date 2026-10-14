@@ -23,9 +23,9 @@ router = APIRouter()
 
 @router.get("/metadata/sidebar", response_model=SidebarMetadataResponse)
 async def get_sidebar_metadata(db: AsyncSession = Depends(get_db)):
-    brand_result = await db.execute(select(Brand))
+    brand_result = await db.execute(select(Brand).order_by(func.lower(Brand.name), Brand.name))
     brands = brand_result.scalars().all()
-    brand_items = [SidebarBrandItem(id=b.id, name=b.name, slug=b.slug, code=b.name[:3].upper()) for b in brands]
+    brand_items = [SidebarBrandItem(id=b.id, name=b.name, slug=b.slug) for b in brands]
 
     form_result = await db.execute(
         select(Form)

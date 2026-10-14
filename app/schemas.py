@@ -123,7 +123,6 @@ class SidebarBrandItem(BaseModel):
     name: str
     slug: str
     slug: str
-    code: str = "BTE"
 
 class SidebarFormItem(BaseModel):
     id: UUID4

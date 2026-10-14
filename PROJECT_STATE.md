@@ -234,6 +234,7 @@
 - Hardcodes found, not removed: `render()` in `app/static/admin-sidebar.js` sets every brand link to `href='#'`; Bootstrap and font CDN URLs in `admin_brand_detail.html` (as on the other pages); placeholder "BRAND NAME" and "Job Title" text (intentional while the shell is unwired).
 
 ## Session Log 2026-10-14 (Brands: Add brand wired, sidebar links and highlight)
+- COMMITTED and pushed to main as 05b8a1c (2026-10-14).
 - DONE (backend): `POST /api/v1/admin/brands` (`create_brand` in `app/routers/admin.py`, `BrandCreateRequest` and `BrandResponse` in `app/schemas.py`). Trims the name; 422 when blank or when it has no letters or numbers; 409 when the name or generated slug already exists (case-insensitive); 201 returns `{id, name, slug}`. Uses its own slug regex, not `_slugify` (that one falls back to "form").
 - DONE (frontend): Add brand modal Save wired in `app/static/admin-sidebar.js` (error line, Enter key, success toast, `refreshSidebar()`); `_sidebar.html` has the error line and Save is enabled. Brand links in `render()` now go to `/admin/brands/{id}` (the `href='#'` hardcode is gone) and the current brand gets the `active` class, using the same pathname check as the form rows.
 - VERIFIED (user, in the browser): TSG created and listed under BRANDS; adding TSG again shows the 409 message in the modal; clicking TSG opens `/admin/brands/{id}` inside the shared sidebar; TSG is highlighted. VERIFIED (curl): both 422 cases and the route in the OpenAPI spec.
@@ -241,3 +242,11 @@
 - Hardcodes found, not removed: sidebar `code=b.name[:3].upper()`; inline `/api/v1/admin/brands` path and message strings in the handler (same pattern as Rename and Archive); the brand toast reuses the `form-created-toast` element; Bootstrap and font CDN URLs in `admin_brand_detail.html`; placeholder BRAND NAME and Job Title text (intentional, unwired shell).
 - Security note: the brands endpoint has no auth check, the same as every other admin endpoint (already an OPEN decision).
 - Docs: `docs/API_CONTRACT.md` updated (endpoint verified, route note, `code` note, Last verified line). `docs/SCHEMA.md` and `docs/SECURITY.md`: no change.
+
+## Session Log 2026-10-14 (Brands: heading from id, code removed, alphabetical order)
+- DONE (frontend): the brand page heading and browser tab title now come from the sidebar endpoint, matched by the brand id in the URL (`fetchBrandName()` in `app/templates/admin_brand_detail.html`); an unknown id shows "Brand not found". No new endpoint, no contract change.
+- DONE (backend): `code` removed from the sidebar brands response (`admin.py` and `SidebarBrandItem` in `schemas.py`); the response is now `{id, name, slug}`, matching the contract. Verified with curl (0 `code` keys).
+- DONE (backend): the sidebar brands query is ordered alphabetically by name, case-insensitive, name as tie-break (user decision, same as forms). Verified in the browser with two brands (Pares Retiro above TSG). Mixed-case sorting is not tested yet.
+- NOT YET DONE: jobs list, search, filters and Create Job on the brand page (the shell still shows placeholder job cards); the apply flow still has the two public-endpoint gaps from the 2026-10-14 form builder log.
+- Hardcodes found, not removed: inline `/api/v1/admin/metadata/sidebar` path in the brand page script; duplicate `slug: str` lines in `SidebarBrandItem` and `SidebarFormItem`; Bootstrap and font CDN URLs in `admin_brand_detail.html`; placeholder Job Title cards (intentional, unwired shell).
+- Docs: `docs/API_CONTRACT.md` updated (ordering note, `code` note, heading note, Last verified line). `docs/SCHEMA.md` and `docs/SECURITY.md`: no change.
