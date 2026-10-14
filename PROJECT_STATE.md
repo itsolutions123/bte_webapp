@@ -317,3 +317,28 @@
 - Docs: `API_CONTRACT.md` Call site line and "Last verified" updated. `SCHEMA.md` and `SECURITY.md` need no change.
 - Still open: no pager (first 50 jobs only), `/admin` vs `/admin/home` mismatch (`app/main.py:33`), deleting the six throwaway `jobs` rows (needs explicit confirmation naming them), missing admin auth, and the other items in earlier session logs.
 - NEXT (needs a user choice, one at a time, each with its own contract): search box, then each filter, then card click-through to a job page.
+
+## Session Log 2026-10-14 (Brand page search: decisions, migration 007, contract)
+- DECIDED (user, Structure): title-only search; date order kept (no ranking); match = substring ILIKE OR pg_trgm word_similarity; `q` trimmed, blank = no filter, max 100 (422 above), `%` `_` `\` escaped; `total` is the filtered count; no caching for now (uvicorn runs a single worker, no `--workers` flag; `zammad-redis` belongs to another app).
+- DONE (schema): `migrations/007_jobs_title_trgm_index.sql` applied and verified: `pg_trgm` 1.6 installed, `idx_jobs_title_trgm` (GIN) on `jobs`. With 8 rows the planner uses a sequential scan, so index use is NOT proven yet.
+- DONE (docs): `q` contract recorded in `docs/API_CONTRACT.md` (PROPOSED, not implemented); index added to `docs/SCHEMA.md` section 5.
+- OPEN: the similarity threshold value (to be tested in psql, then stored as one named constant).
+- NEXT: step 4 test the threshold in psql; step 5 change `list_brand_jobs` + curl checks; step 6 wire the search box (debounce, "No jobs match" state).
+- Frontend and admin panel: no change. Hardcodes: none added.
+
+## Session Log 2026-10-14 (Brand page search: backend implemented and verified)
+- DECIDED (user): similarity threshold 0.5. Default 0.6 would miss "casher" (0.57). Noise ceiling 0.20 on 4 distinct titles; revisit with real titles.
+- DONE (backend): `list_brand_jobs` in `app/routers/admin.py` takes optional `q` (max 100, 422 above). Matches an escaped ILIKE substring OR `literal(q) <% title` (pg_trgm word_similarity, index-friendly form). The threshold is set per transaction with `set_config(..., true)` from the named constant `JOB_SEARCH_SIMILARITY_THRESHOLD`; `JOB_SEARCH_MAX_LENGTH` is the other constant. The count and the select share one filter list, so `total` is the filtered count. Order unchanged.
+- VERIFIED LIVE (curl): typo, multi-word typo, fragment, pagination on a filtered set, literal % and _, blank q, 422 at 101 characters, 200 at 100, and no-q regression. NOT proven: planner use of `idx_jobs_title_trgm` at scale.
+- DONE (docs): `API_CONTRACT.md` Search bullet and "Last verified" updated. `SCHEMA.md` already covers the index.
+- Frontend and admin panel: no change. Hardcodes: none added (threshold and max length are named constants). Still flagged: inline API path at two call sites, `brandId` expression repeated three times.
+- NOT COMMITTED YET: `migrations/007_jobs_title_trgm_index.sql`, `app/routers/admin.py`, `docs/API_CONTRACT.md`, `docs/SCHEMA.md`, `PROJECT_STATE.md`.
+- NEXT (step 6): wire the search box on `/admin/brands/{brand_id}` (debounce, "No jobs match" state separate from "No jobs yet").
+
+## Session Log 2026-10-14 (Brand page search: UI wired and confirmed)
+- DONE (frontend): search box on `/admin/brands/{brand_id}` (`app/templates/admin_brand_detail.html`). `loadJobs()` sends the trimmed `q`; input is debounced (`JOB_SEARCH_DEBOUNCE_MS` = 300); stale responses are ignored (`loadJobsSeq`); 422 shows "Search text is too long." (no duplicated maxlength, the backend owns the 100-char limit); an active search with total 0 shows "No jobs match your search", separate from "No jobs yet".
+- VERIFIED (browser, user-confirmed): `zz` on Pares Retiro shows the 3 zz cards (screenshot); the user confirmed the other cases.
+- DONE (docs): `API_CONTRACT.md` Search bullet (call site) and "Last verified" updated.
+- Backend and admin panel: no change this step. Hardcodes: added the named constant `JOB_SEARCH_DEBOUNCE_MS`. Still flagged: inline API path at three call sites, `brandId` expression repeated three times.
+- NOT COMMITTED YET: `migrations/007_jobs_title_trgm_index.sql`, `app/routers/admin.py`, `app/templates/admin_brand_detail.html`, `docs/API_CONTRACT.md`, `docs/SCHEMA.md`, `PROJECT_STATE.md`.
+- NEXT: commit. Search feature steps are complete; planner use of `idx_jobs_title_trgm` at scale is still NOT proven.

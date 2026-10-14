@@ -85,7 +85,7 @@
                     </div>
 
                     <div class="mt-3">
-                        <input type="text" class="search-box" placeholder="Search...">
+                        <input type="text" class="search-box" id="job-search" placeholder="Search..." autocomplete="off">
                     </div>
 
                     <div class="filter-row">
@@ -98,6 +98,7 @@
 
                     <div id="job-list"></div>
                     <div class="text-muted d-none" id="job-list-empty">No jobs yet</div>
+                    <div class="text-muted d-none" id="job-list-no-match">No jobs match your search</div>
                     <div class="text-danger small d-none" id="job-list-error"></div>
                 </div>
             </main>
@@ -164,22 +165,30 @@
         }
         fetchBrandName();
 
-        // Job cards: rendered from GET /api/v1/admin/brands/{brand_id}/jobs (first page only, API default limit)
+        // Job cards: rendered from GET /api/v1/admin/brands/{brand_id}/jobs (first page only, API default limit), optional q from the search box
+        let loadJobsSeq = 0;
         async function loadJobs() {
             const brandId = window.location.pathname.split('/').filter(Boolean).pop();
             const listEl = document.getElementById('job-list');
             const emptyEl = document.getElementById('job-list-empty');
+            const noMatchEl = document.getElementById('job-list-no-match');
             const errorEl = document.getElementById('job-list-error');
+            const q = document.getElementById('job-search').value.trim();
+            const reqId = ++loadJobsSeq;
             emptyEl.classList.add('d-none');
+            noMatchEl.classList.add('d-none');
             errorEl.classList.add('d-none');
             try {
-                const res = await fetch('/api/v1/admin/brands/' + encodeURIComponent(brandId) + '/jobs');
+                const url = '/api/v1/admin/brands/' + encodeURIComponent(brandId) + '/jobs' + (q ? '?' + new URLSearchParams({ q: q }) : '');
+                const res = await fetch(url);
+                if (reqId !== loadJobsSeq) return;
                 if (!res.ok) {
-                    errorEl.textContent = res.status === 404 ? 'This brand no longer exists.' : 'Unable to load jobs.';
+                    errorEl.textContent = res.status === 404 ? 'This brand no longer exists.' : (res.status === 422 ? 'Search text is too long.' : 'Unable to load jobs.');
                     errorEl.classList.remove('d-none');
                     return;
                 }
                 const data = await res.json();
+                if (reqId !== loadJobsSeq) return;
                 listEl.replaceChildren();
                 (data.data || []).forEach(function (job) {
                     const card = document.createElement('div');
@@ -194,14 +203,23 @@
                     card.appendChild(meta);
                     listEl.appendChild(card);
                 });
-                if (!data.total) emptyEl.classList.remove('d-none');
+                if (!data.total) (q ? noMatchEl : emptyEl).classList.remove('d-none');
             } catch (err) {
+                if (reqId !== loadJobsSeq) return;
                 console.error('Failed to load jobs:', err);
                 errorEl.textContent = 'Could not reach the server.';
                 errorEl.classList.remove('d-none');
             }
         }
         loadJobs();
+
+        // Search box: debounced, re-queries the API with q
+        const JOB_SEARCH_DEBOUNCE_MS = 300;
+        let jobSearchTimer = null;
+        document.getElementById('job-search').addEventListener('input', function () {
+            clearTimeout(jobSearchTimer);
+            jobSearchTimer = setTimeout(loadJobs, JOB_SEARCH_DEBOUNCE_MS);
+        });
 
         // Create Job: the dropdown only selects the state; Confirm saves via POST /api/v1/admin/brands/{brand_id}/jobs
         (function () {

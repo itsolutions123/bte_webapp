@@ -119,6 +119,7 @@ Scoring rules (enforced by the API, recorded in API_CONTRACT.md):
 - `idx_jq_form_order` ON job_questions (form_id, display_order)
 - `idx_jobs_form_id` ON jobs (form_id)
 - `idx_jobs_brand_created` ON jobs (brand_id, created_at DESC NULLS LAST, id) - serves GET /api/v1/admin/brands/{brand_id}/jobs (migration 006, applied 2026-10-14)
+- `idx_jobs_title_trgm` ON jobs USING gin (title gin_trgm_ops) - typo-tolerant title search for GET /api/v1/admin/brands/{brand_id}/jobs `q` (migration 007, applied 2026-10-14; also installs extension `pg_trgm` 1.6)
 - `idx_forms_archived_at` ON forms (archived_at)
 - `idx_answer_points_question_id` ON answer_points (question_id)
 - `idx_answers_application_id` ON answers (application_id)

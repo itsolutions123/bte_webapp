@@ -4,7 +4,7 @@ import re
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_, literal
 
 from app.database import get_db
 from app.timeutil import to_app_tz
@@ -22,6 +22,11 @@ from app.schemas import (
 )
 
 router = APIRouter()
+
+# Brand page job search (docs/API_CONTRACT.md, Search (q)). Threshold confirmed by the user 2026-10-14;
+# revisit once there are real job titles.
+JOB_SEARCH_SIMILARITY_THRESHOLD = 0.5
+JOB_SEARCH_MAX_LENGTH = 100
 
 @router.get("/metadata/sidebar", response_model=SidebarMetadataResponse)
 async def get_sidebar_metadata(db: AsyncSession = Depends(get_db)):
@@ -164,20 +169,37 @@ async def list_brand_jobs(
     brand_id: uuid.UUID,
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=100),
+    q: Optional[str] = Query(None, max_length=JOB_SEARCH_MAX_LENGTH),
     db: AsyncSession = Depends(get_db),
 ):
     brand = await db.get(Brand, brand_id)
     if brand is None:
         raise HTTPException(status_code=404, detail="brand not found")
 
+    flt = [Job.brand_id == brand_id]
+    term = (q or "").strip()
+    if term:
+        # is_local=true: applies to this transaction only (already open from db.get above),
+        # so it covers the count and select below and cannot leak to another pooled request.
+        await db.execute(
+            select(func.set_config("pg_trgm.word_similarity_threshold", str(JOB_SEARCH_SIMILARITY_THRESHOLD), True))
+        )
+        escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        flt.append(
+            or_(
+                Job.title.ilike("%" + escaped + "%", escape="\\"),
+                literal(term).op("<%")(Job.title),
+            )
+        )
+
     total_result = await db.execute(
-        select(func.count()).select_from(Job).where(Job.brand_id == brand_id)
+        select(func.count()).select_from(Job).where(*flt)
     )
     total = total_result.scalar_one()
 
     result = await db.execute(
         select(Job)
-        .where(Job.brand_id == brand_id)
+        .where(*flt)
         .order_by(Job.created_at.desc().nulls_last(), Job.id)
         .offset((page - 1) * limit)
         .limit(limit)
