@@ -59,7 +59,7 @@
 - Forms creation is built first so it can be tested. The Applicants page waits.
 
 ## Decisions Recorded (2026-10-13)
-- Schema-change mechanism: option A. Plain SQL files in `migrations/NNN_*.sql`, applied with docker exec into bte_careers_db, non-destructive and idempotent where possible. Applied so far: 001 (`forms` table with unique `ix_forms_slug`) and 002 (nullable `jobs.form_id`, FK to `forms`, `idx_jobs_form_id`).
+- Schema-change mechanism: option A. Plain SQL files in `migrations/NNN_*.sql`, applied with docker exec into bte_careers_db, non-destructive and idempotent where possible. Applied so far: 001 (`forms` table with unique `ix_forms_slug`), 002 (nullable `jobs.form_id`, FK to `forms`, `idx_jobs_form_id`), 003 (`forms.archived_at`), 004 (`job_questions` form columns), 005 (`jobs` posting columns) and 006 (`idx_jobs_brand_created`, 2026-10-14).
 - Admin Forms page URL uses the form id: `/admin/forms/{form-UID}` (confirmed again 2026-10-13).
 - Applicant flow, served by bte_webapp on :8000 for now: job landing page `/careers/jobs/{job-UID}` (job UID is `jobs.id`) shows the instructions; the form page is `/careers/jobs/{job-UID}/forms/{form-UID}`. The job travels in the path because many jobs share a form, and the server must check that the form belongs to that job (`jobs.form_id`). These routes are not yet in API_CONTRACT.md.
 - Deployment layout: website on 10.0.10.37:8086 and webapp on 10.0.10.37:8000 (same VM, separate containers). Later plan, OUT OF SCOPE while local-only: website at bigtimeempire.com fetching job data from the webapp, webapp admin at ats.bigtimeempire.com/admin. The apply flow uses relative URLs so that move needs no code change.
@@ -278,7 +278,7 @@
 - Hardcodes found, not removed: inline `/api/v1/admin/brands/.../jobs` path and error texts in the brand page script; CDN URLs; placeholder job cards (intentional, unwired shell); slug regex duplicated between `create_brand` and `create_job`.
 - Docs: `docs/API_CONTRACT.md` updated (job-create contract and status, timestamps note, Last verified). `docs/SCHEMA.md` updated (jobs: `requirements`, nullable thresholds, non-unique slug, `is_active` as publish state, UTC storage shown in PHT). `docs/SECURITY.md`: no change.
 
-## Next: Brand page JOB LIST (feature step 2, not started)
+## Brand page JOB LIST (feature step 2: contract and migration 006 DONE 2026-10-14, endpoint not started)
 - Create Job (step 1) is COMMITTED and pushed to main as 3b07573 (2026-10-14).
 - Shell status: the brand page already has the shell (search box, "+ Add filter" and four placeholder filters, two placeholder "Job Title" cards). It stays a shell until each piece below is wired (Gem Prompts v4 section 8).
 - Start order (PROPOSED, not decided; one step per message, each verified before the next):
@@ -289,3 +289,12 @@
   5. Then, one at a time and each with its own contract: search, then each filter, then card click-through to a job page.
 - NOT in this step: job edit and publish/unpublish endpoints (the "editing unpublishes" rule applies when they are contracted), public posting endpoints, and how the website at :8086 reaches the API.
 - Test data: six throwaway rows in `jobs` (`zz job test` x2, `zz job published`, "Test" x3). Keep them until the list is verified; delete only after explicit confirmation naming the rows.
+
+## Session Log 2026-10-14 (Brand page job list: Structure decisions, contract, migration 006)
+- DECIDED (user): Option B. A brand-scoped `GET /api/v1/admin/brands/{brand_id}/jobs`, separate from the form-attach picker. Params `page` (>= 1) and `limit` (default 50, max 100). Order `created_at DESC NULLS LAST, id`. Null `is_active` is returned as false and null `created_at` as null. Card shows the title, "Published" or "Not published", and the created date. Empty state "No jobs yet".
+- DONE (contract): entry recorded in `docs/API_CONTRACT.md` (line 150), status PROPOSED, not implemented. "Last verified" (line 2) updated to cc90a98 + this commit.
+- DONE (schema): `migrations/006_jobs_brand_created_index.sql` applied and verified with `\di *jobs*`: `idx_jobs_brand_created ON jobs (brand_id, created_at DESC NULLS LAST, id)`. The key was changed from the first proposal `(brand_id, created_at DESC)` so it matches the ORDER BY. `docs/SCHEMA.md` updated (nullable notes on `jobs.is_active` and `jobs.created_at`, index entry at line 121).
+- MISMATCH (UNVERIFIED beyond a decorator grep, 2026-10-14): the contract documents `GET /api/v1/admin/jobs`, `PUT` and `DELETE /forms/{form_id}/jobs/{job_id}` and `DELETE /forms/{form_id}`, but none appear in `app/routers/admin.py`. A route registered some other way would be missed by the grep. To be verified before anyone relies on the contract.
+- MISMATCH (open, needs user ruling): `app/main.py` has `/admin` (single page), `/admin/archive`, `/admin/forms/{form_id}` and `/admin/brands/{brand_id}`. Gem Prompts v4 section 3 expects `/admin/home` and `/admin/applicants/{UID}` and name-based paths.
+- NEXT (API Gem): implement that one endpoint with `app/timeutil.py` for PHT, test live with curl, then update the contract status. After that, wire only the job cards on `/admin/brands/{brand_id}`.
+- Still open: scoring with null thresholds (`public.py:201-203`), job edit and publish/unpublish contracts, public posting endpoints, the website at :8086 reaching the API, converting other endpoints to PHT, deleting the six throwaway `jobs` rows (needs explicit confirmation naming them), missing admin auth, and the Gem Prompts v4 hand edit.

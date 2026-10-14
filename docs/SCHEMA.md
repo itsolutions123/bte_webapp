@@ -18,8 +18,8 @@
 - `pass_threshold` (Integer) - e.g., 75 (Percentage required to pass)
 - `pooling_threshold` (Integer) - e.g., 70
   - DECIDED 2026-10-14 (user): the pass/fail thresholds belong on the form, not on the job, and will be set up later. Migration 005 (applied 2026-10-14) made both columns NULLABLE so a job can be created without them. They are NOT dropped (dropping is destructive and needs explicit confirmation). While they are NULL, scoring in `app/routers/public.py` (lines 201-203) fails on apply (OPEN, Structure).
-- `is_active` (Boolean) - the publish state (decided 2026-10-14): true = published (shown on the public board); false = draft or unpublished (stored the same way). Editing a published job sets it to false.
-- `created_at` (Timestamp with time zone) - stored in UTC; API responses show it in PHT (+08:00), see API_CONTRACT.md Global Rules (Timestamps). The same convention applies to every timestamp column.
+- `is_active` (Boolean, Nullable in the DB; the API returns false for NULL) - the publish state (decided 2026-10-14): true = published (shown on the public board); false = draft or unpublished (stored the same way). Editing a published job sets it to false.
+- `created_at` (Timestamp with time zone, Nullable, no default; the API returns null when empty; leading column after brand_id in `idx_jobs_brand_created`) - stored in UTC; API responses show it in PHT (+08:00), see API_CONTRACT.md Global Rules (Timestamps). The same convention applies to every timestamp column.
 
 **`applicants`**
 - `id` (UUID, Primary Key)
@@ -118,6 +118,7 @@ Scoring rules (enforced by the API, recorded in API_CONTRACT.md):
 - `idx_applicant_email` ON applicants (email)
 - `idx_jq_form_order` ON job_questions (form_id, display_order)
 - `idx_jobs_form_id` ON jobs (form_id)
+- `idx_jobs_brand_created` ON jobs (brand_id, created_at DESC NULLS LAST, id) - serves GET /api/v1/admin/brands/{brand_id}/jobs (migration 006, applied 2026-10-14)
 - `idx_forms_archived_at` ON forms (archived_at)
 - `idx_answer_points_question_id` ON answer_points (question_id)
 - `idx_answers_application_id` ON answers (application_id)
