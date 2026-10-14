@@ -13,7 +13,7 @@
                         <div class="d-grid gap-2">
                             <button type="button" class="btn btn-outline-secondary text-start form-element-btn" data-element-type="YES_NO">Yes / No Question</button>
                             <button type="button" class="btn btn-outline-secondary text-start form-element-btn" data-element-type="OPEN_ENDED">Open ended</button>
-                            <button type="button" class="btn btn-outline-secondary text-start form-element-btn" draggable="true">Multiple Choice</button>
+                            <button type="button" class="btn btn-outline-secondary text-start form-element-btn" data-element-type="MULTIPLE_CHOICE">Multiple Choice</button>
                         </div>
                     </div>
                     <div class="col-9 p-4" id="form-contents-panel">
@@ -39,6 +39,11 @@
                     <div class="d-flex gap-2" id="element-choices-row">
                         <input type="text" id="element-choice-a" class="form-control text-center fw-bold" value="YES" aria-label="First choice">
                         <input type="text" id="element-choice-b" class="form-control text-center fw-bold" value="NO" aria-label="Second choice">
+                    </div>
+                    <div class="d-none" id="element-mc-choices-wrap">
+                        <div class="fw-bold mt-3 mb-2">Choices</div>
+                        <div id="element-mc-choices-list" class="d-flex flex-column gap-2"></div>
+                        <button type="button" class="btn btn-link btn-sm ps-0 mt-2" id="element-mc-add-choice-btn">+ Add choice</button>
                     </div>
                     <div class="text-danger small mt-2 d-none" id="element-modal-error"></div>
                     <div class="d-flex justify-content-end mt-4">

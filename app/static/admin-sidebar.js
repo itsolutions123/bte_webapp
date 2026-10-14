@@ -264,16 +264,59 @@
             editingCard = null;
             elOverlay.style.display = 'none';
         }
+        function mcChoiceRow(optionId, text) {
+            const row = document.createElement('div');
+            row.className = 'd-flex gap-2 align-items-center mc-choice-row';
+            row.dataset.optionId = optionId || '';
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control mc-choice-input';
+            input.placeholder = 'Choice text';
+            input.value = text || '';
+            input.setAttribute('aria-label', 'Choice text');
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn-sm btn-outline-danger mc-choice-remove';
+            removeBtn.textContent = '\u00d7';
+            removeBtn.setAttribute('aria-label', 'Remove choice');
+            removeBtn.addEventListener('click', function () {
+                const list = document.getElementById('element-mc-choices-list');
+                if (list.children.length > 3) row.remove();
+            });
+            row.appendChild(input);
+            row.appendChild(removeBtn);
+            return row;
+        }
+        function setMcChoices(options) {
+            const list = document.getElementById('element-mc-choices-list');
+            list.textContent = '';
+            const items = (options && options.length) ? options : [{}, {}, {}];
+            items.forEach(function (o) {
+                list.appendChild(mcChoiceRow(o.id, o.text));
+            });
+        }
+        function getMcChoiceValues() {
+            return Array.from(document.getElementById('element-mc-choices-list').children).map(function (row) {
+                return { id: row.dataset.optionId || null, text: row.querySelector('.mc-choice-input').value.trim() };
+            });
+        }
+        document.getElementById('element-mc-add-choice-btn').addEventListener('click', function () {
+            document.getElementById('element-mc-choices-list').appendChild(mcChoiceRow(null, ''));
+        });
         function openElementEditor(type) {
-            editorType = type === 'OPEN_ENDED' ? 'OPEN_ENDED' : 'YES_NO';
-            const isOpen = editorType === 'OPEN_ENDED';
-            document.getElementById('element-modal-title').textContent = isOpen ? 'Open Ended' : 'Yes / No Question';
-            document.getElementById('element-choices-label').classList.toggle('d-none', isOpen);
-            document.getElementById('element-choices-row').classList.toggle('d-none', isOpen);
+            editorType = (type === 'OPEN_ENDED' || type === 'MULTIPLE_CHOICE') ? type : 'YES_NO';
+            const isOpenEnded = editorType === 'OPEN_ENDED';
+            const isMultipleChoice = editorType === 'MULTIPLE_CHOICE';
+            document.getElementById('element-modal-title').textContent =
+                isOpenEnded ? 'Open Ended' : (isMultipleChoice ? 'Multiple Choice' : 'Yes / No Question');
+            document.getElementById('element-choices-label').classList.toggle('d-none', isOpenEnded || isMultipleChoice);
+            document.getElementById('element-choices-row').classList.toggle('d-none', isOpenEnded || isMultipleChoice);
+            document.getElementById('element-mc-choices-wrap').classList.toggle('d-none', !isMultipleChoice);
             editingCard = null;
             document.getElementById('element-name-input').value = '';
             document.getElementById('element-choice-a').value = 'YES';
             document.getElementById('element-choice-b').value = 'NO';
+            if (isMultipleChoice) setMcChoices(null);
             document.getElementById('element-modal-error').classList.add('d-none');
             elOverlay.style.display = 'flex';
             document.getElementById('element-name-input').focus();
@@ -285,13 +328,20 @@
         document.querySelectorAll('.form-element-btn[data-element-type="OPEN_ENDED"]').forEach(function (btn) {
             btn.addEventListener('click', function () { openElementEditor('OPEN_ENDED'); });
         });
+        document.querySelectorAll('.form-element-btn[data-element-type="MULTIPLE_CHOICE"]').forEach(function (btn) {
+            btn.addEventListener('click', function () { openElementEditor('MULTIPLE_CHOICE'); });
+        });
 
         function editElement(card) {
             openElementEditor(card.dataset.elementType);
             editingCard = card;
             document.getElementById('element-name-input').value = card.dataset.name;
-            document.getElementById('element-choice-a').value = card.dataset.choiceA;
-            document.getElementById('element-choice-b').value = card.dataset.choiceB;
+            if (card.dataset.elementType === 'MULTIPLE_CHOICE') {
+                setMcChoices(card.dataset.options ? JSON.parse(card.dataset.options) : null);
+            } else {
+                document.getElementById('element-choice-a').value = card.dataset.choiceA;
+                document.getElementById('element-choice-b').value = card.dataset.choiceB;
+            }
         }
 
         document.getElementById('element-confirm-btn').addEventListener('click', async function () {
@@ -299,21 +349,41 @@
             const name = document.getElementById('element-name-input').value.trim();
             const choiceA = document.getElementById('element-choice-a').value.trim();
             const choiceB = document.getElementById('element-choice-b').value.trim();
+            const mcChoices = editorType === 'MULTIPLE_CHOICE' ? getMcChoiceValues() : [];
             errorEl.classList.add('d-none');
             let msg = '';
             if (!name) msg = 'Question name is required.';
             else if (editorType === 'YES_NO' && (!choiceA || !choiceB)) msg = 'Both choices need a label.';
             else if (editorType === 'YES_NO' && choiceA.toLowerCase() === choiceB.toLowerCase()) msg = 'The two choices must be different.';
+            else if (editorType === 'MULTIPLE_CHOICE') {
+                if (mcChoices.some(function (c) { return !c.text; })) msg = 'Every choice needs a label.';
+                else if (mcChoices.length < 3) msg = 'At least 3 choices are required.';
+                else {
+                    const lower = mcChoices.map(function (c) { return c.text.toLowerCase(); });
+                    if (new Set(lower).size !== lower.length) msg = 'Choices must be different from each other.';
+                }
+            }
             if (msg) {
                 errorEl.textContent = msg;
                 errorEl.classList.remove('d-none');
                 return;
             }
             if (editingCard) {
-                if (editorType === 'OPEN_ENDED' && !editingCard.dataset.questionId) {
-                    // New (unsaved) Open ended card: DOM-only, Save creates it
+                if (editorType !== 'YES_NO' && !editingCard.dataset.questionId) {
+                    // New (unsaved) Open ended / Multiple Choice card: DOM-only, Save creates it
                     editingCard.dataset.name = name;
                     editingCard.querySelector('.element-title').textContent = name;
+                    if (editorType === 'MULTIPLE_CHOICE') {
+                        editingCard.dataset.options = JSON.stringify(mcChoices.map(function (c) { return { text: c.text }; }));
+                        const chipWrap0 = editingCard.querySelector('.element-choices');
+                        chipWrap0.textContent = '';
+                        mcChoices.forEach(function (c) {
+                            const chip = document.createElement('span');
+                            chip.className = 'border rounded px-3 py-1 small text-muted';
+                            chip.textContent = c.text;
+                            chipWrap0.appendChild(chip);
+                        });
+                    }
                     closeElementEditor();
                     return;
                 }
@@ -321,17 +391,22 @@
                     // Existing question: PATCH first, update the card only on success
                     const confirmBtn = document.getElementById('element-confirm-btn');
                     confirmBtn.disabled = true;
+                    let patchedOptions = null;
                     try {
+                        let reqBody;
+                        if (editorType === 'OPEN_ENDED') reqBody = { question_text: name };
+                        else if (editorType === 'MULTIPLE_CHOICE') reqBody = { question_text: name, options: mcChoices.map(function (c) { return c.id ? { id: c.id, text: c.text } : { text: c.text }; }) };
+                        else reqBody = { question_text: name, options: [choiceA, choiceB] };
                         const res = await fetch('/api/v1/admin/forms/' + encodeURIComponent(savedFormId) + '/questions/' + encodeURIComponent(editingCard.dataset.questionId), {
                             method: 'PATCH',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(editorType === 'OPEN_ENDED' ? { question_text: name } : { question_text: name, options: [choiceA, choiceB] })
+                            body: JSON.stringify(reqBody)
                         });
                         if (!res.ok) {
                             let detail = '';
                             try {
-                                const body = await res.json();
-                                if (typeof body.detail === 'string') detail = body.detail;
+                                const body2 = await res.json();
+                                if (typeof body2.detail === 'string') detail = body2.detail;
                             } catch (e) { /* no JSON body */ }
                             if (res.status === 404) errorEl.textContent = 'This question no longer exists.';
                             else if (res.status === 409) errorEl.textContent = 'This form is archived and cannot be edited.';
@@ -339,12 +414,31 @@
                             errorEl.classList.remove('d-none');
                             return;
                         }
+                        if (editorType === 'MULTIPLE_CHOICE') {
+                            const data = await res.json();
+                            patchedOptions = data.options || [];
+                        }
                     } catch (err) {
                         errorEl.textContent = 'Could not reach the server.';
                         errorEl.classList.remove('d-none');
                         return;
                     } finally {
                         confirmBtn.disabled = false;
+                    }
+                    if (editorType === 'MULTIPLE_CHOICE') {
+                        editingCard.dataset.name = name;
+                        editingCard.dataset.options = JSON.stringify(patchedOptions);
+                        editingCard.querySelector('.element-title').textContent = name;
+                        const chipWrap1 = editingCard.querySelector('.element-choices');
+                        chipWrap1.textContent = '';
+                        patchedOptions.forEach(function (o) {
+                            const chip = document.createElement('span');
+                            chip.className = 'border rounded px-3 py-1 small text-muted';
+                            chip.textContent = o.text;
+                            chipWrap1.appendChild(chip);
+                        });
+                        closeElementEditor();
+                        return;
                     }
                 }
                 if (editorType === 'OPEN_ENDED') {
@@ -378,17 +472,29 @@
             card.dataset.name = name;
             card.dataset.choiceA = choiceA;
             card.dataset.choiceB = choiceB;
+            if (editorType === 'MULTIPLE_CHOICE') {
+                card.dataset.options = JSON.stringify(mcChoices.map(function (c) { return { text: c.text }; }));
+            }
             const title = document.createElement('div');
             title.className = 'fw-bold element-title';
             title.textContent = name;
             const choices = document.createElement('div');
             choices.className = 'd-flex gap-2 mt-2 element-choices';
-            [choiceA, choiceB].forEach(function (label) {
-                const chip = document.createElement('span');
-                chip.className = 'border rounded px-3 py-1 small text-muted';
-                chip.textContent = label;
-                choices.appendChild(chip);
-            });
+            if (editorType === 'YES_NO') {
+                [choiceA, choiceB].forEach(function (label) {
+                    const chip = document.createElement('span');
+                    chip.className = 'border rounded px-3 py-1 small text-muted';
+                    chip.textContent = label;
+                    choices.appendChild(chip);
+                });
+            } else if (editorType === 'MULTIPLE_CHOICE') {
+                mcChoices.forEach(function (c) {
+                    const chip = document.createElement('span');
+                    chip.className = 'border rounded px-3 py-1 small text-muted';
+                    chip.textContent = c.text;
+                    choices.appendChild(chip);
+                });
+            }
             const header = document.createElement('div');
             header.className = 'd-flex justify-content-between align-items-start gap-2';
             const actions = document.createElement('div');
@@ -416,7 +522,7 @@
             header.appendChild(title);
             header.appendChild(actions);
             card.appendChild(header);
-            if (editorType === 'YES_NO') card.appendChild(choices);
+            if (editorType === 'YES_NO' || editorType === 'MULTIPLE_CHOICE') card.appendChild(choices);
             list.appendChild(card);
             closeElementEditor();
         });
@@ -476,15 +582,19 @@
                 const title = document.createElement('div');
                 title.className = 'fw-bold element-title';
                 title.textContent = q.question_text;
-                const labels = (q.options && q.options.length) ? q.options : (q.question_type === 'YES_NO' ? ['Yes', 'No'] : []);
+                const labels = (q.options && q.options.length)
+                    ? (q.question_type === 'MULTIPLE_CHOICE' ? q.options.map(function (o) { return o.text; }) : q.options)
+                    : (q.question_type === 'YES_NO' ? ['Yes', 'No'] : []);
                 const header = document.createElement('div');
                 header.className = 'd-flex justify-content-between align-items-start gap-2';
                 header.appendChild(title);
-                if (q.question_type === 'YES_NO' || q.question_type === 'OPEN_ENDED') {
+                if (q.question_type === 'YES_NO' || q.question_type === 'OPEN_ENDED' || q.question_type === 'MULTIPLE_CHOICE') {
                     card.dataset.name = q.question_text;
                     if (q.question_type === 'YES_NO') {
                         card.dataset.choiceA = labels[0];
                         card.dataset.choiceB = labels[1];
+                    } else if (q.question_type === 'MULTIPLE_CHOICE') {
+                        card.dataset.options = JSON.stringify(q.options || []);
                     }
                     const editBtn = document.createElement('button');
                     editBtn.type = 'button';
@@ -524,8 +634,8 @@
                 return;
             }
             const cards = Array.from(document.getElementById('form-contents-list').children);
-            if (cards.some(function (c) { return c.dataset.saved !== '1' && c.dataset.elementType !== 'YES_NO' && c.dataset.elementType !== 'OPEN_ENDED'; })) {
-                errorEl.textContent = 'Only Yes / No and Open ended questions can be saved for now. Remove the other elements first.';
+            if (cards.some(function (c) { return c.dataset.saved !== '1' && c.dataset.elementType !== 'YES_NO' && c.dataset.elementType !== 'OPEN_ENDED' && c.dataset.elementType !== 'MULTIPLE_CHOICE'; })) {
+                errorEl.textContent = 'Only Yes / No, Open ended and Multiple Choice questions can be saved for now. Remove the other elements first.';
                 errorEl.classList.remove('d-none');
                 return;
             }
@@ -560,7 +670,9 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(card.dataset.elementType === 'OPEN_ENDED'
                             ? { question_type: 'OPEN_ENDED', question_text: card.dataset.name }
-                            : { question_type: 'YES_NO', question_text: card.dataset.name, options: [card.dataset.choiceA, card.dataset.choiceB] })
+                            : card.dataset.elementType === 'MULTIPLE_CHOICE'
+                                ? { question_type: 'MULTIPLE_CHOICE', question_text: card.dataset.name, options: JSON.parse(card.dataset.options).map(function (o) { return o.text; }) }
+                                : { question_type: 'YES_NO', question_text: card.dataset.name, options: [card.dataset.choiceA, card.dataset.choiceB] })
                     });
                     if (qres.status !== 201) {
                         let detail = '';

@@ -296,8 +296,10 @@ async def create_question(form_id: str, payload: QuestionCreateRequest, db: Asyn
             if options[0].lower() == options[1].lower():
                 raise HTTPException(status_code=422, detail="the two YES_NO labels must be different")
     elif qtype == "MULTIPLE_CHOICE":
-        if options is None or len(options) != 4:
-            raise HTTPException(status_code=422, detail="MULTIPLE_CHOICE requires exactly 4 options")
+        if options is None or len(options) < 3:
+            raise HTTPException(status_code=422, detail="MULTIPLE_CHOICE requires at least 3 options")
+        if len(set(o.lower() for o in options)) != len(options):
+            raise HTTPException(status_code=422, detail="MULTIPLE_CHOICE options must be distinct")
     else:
         if options is not None:
             raise HTTPException(status_code=422, detail="OPEN_ENDED takes no options")
@@ -319,11 +321,15 @@ async def create_question(form_id: str, payload: QuestionCreateRequest, db: Asyn
     )
     next_order = max_result.scalar_one() + 1
 
+    stored_options = options
+    if qtype == "MULTIPLE_CHOICE" and options is not None:
+        stored_options = [{"id": uuid.uuid4().hex, "text": o} for o in options]
+
     question = JobQuestion(
         form_id=form_uuid,
         question_type=qtype,
         question_text=text,
-        options=options,
+        options=stored_options,
         is_hard_requirement=False,
         display_order=next_order,
     )
@@ -376,23 +382,47 @@ async def update_question(form_id: str, question_id: str, payload: QuestionUpdat
         question.question_text = text
 
     if payload.options is not None:
-        options = [o.strip() for o in payload.options]
-        if any(not o for o in options):
-            raise HTTPException(status_code=422, detail="option labels must not be empty")
-
         qtype = question.question_type
         if qtype == "YES_NO":
+            options = [o.strip() for o in payload.options]
+            if any(not o for o in options):
+                raise HTTPException(status_code=422, detail="option labels must not be empty")
             if len(options) != 2:
                 raise HTTPException(status_code=422, detail="YES_NO options must be exactly 2 labels")
             if options[0].lower() == options[1].lower():
                 raise HTTPException(status_code=422, detail="the two YES_NO labels must be different")
+            question.options = options
         elif qtype == "MULTIPLE_CHOICE":
-            if len(options) != 4:
-                raise HTTPException(status_code=422, detail="MULTIPLE_CHOICE requires exactly 4 options")
+            existing_ids = {o["id"] for o in (question.options or [])}
+            new_options = []
+            seen_ids = set()
+            for item in payload.options:
+                if not isinstance(item, dict) or "text" not in item:
+                    raise HTTPException(status_code=422, detail="MULTIPLE_CHOICE options must be objects with a text field")
+                opt_text = str(item["text"]).strip()
+                if not opt_text:
+                    raise HTTPException(status_code=422, detail="option labels must not be empty")
+                opt_id = item.get("id")
+                if opt_id is not None:
+                    opt_id = str(opt_id)
+                    if opt_id not in existing_ids:
+                        raise HTTPException(status_code=422, detail=f"unknown option id: {opt_id}")
+                    if opt_id in seen_ids:
+                        raise HTTPException(status_code=422, detail=f"duplicate option id in request: {opt_id}")
+                    seen_ids.add(opt_id)
+                else:
+                    opt_id = uuid.uuid4().hex
+                new_options.append({"id": opt_id, "text": opt_text})
+            if len(new_options) < 3:
+                raise HTTPException(status_code=422, detail="MULTIPLE_CHOICE requires at least 3 options")
+            if len(set(o["text"].lower() for o in new_options)) != len(new_options):
+                raise HTTPException(status_code=422, detail="MULTIPLE_CHOICE options must be distinct")
+            # NOTE: once the answer_points table exists, any answer_points rows referencing an
+            # option id removed here (present in existing_ids but not in new_options) must be
+            # deleted in the same transaction. Dormant for now -- answer_points is not live yet.
+            question.options = new_options
         else:
             raise HTTPException(status_code=422, detail="OPEN_ENDED takes no options")
-
-        question.options = options
 
     await db.commit()
     await db.refresh(question)

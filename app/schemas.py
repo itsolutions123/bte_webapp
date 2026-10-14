@@ -150,13 +150,13 @@ class AdminSummaryResponse(BaseModel):
 class QuestionCreateRequest(BaseModel):
     question_type: str
     question_text: str
-    options: Optional[List[str]] = None
+    options: Optional[List[Any]] = None
     is_hard_requirement: bool = False
     answer_points: Optional[List[Any]] = None
 
 class QuestionUpdateRequest(BaseModel):
     question_text: Optional[str] = None
-    options: Optional[List[str]] = None
+    options: Optional[List[Any]] = None
     is_hard_requirement: Optional[bool] = None
     answer_points: Optional[List[Any]] = None
 
@@ -172,7 +172,7 @@ class QuestionResponse(BaseModel):
     display_order: int
     question_type: str
     question_text: str
-    options: Optional[List[str]] = None
+    options: Optional[List[Any]] = None
     is_hard_requirement: bool = False
     answer_points: List[AnswerPointItem] = []
 

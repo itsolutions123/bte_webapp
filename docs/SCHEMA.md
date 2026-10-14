@@ -51,14 +51,14 @@ Each job points to at most one form through `jobs.form_id`. The applicant picks 
 - `display_order` (Integer, Not Null) - Sequence in the one-question-at-a-time wizard
 - `question_type` (String, Not Null) - One of `YES_NO`, `MULTIPLE_CHOICE`, `OPEN_ENDED`
 - `question_text` (String)
-- `options` (JSONB, nullable) - `MULTIPLE_CHOICE`: array of exactly 4 option texts in order A-D. `YES_NO`: array of exactly 2 label texts, `options[0]` is the display label for answer `YES` and `options[1]` for `NO`; null falls back to the labels Yes / No. `OPEN_ENDED`: null
+- `options` (JSONB, nullable) - `MULTIPLE_CHOICE`: array of 3 or more `{"id": "string", "text": "string"}` objects; `id` is a stable, server-assigned identifier (not shown to applicants) that `answer_points.answer_value` and applicant answers reference, so it must not change when an option is edited. `YES_NO`: array of exactly 2 label texts, `options[0]` is the display label for answer `YES` and `options[1]` for `NO`; null falls back to the labels Yes / No. `OPEN_ENDED`: null
 - `is_hard_requirement` (Boolean) - Must be false for `OPEN_ENDED`
 - `expected_answer` is REMOVED: "wrong" is now defined by FAIL points on an answer choice (see answer_points).
 
 **`answer_points`** (the admin cheat sheet: what each answer choice is worth)
 - `id` (UUID, Primary Key)
 - `question_id` (UUID, Foreign Key -> job_questions.id, Not Null, Indexed)
-- `answer_value` (String, Not Null) - `YES` or `NO` for YES_NO; `A` to `D` for MULTIPLE_CHOICE
+- `answer_value` (String, Not Null) - `YES` or `NO` for YES_NO; the chosen option's `id` (from `job_questions.options`) for MULTIPLE_CHOICE
 - `target_type` (String, Not Null) - `BRAND` or `FAIL`
 - `brand_id` (UUID, Foreign Key -> brands.id, nullable) - Required when target_type is BRAND, null when FAIL
 - `points` (Integer, Not Null, default 1) - For FAIL the amount is ignored: any FAIL row marks that choice as failing

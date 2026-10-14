@@ -1,5 +1,5 @@
 # API Contract: BTE Careers
-*Last verified: 2026-10-13 (bf1d8e4 + this commit: Open ended create and PATCH call sites verified in the browser, edit-mode toast — POST /forms/{form_id}/questions implemented and verified live, Form Builder Save wired and verified in the browser, YES_NO two-label rule stored via options; sidebar forms ordered alphabetically by name; archive endpoint call site (admin-sidebar.js); PATCH rename endpoint and its sidebar call site; archive endpoint, sidebar exclusion and forms list (with archived filter) implemented, rename implemented; POST /api/v1/admin/forms and GET /api/v1/admin/metadata/sidebar (forms from the forms table) now implemented, remaining admin forms endpoints and page route keyed by form id still planned; public applicant routes not yet recorded)*
+*Last verified: 2026-10-14 (6228423 + this commit: MULTIPLE_CHOICE contract changed from a fixed 4-option, letter-keyed (A-D) scheme to a variable-length (3 or more), server-assigned-id-keyed scheme — options now `[{"id","text"}]` for MULTIPLE_CHOICE in question create/update/GET responses and the public questions endpoint; answer_points.answer_value and applicant answers use that id; admin application detail resolves applicant_answer back to option text. UNVERIFIED pending code + live test — see section 17 rule text and SCHEMA.md column comments)*
 
 ## Global Rules
 - All `/api/v1/admin/*` endpoints require HR authentication (cookie/token).
@@ -20,7 +20,7 @@
 - **Purpose:** Fetch the questions of the form the job uses (`jobs.form_id`), in `display_order`. Never returns answer points or which choice is "wrong". A job with no form returns `{ "data": [] }` (UNVERIFIED assumption, see apply rules).
 - **Request:** None
 - **Response (200 OK):**
-  `{ "data": [ { "id": "uuid", "question_text": "string", "display_order": int, "question_type": "YES_NO|MULTIPLE_CHOICE|OPEN_ENDED", "options": ["string"] or null } ] }`
+  `{ "data": [ { "id": "uuid", "question_text": "string", "display_order": int, "question_type": "YES_NO|MULTIPLE_CHOICE|OPEN_ENDED", "options": ["string"] (YES_NO) or [{"id": "string", "text": "string"}] (MULTIPLE_CHOICE, 3 or more) or null (OPEN_ENDED) } ] }`
 
 ### `POST /api/v1/public/apply`
 - **Purpose:** Submit an application.
@@ -28,7 +28,7 @@
 - **Request:**
   * `job_id` (uuid)
   * `first_name`, `last_name`, `email`, `phone` (strings)
-  * `answers` (JSON string array: `[{"question_id": "uuid", "answer": "string"}]`). Every YES_NO and MULTIPLE_CHOICE question of the job's form must be answered. Missing answers, unknown question ids or invalid JSON return 422. A job with no form returns 409. The job and form are validated BEFORE the resume is written to disk. Scoring and suggested fit follow section 3.
+  * `answers` (JSON string array: `[{"question_id": "uuid", "answer": "string"}]`). Every YES_NO and MULTIPLE_CHOICE question of the job's form must be answered. For MULTIPLE_CHOICE, `answer` is the chosen option's `id` (from that question's `options` list), not its text or a letter. Missing answers, unknown question ids, an unknown option id, or invalid JSON return 422. A job with no form returns 409. The job and form are validated BEFORE the resume is written to disk. Scoring and suggested fit follow section 3.
   * `resume` (File, PDF only)
   * `terms_version` (string)
   * `consent_agreed` (boolean) - Philippine Data Privacy Act (RA 10173)
@@ -55,6 +55,7 @@
 - **Request:** None
 - **Response (200 OK):**
   `{ "id": "uuid", "applicant": { "name": "string", "email": "string", "phone": "string" }, "score": int, "status": "string", "parsed_data": {}, "flags": ["string"], "suggested_fit": { "brands": [ { "brand_id": "uuid", "brand_name": "string", "points": int } ], "is_tie": bool } or null, "answers": [ { "question": "string", "question_type": "string", "applicant_answer": "string", "is_passed": bool or null } ], "duplicate_applications": [ { "job_title": "string", "status": "string", "date": "timestamp" } ] }`
+- For `MULTIPLE_CHOICE` questions, `applicant_answer` is resolved to the chosen option's `text` (not its `id`) for admin readability.
 
 ### `PATCH /api/v1/admin/applications/{application_id}/status`
 - **Purpose:** Manual override of an applicant's status.
@@ -100,7 +101,7 @@ All endpoints require HR authentication (see Global Rules). A form is a shared t
 
 ### `GET /api/v1/admin/forms/{form_id}`
 - **Purpose:** Form detail for the editor: name, the jobs that use it, and all questions in order with their answer points (a form holds a small, bounded number of questions, so the list is not paginated).
-- **Response (200 OK):** `{ "id": "uuid", "slug": "string", "name": "string", "jobs": [ { "id": "uuid", "slug": "string", "title": "string", "brand_name": "string" } ], "questions": [ { "id": "uuid", "display_order": int, "question_type": "YES_NO|MULTIPLE_CHOICE|OPEN_ENDED", "question_text": "string", "options": ["string"] or null, "is_hard_requirement": bool, "answer_points": [ { "answer_value": "YES|NO|A|B|C|D", "target_type": "BRAND|FAIL", "brand_id": "uuid or null", "brand_name": "string or null", "points": int } ] } ] }`
+- **Response (200 OK):** `{ "id": "uuid", "slug": "string", "name": "string", "jobs": [ { "id": "uuid", "slug": "string", "title": "string", "brand_name": "string" } ], "questions": [ { "id": "uuid", "display_order": int, "question_type": "YES_NO|MULTIPLE_CHOICE|OPEN_ENDED", "question_text": "string", "options": ["string"] (YES_NO) or [{"id": "string", "text": "string"}] (MULTIPLE_CHOICE) or null (OPEN_ENDED), "is_hard_requirement": bool, "answer_points": [ { "answer_value": "YES|NO|<option id for MULTIPLE_CHOICE>", "target_type": "BRAND|FAIL", "brand_id": "uuid or null", "brand_name": "string or null", "points": int } ] } ] }`
 - **Errors:** 404 form not found.
 - **Status:** Implemented 2026-10-13 (`app/routers/admin.py`, `get_form_detail`). `answer_points` is always `[]` in every question -- the `answer_points` table does not exist in the live DB yet (confirmed via `\dt`, SCHEMA.md held migration), so no AnswerPoint query runs. Verified live: 422 malformed id, 404 unknown id, 200 real form (`zz save check 3`: empty `jobs`, one YES_NO question with its options and `answer_points: []`). Call site: `app/static/admin-sidebar.js` (`openFormBuilderForEdit`, opened by the Edit button on `/admin/forms/{form_id}`; shows `question_text` and `options` read-only). Verified in the browser 2026-10-13: existing questions load, new ones save and appear on reopen. No HR-auth check yet (existing gap; Security owns it).
 
@@ -139,10 +140,10 @@ All endpoints require HR authentication (see Global Rules). A form is a shared t
 
 ### `POST /api/v1/admin/forms/{form_id}/questions`
 - **Purpose:** Add a question with its answer points. `display_order` is assigned server-side as last + 1.
-- **Request:** JSON `{ "question_type": "YES_NO|MULTIPLE_CHOICE|OPEN_ENDED", "question_text": "string", "options": ["A text", "B text", "C text", "D text"], "is_hard_requirement": bool, "answer_points": [ { "answer_value": "A", "target_type": "BRAND", "brand_id": "uuid", "points": 1 }, { "answer_value": "B", "target_type": "FAIL" } ] }`
+- **Request:** JSON `{ "question_type": "YES_NO|MULTIPLE_CHOICE|OPEN_ENDED", "question_text": "string", "options": ["Choice text 1", "Choice text 2", "Choice text 3"], "is_hard_requirement": bool, "answer_points": [ { "answer_value": "<option id>", "target_type": "BRAND", "brand_id": "uuid", "points": 1 }, { "answer_value": "<option id>", "target_type": "FAIL" } ] }` (for MULTIPLE_CHOICE, the create request sends plain option text; the server assigns a stable `id` to each option and returns it in the response. `answer_points` for MULTIPLE_CHOICE uses that server-assigned `id`, never text or a letter -- so answer_points can only reference MULTIPLE_CHOICE options on a follow-up PATCH once the create response's ids are known.)
 - **Rules:**
   * `YES_NO`: optional `options` of exactly 2 non-empty, distinct label texts (e.g. ["Own a car", "Do not own a car"]). `options[0]` is the display label for `YES`, `options[1]` for `NO`; omitted or null means the labels Yes / No. `answer_value` is always "YES" or "NO" and scoring is unchanged (implemented 2026-10-13 in POST and PATCH questions).
-  * `MULTIPLE_CHOICE`: exactly 4 `options`; `answer_value` is "A" to "D".
+  * `MULTIPLE_CHOICE`: at least 3 `options` (no maximum), each trimmed, non-empty, and distinct (case-insensitive). On create, the server generates a stable `id` for each option; `answer_value` in `answer_points` is that `id`, never text or a letter. On PATCH, an option object that includes an existing `id` keeps that id (and can have its `text` edited); an option object with no `id` is treated as new and gets one assigned; an existing `id` left out of the submitted list is deleted along with any `answer_points` rows that reference it.
   * `OPEN_ENDED`: no `options`, no `answer_points`, `is_hard_requirement` must be false.
   * `target_type` `BRAND` requires an existing `brand_id` and `points` of 1 or more. `FAIL` takes no `brand_id`, and its `points` value is ignored (any FAIL row marks that choice as failing).
   * One answer choice may have several rows (for example "+1 brand" and "+1 fail").
@@ -179,7 +180,7 @@ All endpoints require HR authentication (see Global Rules). A form is a shared t
 A form's submissions are the applications for the jobs that use it: `GET /api/v1/admin/applications?form_id={form.id}` (section 2).
 
 ### Scoring and suggested fit (applies to `POST /api/v1/public/apply`)
-- Answer values: `YES_NO` is "YES" or "NO", `MULTIPLE_CHOICE` is "A" to "D", `OPEN_ENDED` is the applicant's full free text, stored as is and never scored.
+- Answer values: `YES_NO` is "YES" or "NO", `MULTIPLE_CHOICE` is the chosen option's `id` (a string), `OPEN_ENDED` is the applicant's full free text, stored as is and never scored.
 - Score: percent of scored questions (YES_NO and MULTIPLE_CHOICE) whose chosen answer has no FAIL row. OPEN_ENDED is excluded from the divisor. A hard-requirement question whose chosen answer has a FAIL row sets `has_hard_fail_flag` and status FAILED. `pass_threshold` and `pooling_threshold` work as before.
 - Suggested fit: BRAND points are summed per brand and stored in `applications.brand_points`. The brands with the highest total above 0 are the suggested fit. More than one means a tie, shown to the admin as "suited for both ...". No brand points means no flag. The flag never changes the score or status.
 
