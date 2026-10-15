@@ -50,6 +50,31 @@ async def get_public_jobs(
         
     return PublicJobsResponse(data=jobs, total=total)
 
+@router.get("/jobs/{job_id}", response_model=PublicJob)
+async def get_public_job(
+    job_id: UUID4,
+    db: AsyncSession = Depends(get_db)
+):
+    query = (
+        select(Job, Brand.name.label("brand_name"), Brand.slug.label("brand_slug"))
+        .join(Brand)
+        .where(Job.id == job_id, Job.is_active == True)
+    )
+    row = (await db.execute(query)).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    job_obj, brand_name, brand_slug = row
+    return PublicJob(
+        id=job_obj.id,
+        slug=job_obj.slug,
+        title=job_obj.title,
+        description=job_obj.description,
+        requirements=job_obj.requirements,
+        brand_id=job_obj.brand_id,
+        brand_name=brand_name,
+        brand_slug=brand_slug
+    )
+
 @router.get("/jobs/{job_id}/questions", response_model=PublicJobQuestionsResponse)
 async def get_job_questions(
     job_id: UUID4,

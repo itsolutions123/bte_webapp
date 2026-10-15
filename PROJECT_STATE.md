@@ -1,7 +1,7 @@
 # Project State: BTE Careers (ATS)
 
 **Last Updated:** 2026-10-15
-**Status:** Admin UI Redesigned & Admin API Wired -- Form creation (name-only) live end-to-end; `/admin/forms/{form_id}` page started (shell + title wiring); apply wizard loads real questions per job; form-to-job attach endpoint live
+**Status:** Admin UI Redesigned & Admin API Wired -- Form creation (name-only) live end-to-end; `/admin/forms/{form_id}` page started (shell + title wiring); apply wizard loads real questions per job and shows the real job title and brand; form-to-job attach endpoint live
 
 ## Infrastructure & Environment
 - **Host:** ansible-srv (10.0.10.37)
@@ -22,8 +22,8 @@
 - `POST /api/v1/admin/forms` -> 201 Created (verified 2026-10-13)
 - Admin forms routes implemented 2026-10-13 (verification status per endpoint is in `docs/API_CONTRACT.md` section 3): `GET /forms`, `GET /forms/{form_id}`, `PATCH /forms/{form_id}`, `POST /forms/{form_id}/archive`, `POST /forms/{form_id}/questions`, `PATCH /forms/{form_id}/questions/{question_id}` (200 and 404 verified; `options` on YES_NO verified in the browser), `DELETE /forms/{form_id}/questions/{question_id}` (404 verified only; the 204 path is untested).
 - Page routes: `GET /admin/forms/{form_id}` (Edit button opens the form builder on the form's questions).
-- `PUT /api/v1/admin/forms/{form_id}/jobs/{job_id}` -> 200 (verified 2026-10-15: 422 bad id, 404 unknown form, 404 unknown job, 200 attach, 200 repeat; the 409 and the archived-form case are NOT tested). `GET /api/v1/public/jobs/{job_id}/questions` verified live (empty list, then 7 questions).
-- Apply page `/apply?job_id=` loads the job's questions from the public endpoint (apply.html loader; answers stored as YES/NO or the option id; "not open" note and disabled Proceed on an empty list, 404 or unknown type). Verified in the browser 2026-10-15 through the review step. Still a shell: the job title and brand placeholders and the Submit button (nothing is posted). `POST /apply` is out of date against SCHEMA.md (job_id filter, expected_answer, no address/gender/date_of_birth).
+- `PUT /api/v1/admin/forms/{form_id}/jobs/{job_id}` -> 200 (verified 2026-10-15: 422 bad id, 404 unknown form, 404 unknown job, 200 attach, 200 repeat; the 409 and the archived-form case are NOT tested). `GET /api/v1/public/jobs/{job_id}/questions` verified live (empty list, then 7 questions). `GET /api/v1/public/jobs/{job_id}` -> 200 verified live 2026-10-15 (404 unknown id, 422 malformed id; the inactive-job 404 is by code review only).
+- Apply page `/apply?job_id=` loads the job's questions from the public endpoint (apply.html loader; answers stored as YES/NO or the option id; "not open" note and disabled Proceed on an empty list, 404 or unknown type). Verified in the browser 2026-10-15 through the review step. The header shows the real job title and brand from `GET /api/v1/public/jobs/{job_id}`; an unknown job shows "Job unavailable" with the not-open note and Proceed disabled (verified in the browser 2026-10-15). Still a shell: the yellow shell banner and the Submit button (nothing is posted). `POST /apply` is out of date against SCHEMA.md (job_id filter, expected_answer, no address/gender/date_of_birth).
 - DATA: CASHIER is attached to Assessment Form (test attachment; persists until a detach endpoint exists). Not built yet: `GET /api/v1/admin/jobs` picker, `DELETE` detach, attach UI on the form page. Open for Structure: whether an archived form may accept a job.
 
 ## Key Technical Decisions & Fixes

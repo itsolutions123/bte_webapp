@@ -11,8 +11,8 @@
     <div class="apply-shell-banner">Shell preview: placeholder content only. Nothing is saved or submitted.</div>
     <div class="apply-wrap">
         <a href="{{ website_careers_url }}" id="leave-link" class="back-link" data-careers-url="{{ website_careers_url }}">&larr; Back to careers</a>
-        <h1 class="apply-title">Job Title Placeholder</h1>
-        <p class="apply-sub">Brand Name Placeholder</p>
+        <h1 class="apply-title" id="job-title">Loading&hellip;</h1>
+        <p class="apply-sub" id="job-brand"></p>
 
         <div class="apply-card">
             <!-- STEP 1: details (client-side only, no backend call) -->
@@ -199,6 +199,19 @@
             loadNote.textContent = msg;
             loadNote.classList.remove('hidden');
             $('btn-proceed').disabled = true;
+        }
+        // ---- Header: real job title and brand (GET /api/v1/public/jobs/{job_id}) ----
+        if (JOB_ID) {
+            fetch('/api/v1/public/jobs/' + encodeURIComponent(JOB_ID))
+                .then(function (res) { if (!res.ok) throw new Error('unavailable'); return res.json(); })
+                .then(function (job) {
+                    $('job-title').textContent = job.title;
+                    $('job-brand').textContent = job.brand_name;
+                    document.title = 'Apply - ' + job.title + ' - BTE Careers';
+                })
+                .catch(function () { $('job-title').textContent = 'Job unavailable'; });
+        } else {
+            $('job-title').textContent = 'Job unavailable';
         }
         $('btn-proceed').disabled = true;
         if (!JOB_ID) {
