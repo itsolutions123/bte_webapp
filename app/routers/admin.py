@@ -164,6 +164,28 @@ async def create_job(brand_id: uuid.UUID, payload: JobCreateRequest, db: AsyncSe
         created_at=to_app_tz(job.created_at),
     )
 
+@router.get("/brands/{brand_id}/jobs/{job_id}", response_model=JobResponse)
+async def get_brand_job(brand_id: uuid.UUID, job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    brand = await db.get(Brand, brand_id)
+    if brand is None:
+        raise HTTPException(status_code=404, detail="brand not found")
+
+    job = await db.get(Job, job_id)
+    if job is None or job.brand_id != brand.id:
+        raise HTTPException(status_code=404, detail="job not found")
+
+    return JobResponse(
+        id=job.id,
+        brand_id=job.brand_id,
+        title=job.title,
+        slug=job.slug,
+        description=job.description,
+        requirements=job.requirements,
+        is_active=bool(job.is_active),
+        form_id=job.form_id,
+        created_at=to_app_tz(job.created_at),
+    )
+
 @router.get("/brands/{brand_id}/jobs", response_model=BrandJobsResponse)
 async def list_brand_jobs(
     brand_id: uuid.UUID,
