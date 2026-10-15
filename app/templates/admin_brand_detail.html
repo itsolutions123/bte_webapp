@@ -171,6 +171,7 @@
             background: #ffffff; color: #374151;
         }
         .jd-input:focus { outline: none; border-color: #d9c26a; box-shadow: 0 0 0 3px rgba(207,168,56,.15); }
+        .jd-pod { white-space: pre-wrap; }
         .jd-label { font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #6b7280; margin-bottom: .35rem; }
         .jd-pod {
             background: #f7f8fa; border: 1px solid #eef0f3; border-radius: 12px; padding: .8rem 1rem;
@@ -280,7 +281,27 @@
                     expiry.textContent = 'Expires: \u2014';
                     card.style.cursor = 'pointer';
                     card.addEventListener('click', function () {
-                        bootstrap.Modal.getOrCreateInstance(document.getElementById('jobDetailModal')).show();
+                        const detailEl = document.getElementById('jobDetailModal');
+                        detailEl.dataset.jobId = job.id;
+                        document.getElementById('jobDetailModalLabel').textContent = job.title;
+                        document.getElementById('job-detail-title').textContent = job.title;
+                        document.getElementById('job-detail-description').textContent = 'Loading...';
+                        document.getElementById('job-detail-requirements').textContent = 'Loading...';
+                        bootstrap.Modal.getOrCreateInstance(detailEl).show();
+                        fetch('/api/v1/admin/brands/' + encodeURIComponent(brandId) + '/jobs/' + encodeURIComponent(job.id))
+                            .then(function (res) { return res.ok ? res.json() : Promise.reject(res.status); })
+                            .then(function (d) {
+                                if (detailEl.dataset.jobId !== job.id) return;
+                                document.getElementById('jobDetailModalLabel').textContent = d.title;
+                                document.getElementById('job-detail-title').textContent = d.title;
+                                document.getElementById('job-detail-description').textContent = d.description || '\u2014';
+                                document.getElementById('job-detail-requirements').textContent = d.requirements || '\u2014';
+                            })
+                            .catch(function () {
+                                if (detailEl.dataset.jobId !== job.id) return;
+                                document.getElementById('job-detail-description').textContent = 'Unable to load this job.';
+                                document.getElementById('job-detail-requirements').textContent = '\u2014';
+                            });
                     });
                     card.appendChild(title);
                     card.appendChild(meta);
