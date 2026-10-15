@@ -1,7 +1,23 @@
+@font-face {
+    font-family: 'Ubuntu';
+    src: url('/static/fonts/Ubuntu-R.ttf') format('truetype');
+    font-weight: 300 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+:root {
+    --font-display: 3rem;
+    --font-heading: 2rem;
+    --font-subheading: 1.2rem;
+    --font-body: 1rem;
+    --font-small: .85rem;
+}
+
 body.careers-body {
     background-color: #0a0a0a;
     color: #ffffff;
-    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-family: 'Ubuntu', 'Helvetica Neue', Arial, sans-serif;
     margin: 0;
     padding: 0;
 }
@@ -19,13 +35,13 @@ body.careers-body {
 .career-section h2 {
     color: #cfa838; /* BTE Gold */
     text-transform: uppercase;
-    font-size: 3rem;
+    font-size: var(--font-display);
     margin: 0 0 10px 0;
     letter-spacing: 2px;
 }
 
 .career-section p {
-    font-size: 1.2rem;
+    font-size: var(--font-subheading);
     margin: 0;
     font-weight: 300;
 }
@@ -110,7 +126,7 @@ body.careers-body {
     border-left: 4px solid #cfa838;
     padding: 16px;
     margin-bottom: 20px;
-    font-size: 0.9rem;
+    font-size: var(--font-small);
     line-height: 1.5;
     color: #cccccc;
     max-height: 150px;
@@ -122,7 +138,7 @@ body.careers-body {
     margin-top: 0;
     margin-bottom: 8px;
     text-transform: uppercase;
-    font-size: 0.85rem;
+    font-size: var(--font-small);
     letter-spacing: 1px;
 }
 
@@ -142,7 +158,7 @@ body.careers-body {
 }
 
 .checkbox-group label {
-    font-size: 0.9rem;
+    font-size: var(--font-small);
     color: #e0e0e0;
     line-height: 1.4;
     cursor: pointer;

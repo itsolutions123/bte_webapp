@@ -28,6 +28,7 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - WEBSITE_CAREERS_URL=http://10.0.10.37:8086/careers
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:?DB_PASSWORD must be set in .env}@db:5432/${DB_NAME:-bte_careers}
       - APP_TIMEZONE=Asia/Manila
     depends_on:

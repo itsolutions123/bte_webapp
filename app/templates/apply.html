@@ -10,7 +10,7 @@
 <body class="careers-body">
     <div class="apply-shell-banner">Shell preview: placeholder content only. Nothing is saved or submitted.</div>
     <div class="apply-wrap">
-        <a href="/careers" id="leave-link" class="back-link">&larr; Back to careers</a>
+        <a href="{{ website_careers_url }}" id="leave-link" class="back-link" data-careers-url="{{ website_careers_url }}">&larr; Back to careers</a>
         <h1 class="apply-title">Job Title Placeholder</h1>
         <p class="apply-sub">Brand Name Placeholder</p>
 
@@ -200,7 +200,7 @@
             if (dirty) { e.preventDefault(); $('leave-modal').classList.remove('hidden'); }
         });
         $('leave-stay').addEventListener('click', function () { $('leave-modal').classList.add('hidden'); });
-        $('leave-go').addEventListener('click', function () { dirty = false; window.location.href = '/careers'; });
+        $('leave-go').addEventListener('click', function () { dirty = false; window.location.href = document.getElementById('leave-link').dataset.careersUrl; });
     })();
     </script>
 </body>

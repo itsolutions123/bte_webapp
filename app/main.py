@@ -32,7 +32,11 @@ app.mount("/static", StaticFiles(directory=os.path.join(base_dir, "static")), na
 @app.get("/apply", include_in_schema=False)
 async def serve_apply_page(request: Request, job_id: str = ""):
     # We pass job_id to pre-fill the hidden input in apply.html
-    return templates.TemplateResponse(request=request, name="apply.html", context={"job": {"id": job_id}})
+    return templates.TemplateResponse(
+        request=request,
+        name="apply.html",
+        context={"job": {"id": job_id}, "website_careers_url": os.environ["WEBSITE_CAREERS_URL"]},
+    )
 
 @app.get("/careers", include_in_schema=False)
 async def serve_careers_board(request: Request):
