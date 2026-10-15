@@ -5,7 +5,14 @@ import nh3
 
 # Allowlist CONFIRMED by the user 2026-10-15 (docs/SECURITY.md section 6).
 ALLOWED_TAGS = {"p", "br", "ul", "ol", "li", "strong", "em", "u", "span"}
-ALLOWED_ATTRIBUTES = {"p": {"class"}, "li": {"class"}, "span": {"class"}}
+ALLOWED_ATTRIBUTES = {
+    "p": {"class"},
+    "li": {"class"},
+    "span": {"class"},
+    "strong": {"class"},
+    "em": {"class"},
+    "u": {"class"},
+}
 ALLOWED_CLASSES = (
     {f"ql-indent-{n}" for n in range(1, 9)}
     | {"ql-size-small", "ql-size-large", "ql-size-huge"}
