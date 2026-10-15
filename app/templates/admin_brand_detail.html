@@ -141,6 +141,82 @@
         </div>
     </div>
     {% include '_form_builder.html' %}
+    <!-- SHELL: job detail modal, placeholders only, not wired yet -->
+    <style>
+        #jobDetailModal .modal-content {
+            border: 0; border-radius: 20px; background: #ffffff;
+            box-shadow: 0 12px 40px rgba(17,24,39,.10);
+        }
+        #jobDetailModal .modal-header { border-bottom: 1px solid #f0f1f4; padding: 1rem 1.5rem; }
+        #jobDetailModal .modal-body { padding: 1.25rem 1.5rem; }
+        #jobDetailModal .modal-footer { border-top: 1px solid #f0f1f4; padding: .85rem 1.5rem; }
+        #jobDetailModal .jd-title { font-weight: 700; color: #1f2328; }
+        .jd-btn {
+            border: 1px solid #e6e8ec; border-radius: 10px; padding: .4rem .9rem; font-weight: 600; font-size: .85rem;
+            background: #ffffff; color: #374151; box-shadow: 0 1px 2px rgba(17,24,39,.05);
+            transition: background .15s ease, box-shadow .15s ease;
+        }
+        .jd-btn:hover { background: #f9fafb; box-shadow: 0 2px 6px rgba(17,24,39,.08); }
+        .jd-btn:active { background: #f3f4f6; box-shadow: none; }
+        .jd-btn-dark { background: #1f2328; border-color: #1f2328; color: #ffffff; }
+        .jd-btn-dark:hover { background: #2d3238; }
+        .jd-btn-gold { background: #fbf5df; border-color: #f1e4b4; color: #7a6212; }
+        .jd-btn-gold:hover { background: #f8efce; }
+        .jd-chip {
+            display: inline-block; border-radius: 999px; padding: .25rem .75rem; font-size: .78rem; font-weight: 700;
+            color: #7a6212; background: #fbf5df;
+        }
+        .jd-input {
+            border: 1px solid #e6e8ec; border-radius: 10px; padding: .4rem .75rem; font-size: .85rem;
+            background: #ffffff; color: #374151;
+        }
+        .jd-input:focus { outline: none; border-color: #d9c26a; box-shadow: 0 0 0 3px rgba(207,168,56,.15); }
+        .jd-label { font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #6b7280; margin-bottom: .35rem; }
+        .jd-pod {
+            background: #f7f8fa; border: 1px solid #eef0f3; border-radius: 12px; padding: .8rem 1rem;
+            margin-bottom: 1rem; color: #1f2328;
+        }
+        .job-card { border-radius: 24px; transition: transform .15s ease, box-shadow .15s ease; }
+        .job-card:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(17,24,39,.07); }
+        .job-card-expiry {
+            display: inline-block; margin-top: .35rem; padding: .1rem .7rem; border-radius: 999px;
+            font-size: .78rem; font-weight: 700; color: #7a6212; background: #fbf5df;
+        }
+    </style>
+    <div class="modal fade" id="jobDetailModal" tabindex="-1" aria-labelledby="jobDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title jd-title" id="jobDetailModalLabel">Job Title</h5>
+                    <div class="d-flex gap-2 ms-auto me-3">
+                        <button type="button" class="jd-btn" id="job-detail-edit-btn">Edit</button>
+                        <button type="button" class="jd-btn jd-btn-gold" id="job-detail-renew-btn">Renew</button>
+                        <button type="button" class="jd-btn" id="job-detail-archive-btn">Archive</button>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <span class="jd-chip">Expires: <span id="job-detail-expiry">&mdash;</span></span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mb-4">
+                        <input type="datetime-local" class="jd-input" id="job-detail-expiry-input">
+                        <button type="button" class="jd-btn jd-btn-gold" id="job-detail-set-duration-btn">Set duration</button>
+                    </div>
+                    <div class="jd-label">Title</div>
+                    <div class="jd-pod fw-bold" id="job-detail-title">Job Title</div>
+                    <div class="jd-label">Description</div>
+                    <div class="jd-pod" id="job-detail-description">Description</div>
+                    <div class="jd-label">Requirements</div>
+                    <div class="jd-pod mb-0" id="job-detail-requirements">Requirements</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="jd-btn jd-btn-dark px-4" id="job-detail-save-btn">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/admin-sidebar.js"></script>
     <script>
@@ -199,8 +275,16 @@
                     const meta = document.createElement('div');
                     meta.className = 'job-card-meta';
                     meta.textContent = (job.is_active ? 'Published' : 'Not published') + (job.created_at ? ' - ' + job.created_at.slice(0, 10) : '');
+                    const expiry = document.createElement('div');
+                    expiry.className = 'job-card-meta job-card-expiry';
+                    expiry.textContent = 'Expires: \u2014';
+                    card.style.cursor = 'pointer';
+                    card.addEventListener('click', function () {
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('jobDetailModal')).show();
+                    });
                     card.appendChild(title);
                     card.appendChild(meta);
+                    card.appendChild(expiry);
                     listEl.appendChild(card);
                 });
                 if (!data.total) (q ? noMatchEl : emptyEl).classList.remove('d-none');
