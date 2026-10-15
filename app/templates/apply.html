@@ -83,13 +83,11 @@
 
     <script>
     (function () {
-        // SHELL ONLY: fake questions, replaced when GET /api/v1/public/jobs/{job_id}/questions is wired.
-        // Real answers will store the option id for MULTIPLE_CHOICE, never the letter.
-        var QUESTIONS = [
-            { type: 'YES_NO', text: 'Placeholder yes/no question', options: ['Yes', 'No'] },
-            { type: 'MULTIPLE_CHOICE', text: 'Placeholder multiple-choice question', options: ['Choice placeholder', 'Choice placeholder', 'Choice placeholder', 'Choice placeholder'] },
-            { type: 'OPEN_ENDED', text: 'Placeholder open-ended question', options: null }
-        ];
+        // Loaded from GET /api/v1/public/jobs/{job_id}/questions (see loader below).
+        // Each question: {id, type, text, options: [{value, label}] or null}.
+        // Answer values: YES/NO for YES_NO, the option id for MULTIPLE_CHOICE (never the letter), free text for OPEN_ENDED.
+        var JOB_ID = {{ job.id | tojson }};
+        var QUESTIONS = [];
         var LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
         var answers = [];
         var cur = 0;
@@ -134,18 +132,18 @@
             } else {
                 var grid = document.createElement('div');
                 grid.className = 'choices';
-                q.options.forEach(function (label, i) {
+                q.options.forEach(function (opt, i) {
                     var d = document.createElement('div');
-                    d.className = 'choice' + (answers[cur] === String(i) ? ' selected' : '');
+                    d.className = 'choice' + (answers[cur] === opt.value ? ' selected' : '');
                     var l = document.createElement('span');
                     l.className = 'choice-letter';
                     l.textContent = LETTERS[i] + '.';
                     var t = document.createElement('span');
-                    t.textContent = label;
+                    t.textContent = opt.label;
                     d.appendChild(l);
                     d.appendChild(t);
                     d.addEventListener('click', function () {
-                        answers[cur] = String(i);
+                        answers[cur] = opt.value;
                         dirty = true;
                         renderQuestion();
                     });
@@ -158,7 +156,9 @@
         function answerText(i) {
             var q = QUESTIONS[i], a = answers[i];
             if (!a) return '(no answer)';
-            return q.type === 'OPEN_ENDED' ? a : q.options[Number(a)];
+            if (q.type === 'OPEN_ENDED') return a;
+            var hit = q.options.filter(function (o) { return o.value === a; })[0];
+            return hit ? hit.label : '(no answer)';
         }
         function renderReview() {
             var list = $('review-list');
@@ -179,6 +179,50 @@
         }
 
         $('btn-proceed').addEventListener('click', function () { cur = 0; show('view-questions'); renderQuestion(); });
+
+        // ---- Load the real questions for this job ----
+        function normalizeQuestion(q) {
+            var opts = null;
+            if (q.question_type === 'YES_NO') {
+                var yn = Array.isArray(q.options) ? q.options : [];
+                opts = [{ value: 'YES', label: yn[0] || 'Yes' }, { value: 'NO', label: yn[1] || 'No' }];
+            } else if (q.question_type === 'MULTIPLE_CHOICE') {
+                opts = (q.options || []).map(function (o) { return { value: o.id, label: o.text }; });
+            }
+            return { id: q.id, type: q.question_type, text: q.question_text, options: opts };
+        }
+        var loadNote = document.createElement('p');
+        loadNote.id = 'load-note';
+        loadNote.className = 'shell-note hidden';
+        $('btn-proceed').parentNode.parentNode.insertBefore(loadNote, $('btn-proceed').parentNode);
+        function blockProceed(msg) {
+            loadNote.textContent = msg;
+            loadNote.classList.remove('hidden');
+            $('btn-proceed').disabled = true;
+        }
+        $('btn-proceed').disabled = true;
+        if (!JOB_ID) {
+            blockProceed('No job selected. Go back to careers and choose a job.');
+        } else {
+            fetch('/api/v1/public/jobs/' + encodeURIComponent(JOB_ID) + '/questions')
+                .then(function (res) {
+                    if (res.status === 404) throw new Error('This job is not open for applications.');
+                    if (!res.ok) throw new Error('Could not load the questions. Please try again later.');
+                    return res.json();
+                })
+                .then(function (body) {
+                    var rows = body.data || [];
+                    var known = ['YES_NO', 'MULTIPLE_CHOICE', 'OPEN_ENDED'];
+                    if (!rows.length) throw new Error('This job is not open for applications yet.');
+                    if (rows.some(function (r) { return known.indexOf(r.question_type) === -1; })) {
+                        throw new Error('Could not load the questions. Please try again later.');
+                    }
+                    QUESTIONS = rows.map(normalizeQuestion);
+                    answers = [];
+                    $('btn-proceed').disabled = false;
+                })
+                .catch(function (err) { blockProceed(err.message); });
+        }
         $('btn-prev').addEventListener('click', function () { if (cur > 0) { cur--; renderQuestion(); } });
         $('btn-next').addEventListener('click', function () {
             if (cur < QUESTIONS.length - 1) { cur++; renderQuestion(); }

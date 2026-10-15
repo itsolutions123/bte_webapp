@@ -392,6 +392,33 @@ async def get_form_detail(form_id: str, db: AsyncSession = Depends(get_db)):
     return FormDetailResponse(id=form.id, slug=form.slug, name=form.name, jobs=jobs, questions=questions)
 
 
+@router.put("/forms/{form_id}/jobs/{job_id}")
+async def attach_job_to_form(form_id: str, job_id: str, db: AsyncSession = Depends(get_db)):
+    try:
+        form_uuid = uuid.UUID(form_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="form_id must be a valid UUID")
+    try:
+        job_uuid = uuid.UUID(job_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="job_id must be a valid UUID")
+
+    form = await db.scalar(select(Form).where(Form.id == form_uuid))
+    if form is None:
+        raise HTTPException(status_code=404, detail="form not found")
+
+    job = await db.scalar(select(Job).where(Job.id == job_uuid).with_for_update())
+    if job is None:
+        raise HTTPException(status_code=404, detail="job not found")
+
+    if job.form_id is not None and job.form_id != form_uuid:
+        raise HTTPException(status_code=409, detail="job already uses a different form; detach it first")
+
+    job.form_id = form_uuid
+    await db.commit()
+    return {"message": "Job attached"}
+
+
 QUESTION_TYPES = {"YES_NO", "MULTIPLE_CHOICE", "OPEN_ENDED"}
 
 
