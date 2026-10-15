@@ -13,7 +13,7 @@
 - `form_id` (UUID, Foreign Key -> forms.id, nullable, Indexed) - The shared form applicants answer for this job. Many jobs can use one form.
 - `slug` (String, Indexed, NOT unique since migration 005) - e.g., "marketing-oic". A label only, generated from the title; the id is the job identifier and titles may repeat.
 - `title` (String) - e.g., "Cashier", "Marketing OIC"
-- `description` (Text)
+- `description` (Text, nullable) - the job description. DECIDED 2026-10-15, NOT implemented yet: it will hold cleaned HTML from a rich text editor (same column, no migration). Existing rows are plain text until converted. See API_CONTRACT.md "Job description format" and SECURITY.md section 6.
 - `requirements` (Text, nullable) - the Requirements part of the public job posting (migration 005)
 - `pass_threshold` (Integer) - e.g., 75 (Percentage required to pass)
 - `pooling_threshold` (Integer) - e.g., 70
