@@ -14,7 +14,7 @@
 - `slug` (String, Indexed, NOT unique since migration 005) - e.g., "marketing-oic". A label only, generated from the title; the id is the job identifier and titles may repeat.
 - `title` (String) - e.g., "Cashier", "Marketing OIC"
 - `description` (Text, nullable) - the job description. DECIDED 2026-10-15, NOT implemented yet: it will hold cleaned HTML from a rich text editor (same column, no migration). Existing rows are plain text until converted. See API_CONTRACT.md "Job description format" and SECURITY.md section 6.
-- `requirements` (Text, nullable) - the Requirements part of the public job posting (migration 005)
+- `requirements` (Text, nullable) - the Requirements part of the public job posting (migration 005). DECIDED 2026-10-15, NOT implemented yet: it will hold cleaned HTML from a rich text editor, same as `description` (same column, no migration). Existing rows are plain text until converted. See API_CONTRACT.md "Job description format" and SECURITY.md section 6.
 - `pass_threshold` (Integer) - e.g., 75 (Percentage required to pass)
 - `pooling_threshold` (Integer) - e.g., 70
   - DECIDED 2026-10-14 (user): the pass/fail thresholds belong on the form, not on the job, and will be set up later. Migration 005 (applied 2026-10-14) made both columns NULLABLE so a job can be created without them. They are NOT dropped (dropping is destructive and needs explicit confirmation). UPDATED 2026-10-15 (user): the thresholds that count live on the form (see `forms`) and apply to every job that uses it; once that is implemented these job columns are never read. PROPOSED, NOT implemented: until then, scoring in `app/routers/public.py` fails on apply while they are NULL.

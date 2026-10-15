@@ -8,6 +8,7 @@ from sqlalchemy import select, func, or_, literal
 
 from app.database import get_db
 from app.timeutil import to_app_tz
+from app.html_clean import clean_rich_text
 from app.models import Brand, Job, StatusCount, Parameter, Parameter, Form, JobQuestion, Answer, Answer
 from app.schemas import (
     SidebarMetadataResponse, SidebarBrandItem, SidebarFormItem, SidebarFormItem,
@@ -137,8 +138,8 @@ async def create_job(brand_id: uuid.UUID, payload: JobCreateRequest, db: AsyncSe
     if brand is None:
         raise HTTPException(status_code=404, detail="brand not found")
 
-    description = (payload.description or "").strip() or None
-    requirements = (payload.requirements or "").strip() or None
+    description = clean_rich_text((payload.description or "").strip() or None)
+    requirements = clean_rich_text((payload.requirements or "").strip() or None)
 
     job = Job(
         brand_id=brand.id,

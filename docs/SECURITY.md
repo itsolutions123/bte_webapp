@@ -31,9 +31,9 @@
 - **If a credential was ever committed or exposed:** rotate it. Change it inside Postgres first, then update `.env`, then restart the containers. Removing it from the file is not enough, because it stays in git history. A history rewrite is not needed once the value is dead.
 - **Testing database passwords:** the official Postgres image trusts loopback connections inside its own container, so a check run over `127.0.0.1` passes for any password. Test password authentication over the network (`-h db`).
 
-## 6. Rich Text (Job Description) Cleaning (DECIDED 2026-10-15, NOT implemented)
-- The job description is formatted text saved by an admin and shown to every visitor of the careers site, so it is untrusted input (stored XSS risk).
+## 6. Rich Text (Job Description and Requirements) Cleaning (DECIDED 2026-10-15, NOT implemented)
+- The job description and the requirements are formatted text saved by an admin and shown to every visitor of the careers site, so they are untrusted input (stored XSS risk). Both fields get the same cleaning (decided 2026-10-15, user).
 - The server cleans it on every write, in Python, with an allowlist (tags `p`, `br`, `ul`, `ol`, `li`, `strong`, `em`, `u`, `span`; attribute `class` only, limited to the editor's indent and size values). The cleaned value is the only thing stored and returned. Cleaning in the browser is never relied on.
 - No inline styles, links, images, scripts or event handlers are allowed. Disallowed markup is stripped, not rejected.
-- The public website renders only the stored, cleaned value. Allowlist details are PROPOSED; Security confirms them before the cleaning code is written.
+- The public website renders only the stored, cleaned value. The allowlist is CONFIRMED by the user (2026-10-15) as written; it is extended only after the editor's real output is checked.
 - Existing gap, unchanged: the admin endpoints have no HR-auth check yet (see section 2).
