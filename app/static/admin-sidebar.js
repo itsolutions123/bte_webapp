@@ -595,6 +595,42 @@
             closeElementEditor();
         });
 
+        const delModalEl = document.getElementById('deleteElementModal');
+        const delConfirmBtn = document.getElementById('delete-element-confirm-btn');
+        const delError = document.getElementById('delete-element-error');
+        delConfirmBtn.addEventListener('click', async function () {
+            const questionId = delModalEl.dataset.questionId;
+            if (!savedFormId || !questionId) return;
+            delError.classList.add('d-none');
+            delConfirmBtn.disabled = true;
+            try {
+                const res = await fetch('/api/v1/admin/forms/' + encodeURIComponent(savedFormId) + '/questions/' + encodeURIComponent(questionId), { method: 'DELETE' });
+                if (res.status === 204 || res.status === 404) {
+                    const list = document.getElementById('form-contents-list');
+                    const card = list.querySelector('[data-question-id="' + questionId + '"]');
+                    if (card) card.remove();
+                    if (!list.children.length) {
+                        list.classList.add('d-none');
+                        document.getElementById('form-contents-placeholder').classList.remove('d-none');
+                    }
+                    bootstrap.Modal.getInstance(delModalEl).hide();
+                    document.getElementById('form-created-toast-body').textContent = res.status === 204 ? 'Element deleted.' : 'That element no longer existed.';
+                    new bootstrap.Toast(document.getElementById('form-created-toast')).show();
+                } else if (res.status === 409) {
+                    delError.textContent = 'Applicants have already answered this element, so it cannot be deleted.';
+                    delError.classList.remove('d-none');
+                } else {
+                    delError.textContent = 'Could not delete the element.';
+                    delError.classList.remove('d-none');
+                }
+            } catch (err) {
+                delError.textContent = 'Could not reach the server.';
+                delError.classList.remove('d-none');
+            } finally {
+                delConfirmBtn.disabled = false;
+            }
+        });
+
         const panel = document.getElementById('form-contents-panel');
         panel.addEventListener('dragover', function (e) { e.preventDefault(); });
         panel.addEventListener('drop', function (e) {
@@ -670,7 +706,23 @@
                     editBtn.textContent = 'Edit';
                     editBtn.setAttribute('aria-label', 'Edit question');
                     editBtn.addEventListener('click', function () { editElement(card); });
-                    header.appendChild(editBtn);
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.type = 'button';
+                    deleteBtn.className = 'btn btn-sm btn-outline-danger element-delete-btn flex-shrink-0';
+                    deleteBtn.textContent = 'Delete';
+                    deleteBtn.setAttribute('aria-label', 'Delete question');
+                    deleteBtn.addEventListener('click', function () {
+                        const delModalEl = document.getElementById('deleteElementModal');
+                        document.getElementById('delete-element-name').textContent = card.querySelector('.element-title').textContent;
+                        document.getElementById('delete-element-error').classList.add('d-none');
+                        delModalEl.dataset.questionId = card.dataset.questionId;
+                        bootstrap.Modal.getOrCreateInstance(delModalEl).show();
+                    });
+                    const actions = document.createElement('div');
+                    actions.className = 'd-flex gap-2 flex-shrink-0';
+                    actions.appendChild(editBtn);
+                    actions.appendChild(deleteBtn);
+                    header.appendChild(actions);
                 }
                 card.appendChild(header);
                 if (labels.length) {
