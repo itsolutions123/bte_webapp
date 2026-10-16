@@ -112,7 +112,7 @@
         #jobDetailModal .ql-editor { min-height: 120px; max-height: 240px; overflow-y: auto; }
         #jobDetailModal .ql-container { font-family: inherit; font-size: .95rem; }
     </style>
-    {# SHELL (section 8): Create Job modal, not wired to data yet. Confirm stays disabled until the create-job step. #}
+    {# Create Job modal. Location, Pay information and Type of job are a SHELL: not yet sent in the POST body or reset on show. #}
     <div class="modal fade" id="createJobModal" tabindex="-1" aria-labelledby="createJobModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
@@ -133,6 +133,25 @@
                 <div class="modal-body">
                     <label for="create-job-title" class="form-label fw-bold">Title</label>
                     <input type="text" class="form-control mb-3" id="create-job-title" placeholder="Job Title">
+
+                    <label for="create-job-location" class="form-label fw-bold">Location</label>
+                    <input type="text" class="form-control mb-3" id="create-job-location" maxlength="150" placeholder="Location">
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="create-job-pay" class="form-label fw-bold">Pay information</label>
+                            <input type="text" class="form-control mb-3" id="create-job-pay" maxlength="150" placeholder="Pay information">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="create-job-type" class="form-label fw-bold">Type of job</label>
+                            <select class="form-select mb-3" id="create-job-type">
+                                <option value="">Not set</option>
+                                <option value="Full-time">Full-time</option>
+                                <option value="Part-time">Part-time</option>
+                                <option value="Onsite">Onsite</option>
+                            </select>
+                        </div>
+                    </div>
 
                     <label class="form-label fw-bold">Description</label>
                     <div class="mb-3" id="create-job-description"></div>
@@ -516,6 +535,9 @@
             if (!modalEl) return;
             const brandId = window.location.pathname.split('/').filter(Boolean).pop();
             const titleInput = document.getElementById('create-job-title');
+            const locationInput = document.getElementById('create-job-location');
+            const payInput = document.getElementById('create-job-pay');
+            const typeSelect = document.getElementById('create-job-type');
             // Rich text (Quill 1.3.7, vendored): only the formats the server allowlist keeps (docs/SECURITY.md section 6).
             const rteOptions = JOB_RTE_OPTIONS;
             const descEditor = new Quill('#create-job-description', Object.assign({ placeholder: 'Description' }, rteOptions));
@@ -543,6 +565,9 @@
             });
             modalEl.addEventListener('show.bs.modal', function () {
                 titleInput.value = '';
+                locationInput.value = '';
+                payInput.value = '';
+                typeSelect.value = '';
                 descEditor.setContents([]);
                 reqEditor.setContents([]);
                 errorEl.classList.add('d-none');
@@ -562,6 +587,9 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             title: title,
+                            location: locationInput.value.trim(),
+                            pay_information: payInput.value.trim(),
+                            job_type: typeSelect.value,
                             description: editorHtml(descEditor),
                             requirements: editorHtml(reqEditor),
                             is_active: isActive
