@@ -21,7 +21,11 @@ async def get_public_jobs(
     db: AsyncSession = Depends(get_db)
 ):
     # Base query for active jobs, joining brand to get the brand_name
-    query = select(Job, Brand.name.label("brand_name"), Brand.slug.label("brand_slug")).join(Brand).where(Job.is_active == True)
+    query = select(Job, Brand.name.label("brand_name"), Brand.slug.label("brand_slug")).join(Brand).where(
+        Job.is_active == True,
+        Job.archived_at.is_(None),
+        Job.expires_at > func.now(),
+    )
     
     if brand_id:
         query = query.where(Job.brand_id == brand_id)
@@ -58,7 +62,12 @@ async def get_public_job(
     query = (
         select(Job, Brand.name.label("brand_name"), Brand.slug.label("brand_slug"))
         .join(Brand)
-        .where(Job.id == job_id, Job.is_active == True)
+        .where(
+            Job.id == job_id,
+            Job.is_active == True,
+            Job.archived_at.is_(None),
+            Job.expires_at > func.now(),
+        )
     )
     row = (await db.execute(query)).first()
     if row is None:
