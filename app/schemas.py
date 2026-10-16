@@ -9,6 +9,9 @@ class PublicJob(BaseModel):
     title: str
     description: Optional[str] = None
     requirements: Optional[str] = None
+    location: Optional[str] = None
+    pay_information: Optional[str] = None
+    job_type: Optional[str] = None
     brand_id: UUID4
     brand_name: str
     brand_slug: str

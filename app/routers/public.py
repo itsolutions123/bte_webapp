@@ -47,6 +47,9 @@ async def get_public_jobs(
             title=job_obj.title,
             description=job_obj.description,
             requirements=job_obj.requirements,
+            location=job_obj.location,
+            pay_information=job_obj.pay_information,
+            job_type=job_obj.job_type,
             brand_id=job_obj.brand_id,
             brand_name=brand_name,
             brand_slug=brand_slug
@@ -79,6 +82,9 @@ async def get_public_job(
         title=job_obj.title,
         description=job_obj.description,
         requirements=job_obj.requirements,
+        location=job_obj.location,
+        pay_information=job_obj.pay_information,
+        job_type=job_obj.job_type,
         brand_id=job_obj.brand_id,
         brand_name=brand_name,
         brand_slug=brand_slug
