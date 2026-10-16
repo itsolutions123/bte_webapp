@@ -15,7 +15,7 @@ from app.schemas import (
     AdminSummaryResponse, OverallTotals,
     AdminTallyResponse, AdminTallyItem, JobCounts,
     BrandCreateRequest, BrandResponse,
-    JobCreateRequest, JobResponse, BrandJobItem, BrandJobsResponse,
+    JobCreateRequest, JobUpdateRequest, JobResponse, BrandJobItem, BrandJobsResponse,
     FormCreateRequest, FormResponse, FormArchiveResponse,
     FormListItem, FormListResponse,
     QuestionCreateRequest, QuestionResponse, QuestionUpdateRequest,
@@ -123,6 +123,28 @@ async def create_brand(payload: BrandCreateRequest, db: AsyncSession = Depends(g
 
     return BrandResponse(id=brand.id, name=brand.name, slug=brand.slug)
 
+JOB_TYPES = ("Full-time", "Part-time", "Onsite")  # contract: "Job details fields"
+JOB_DETAIL_MAX_LENGTH = 150
+
+
+def clean_job_detail_text(value: str | None, field: str) -> str | None:
+    value = (value or "").strip()
+    if not value:
+        return None
+    if len(value) > JOB_DETAIL_MAX_LENGTH:
+        raise HTTPException(status_code=422, detail=f"{field} must be at most {JOB_DETAIL_MAX_LENGTH} characters")
+    return value
+
+
+def clean_job_type(value: str | None) -> str | None:
+    value = (value or "").strip()
+    if not value:
+        return None
+    if value not in JOB_TYPES:
+        raise HTTPException(status_code=422, detail="job_type must be one of: " + ", ".join(JOB_TYPES))
+    return value
+
+
 @router.post("/brands/{brand_id}/jobs", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
 async def create_job(brand_id: uuid.UUID, payload: JobCreateRequest, db: AsyncSession = Depends(get_db)):
     title = payload.title.strip()
@@ -140,6 +162,9 @@ async def create_job(brand_id: uuid.UUID, payload: JobCreateRequest, db: AsyncSe
 
     description = clean_rich_text((payload.description or "").strip() or None)
     requirements = clean_rich_text((payload.requirements or "").strip() or None)
+    location = clean_job_detail_text(payload.location, "location")
+    pay_information = clean_job_detail_text(payload.pay_information, "pay_information")
+    job_type = clean_job_type(payload.job_type)
 
     job = Job(
         brand_id=brand.id,
@@ -147,6 +172,9 @@ async def create_job(brand_id: uuid.UUID, payload: JobCreateRequest, db: AsyncSe
         slug=slug,
         description=description,
         requirements=requirements,
+        location=location,
+        pay_information=pay_information,
+        job_type=job_type,
         is_active=payload.is_active,
     )
     db.add(job)
@@ -162,7 +190,13 @@ async def create_job(brand_id: uuid.UUID, payload: JobCreateRequest, db: AsyncSe
         requirements=job.requirements,
         is_active=job.is_active,
         form_id=job.form_id,
+        location=job.location,
+        pay_information=job.pay_information,
+        job_type=job.job_type,
         created_at=to_app_tz(job.created_at),
+        expires_at=to_app_tz(job.expires_at),
+        archived_at=to_app_tz(job.archived_at) if job.archived_at else None,
+        is_expired=job.expires_at <= datetime.now(timezone.utc),
     )
 
 @router.get("/brands/{brand_id}/jobs/{job_id}", response_model=JobResponse)
@@ -184,8 +218,66 @@ async def get_brand_job(brand_id: uuid.UUID, job_id: uuid.UUID, db: AsyncSession
         requirements=job.requirements,
         is_active=bool(job.is_active),
         form_id=job.form_id,
+        location=job.location,
+        pay_information=job.pay_information,
+        job_type=job.job_type,
         created_at=to_app_tz(job.created_at),
+        expires_at=to_app_tz(job.expires_at),
+        archived_at=to_app_tz(job.archived_at) if job.archived_at else None,
+        is_expired=job.expires_at <= datetime.now(timezone.utc),
     )
+
+@router.patch("/brands/{brand_id}/jobs/{job_id}", response_model=JobResponse)
+async def update_job(brand_id: uuid.UUID, job_id: uuid.UUID, payload: JobUpdateRequest, db: AsyncSession = Depends(get_db)):
+    title = payload.title.strip()
+    if not title:
+        raise HTTPException(status_code=422, detail="title must not be empty")
+
+    # Label only: not unique, never used for lookups (the id is the job identifier).
+    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    if not slug:
+        raise HTTPException(status_code=422, detail="title must contain at least one letter or number")
+
+    brand = await db.get(Brand, brand_id)
+    if brand is None:
+        raise HTTPException(status_code=404, detail="brand not found")
+
+    job = await db.get(Job, job_id)
+    if job is None or job.brand_id != brand.id:
+        raise HTTPException(status_code=404, detail="job not found")
+
+    if job.archived_at is not None:
+        raise HTTPException(status_code=409, detail="job is archived")
+
+    job.title = title
+    job.slug = slug
+    job.description = clean_rich_text((payload.description or "").strip() or None)
+    job.requirements = clean_rich_text((payload.requirements or "").strip() or None)
+    job.location = clean_job_detail_text(payload.location, "location")
+    job.pay_information = clean_job_detail_text(payload.pay_information, "pay_information")
+    job.job_type = clean_job_type(payload.job_type)
+    job.is_active = payload.is_active
+    await db.commit()
+    await db.refresh(job)
+
+    return JobResponse(
+        id=job.id,
+        brand_id=job.brand_id,
+        title=job.title,
+        slug=job.slug,
+        description=job.description,
+        requirements=job.requirements,
+        is_active=bool(job.is_active),
+        form_id=job.form_id,
+        location=job.location,
+        pay_information=job.pay_information,
+        job_type=job.job_type,
+        created_at=to_app_tz(job.created_at),
+        expires_at=to_app_tz(job.expires_at),
+        archived_at=to_app_tz(job.archived_at) if job.archived_at else None,
+        is_expired=job.expires_at <= datetime.now(timezone.utc),
+    )
+
 
 @router.get("/brands/{brand_id}/jobs", response_model=BrandJobsResponse)
 async def list_brand_jobs(

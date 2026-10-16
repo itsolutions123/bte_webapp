@@ -109,6 +109,8 @@
     <style>
         #createJobModal .ql-editor { min-height: 140px; max-height: 280px; overflow-y: auto; }
         #createJobModal .ql-container { font-family: inherit; font-size: .95rem; }
+        #jobDetailModal .ql-editor { min-height: 120px; max-height: 240px; overflow-y: auto; }
+        #jobDetailModal .ql-container { font-family: inherit; font-size: .95rem; }
     </style>
     {# SHELL (section 8): Create Job modal, not wired to data yet. Confirm stays disabled until the create-job step. #}
     <div class="modal fade" id="createJobModal" tabindex="-1" aria-labelledby="createJobModalLabel" aria-hidden="true">
@@ -164,6 +166,7 @@
         }
         .jd-btn:hover { background: #f9fafb; box-shadow: 0 2px 6px rgba(17,24,39,.08); }
         .jd-btn:active { background: #f3f4f6; box-shadow: none; }
+        .jd-btn:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
         .jd-btn-dark { background: #1f2328; border-color: #1f2328; color: #ffffff; }
         .jd-btn-dark:hover { background: #2d3238; }
         .jd-btn-gold { background: #fbf5df; border-color: #f1e4b4; color: #7a6212; }
@@ -209,6 +212,13 @@
                 <div class="modal-header">
                     <h5 class="modal-title jd-title" id="jobDetailModalLabel">Job Title</h5>
                     <div class="d-flex gap-2 ms-auto me-3">
+                        <div class="dropdown d-none" data-jd-edit>
+                            <button type="button" class="jd-btn dropdown-toggle" id="job-edit-publish-btn" data-bs-toggle="dropdown" aria-expanded="false">Save as draft</button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><button type="button" class="dropdown-item" data-edit-publish-state="publish">Publish</button></li>
+                                <li><button type="button" class="dropdown-item" data-edit-publish-state="draft">Save as draft</button></li>
+                            </ul>
+                        </div>
                         <button type="button" class="jd-btn" id="job-detail-edit-btn">Edit</button>
                         <button type="button" class="jd-btn jd-btn-gold" id="job-detail-renew-btn">Renew</button>
                         <button type="button" class="jd-btn" id="job-detail-archive-btn">Archive</button>
@@ -224,14 +234,32 @@
                         <button type="button" class="jd-btn jd-btn-gold" id="job-detail-set-duration-btn">Set duration</button>
                     </div>
                     <div class="jd-label">Title</div>
-                    <div class="jd-pod fw-bold" id="job-detail-title">Job Title</div>
+                    <div class="jd-pod fw-bold" id="job-detail-title" data-jd-view>Job Title</div>
+                    <input type="text" class="form-control mb-3 d-none" id="job-edit-title" data-jd-edit placeholder="Job Title">
+                    <div class="jd-label">Location</div>
+                    <div class="jd-pod" id="job-detail-location" data-jd-view>&mdash;</div>
+                    <input type="text" class="form-control mb-3 d-none" id="job-edit-location" data-jd-edit maxlength="150" placeholder="Location">
+                    <div class="jd-label">Pay information</div>
+                    <div class="jd-pod" id="job-detail-pay" data-jd-view>&mdash;</div>
+                    <input type="text" class="form-control mb-3 d-none" id="job-edit-pay" data-jd-edit maxlength="150" placeholder="Pay information">
+                    <div class="jd-label">Type of job</div>
+                    <div class="jd-pod" id="job-detail-type" data-jd-view>&mdash;</div>
+                    <select class="form-select mb-3 d-none" id="job-edit-type" data-jd-edit>
+                        <option value="">Not set</option>
+                        <option value="Full-time">Full-time</option>
+                        <option value="Part-time">Part-time</option>
+                        <option value="Onsite">Onsite</option>
+                    </select>
                     <div class="jd-label">Description</div>
-                    <div class="jd-pod" id="job-detail-description">Description</div>
+                    <div class="jd-pod" id="job-detail-description" data-jd-view>Description</div>
+                    <div class="mb-3 d-none" data-jd-edit><div id="job-edit-description"></div></div>
                     <div class="jd-label">Requirements</div>
-                    <div class="jd-pod mb-0" id="job-detail-requirements">Requirements</div>
+                    <div class="jd-pod mb-0" id="job-detail-requirements" data-jd-view>Requirements</div>
+                    <div class="d-none" data-jd-edit><div id="job-edit-requirements"></div></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="jd-btn jd-btn-dark px-4" id="job-detail-save-btn">Save</button>
+                    <div class="text-danger small d-none me-auto" id="job-edit-error"></div>
+                    <button type="button" class="jd-btn jd-btn-dark px-4" id="job-detail-save-btn" disabled>Save</button>
                 </div>
             </div>
         </div>
@@ -315,6 +343,7 @@
                                 document.getElementById('job-detail-title').textContent = d.title;
                                 document.getElementById('job-detail-description').innerHTML = d.description || '\u2014';
                                 document.getElementById('job-detail-requirements').innerHTML = d.requirements || '\u2014';
+                                detailEl.dispatchEvent(new CustomEvent('jobdetail:loaded', { detail: d }));
                             })
                             .catch(function () {
                                 if (detailEl.dataset.jobId !== job.id) return;
@@ -345,6 +374,142 @@
             jobSearchTimer = setTimeout(loadJobs, JOB_SEARCH_DEBOUNCE_MS);
         });
 
+        // Job detail modal, edit mode (contract: PATCH /api/v1/admin/brands/{brand_id}/jobs/{job_id}). Edit swaps the read-only pods for
+        // editors prefilled from the loaded job and shows the same Publish / Save as draft dropdown as Create job (default: Save as draft).
+        // This step is the edit mode only; Save is wired in the next step.
+        // Rich text options (Quill 1.3.7, vendored): only the formats the server allowlist keeps (docs/SECURITY.md section 6). Shared with Create Job below.
+        const JOB_RTE_OPTIONS = {
+            theme: 'snow',
+            formats: ['bold', 'italic', 'underline', 'size', 'list', 'indent'],
+            modules: { toolbar: [
+                ['bold', 'italic', 'underline'],
+                [{ size: ['small', false, 'large', 'huge'] }],
+                [{ list: 'bullet' }, { list: 'ordered' }],
+                [{ indent: '-1' }, { indent: '+1' }]
+            ] }
+        };
+        (function () {
+            const modalEl = document.getElementById('jobDetailModal');
+            if (!modalEl) return;
+            const editBtn = document.getElementById('job-detail-edit-btn');
+            const viewEls = modalEl.querySelectorAll('[data-jd-view]');
+            const editEls = modalEl.querySelectorAll('[data-jd-edit]');
+            const titleInput = document.getElementById('job-edit-title');
+            const locationInput = document.getElementById('job-edit-location');
+            const payInput = document.getElementById('job-edit-pay');
+            const typeSelect = document.getElementById('job-edit-type');
+            const publishBtn = document.getElementById('job-edit-publish-btn');
+            const saveBtn = document.getElementById('job-detail-save-btn');
+            const errorEl = document.getElementById('job-edit-error');
+            const showError = function (msg) { errorEl.textContent = msg; errorEl.classList.remove('d-none'); };
+            const rteHtml = function (q) { return q.getText().trim() ? q.root.innerHTML : ''; };
+            const descEditor = new Quill('#job-edit-description', Object.assign({ placeholder: 'Description' }, JOB_RTE_OPTIONS));
+            const reqEditor = new Quill('#job-edit-requirements', Object.assign({ placeholder: 'Requirements' }, JOB_RTE_OPTIONS));
+            const dash = '\u2014';
+            let loaded = null;
+            let editing = false;
+            let isActive = false;
+
+            const setRte = function (q, value) {
+                q.setContents([]);
+                if (!value) return;
+                // Saved posts are cleaned HTML; older rows are plain text with line breaks.
+                if (/<[a-z][\s\S]*>/i.test(value)) { q.clipboard.dangerouslyPasteHTML(value); } else { q.setText(value); }
+            };
+            const setPublishState = function (state) {
+                isActive = (state === 'publish');
+                publishBtn.textContent = isActive ? 'Publish' : 'Save as draft';
+            };
+            const setEditing = function (on) {
+                editing = on;
+                viewEls.forEach(function (el) { el.classList.toggle('d-none', on); });
+                editEls.forEach(function (el) { el.classList.toggle('d-none', !on); });
+                editBtn.textContent = on ? 'Cancel' : 'Edit';
+                saveBtn.disabled = !on;
+                errorEl.classList.add('d-none');
+            };
+
+            modalEl.querySelectorAll('[data-edit-publish-state]').forEach(function (item) {
+                item.addEventListener('click', function () { setPublishState(item.getAttribute('data-edit-publish-state')); });
+            });
+            modalEl.addEventListener('show.bs.modal', function () {
+                loaded = null;
+                setEditing(false);
+                ['job-detail-location', 'job-detail-pay', 'job-detail-type'].forEach(function (id) {
+                    document.getElementById(id).textContent = dash;
+                });
+            });
+            modalEl.addEventListener('jobdetail:loaded', function (e) {
+                loaded = e.detail;
+                document.getElementById('job-detail-location').textContent = loaded.location || dash;
+                document.getElementById('job-detail-pay').textContent = loaded.pay_information || dash;
+                document.getElementById('job-detail-type').textContent = loaded.job_type || dash;
+            });
+            editBtn.addEventListener('click', function () {
+                if (editing) { setEditing(false); return; }
+                if (!loaded) return;
+                titleInput.value = loaded.title || '';
+                locationInput.value = loaded.location || '';
+                payInput.value = loaded.pay_information || '';
+                typeSelect.value = loaded.job_type || '';
+                setRte(descEditor, loaded.description);
+                setRte(reqEditor, loaded.requirements);
+                setPublishState('draft');
+                setEditing(true);
+            });
+
+            // Save: PATCH /api/v1/admin/brands/{brand_id}/jobs/{job_id}; sends all seven fields, is_active from the dropdown.
+            saveBtn.addEventListener('click', async function () {
+                errorEl.classList.add('d-none');
+                const title = titleInput.value.trim();
+                if (!title) { showError('Please enter a job title.'); return; }
+                const brandId = window.location.pathname.split('/').filter(Boolean).pop();
+                const jobId = modalEl.dataset.jobId;
+                saveBtn.disabled = true;
+                try {
+                    const res = await fetch('/api/v1/admin/brands/' + encodeURIComponent(brandId) + '/jobs/' + encodeURIComponent(jobId), {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            title: title,
+                            description: rteHtml(descEditor),
+                            requirements: rteHtml(reqEditor),
+                            location: locationInput.value.trim(),
+                            pay_information: payInput.value.trim(),
+                            job_type: typeSelect.value,
+                            is_active: isActive
+                        })
+                    });
+                    if (res.ok) {
+                        const d = await res.json();
+                        loaded = d;
+                        document.getElementById('jobDetailModalLabel').textContent = d.title;
+                        document.getElementById('job-detail-title').textContent = d.title;
+                        document.getElementById('job-detail-location').textContent = d.location || dash;
+                        document.getElementById('job-detail-pay').textContent = d.pay_information || dash;
+                        document.getElementById('job-detail-type').textContent = d.job_type || dash;
+                        document.getElementById('job-detail-description').innerHTML = d.description || dash;
+                        document.getElementById('job-detail-requirements').innerHTML = d.requirements || dash;
+                        setEditing(false);
+                        loadJobs();
+                        return;
+                    }
+                    if (res.status === 409) { showError('This job is archived and can no longer be edited.'); }
+                    else if (res.status === 404) { showError('This job no longer exists.'); }
+                    else if (res.status === 422) {
+                        let detail = '';
+                        try { detail = (await res.json()).detail; } catch (e) { detail = ''; }
+                        showError(typeof detail === 'string' && detail ? detail : 'Please check the fields and try again.');
+                    } else { showError('Could not save the job. Please try again.'); }
+                } catch (err) {
+                    console.error('Failed to save job:', err);
+                    showError('Could not reach the server.');
+                } finally {
+                    if (editing) saveBtn.disabled = false;
+                }
+            });
+        })();
+
         // Create Job: the dropdown only selects the state; Confirm saves via POST /api/v1/admin/brands/{brand_id}/jobs
         (function () {
             const modalEl = document.getElementById('createJobModal');
@@ -352,16 +517,7 @@
             const brandId = window.location.pathname.split('/').filter(Boolean).pop();
             const titleInput = document.getElementById('create-job-title');
             // Rich text (Quill 1.3.7, vendored): only the formats the server allowlist keeps (docs/SECURITY.md section 6).
-            const rteOptions = {
-                theme: 'snow',
-                formats: ['bold', 'italic', 'underline', 'size', 'list', 'indent'],
-                modules: { toolbar: [
-                    ['bold', 'italic', 'underline'],
-                    [{ size: ['small', false, 'large', 'huge'] }],
-                    [{ list: 'bullet' }, { list: 'ordered' }],
-                    [{ indent: '-1' }, { indent: '+1' }]
-                ] }
-            };
+            const rteOptions = JOB_RTE_OPTIONS;
             const descEditor = new Quill('#create-job-description', Object.assign({ placeholder: 'Description' }, rteOptions));
             const editorHtml = function (q) { return q.getText().trim() ? q.root.innerHTML : ''; };
             const reqEditor = new Quill('#create-job-requirements', Object.assign({ placeholder: 'Requirements' }, rteOptions));

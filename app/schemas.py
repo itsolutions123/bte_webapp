@@ -126,7 +126,19 @@ class JobCreateRequest(BaseModel):
     title: str
     description: Optional[str] = None
     requirements: Optional[str] = None
+    location: Optional[str] = None
+    pay_information: Optional[str] = None
+    job_type: Optional[str] = None
     is_active: bool = False
+
+class JobUpdateRequest(BaseModel):
+    title: str
+    description: Optional[str] = None
+    requirements: Optional[str] = None
+    location: Optional[str] = None
+    pay_information: Optional[str] = None
+    job_type: Optional[str] = None
+    is_active: bool
 
 class JobResponse(BaseModel):
     id: UUID4
@@ -137,7 +149,13 @@ class JobResponse(BaseModel):
     requirements: Optional[str] = None
     is_active: bool
     form_id: Optional[UUID4] = None
+    location: Optional[str] = None
+    pay_information: Optional[str] = None
+    job_type: Optional[str] = None
     created_at: datetime
+    expires_at: datetime
+    archived_at: Optional[datetime] = None
+    is_expired: bool
 
 class BrandJobItem(BaseModel):
     id: UUID4
