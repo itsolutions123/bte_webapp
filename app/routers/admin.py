@@ -279,6 +279,42 @@ async def update_job(brand_id: uuid.UUID, job_id: uuid.UUID, payload: JobUpdateR
     )
 
 
+@router.post("/brands/{brand_id}/jobs/{job_id}/archive", response_model=JobResponse)
+async def archive_job(brand_id: uuid.UUID, job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    brand = await db.get(Brand, brand_id)
+    if brand is None:
+        raise HTTPException(status_code=404, detail="brand not found")
+
+    job = await db.get(Job, job_id)
+    if job is None or job.brand_id != brand.id:
+        raise HTTPException(status_code=404, detail="job not found")
+
+    if job.archived_at is not None:
+        raise HTTPException(status_code=409, detail="job is already archived")
+
+    # Only archived_at changes: is_active, expires_at, form_id and created_at are untouched.
+    job.archived_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(job)
+
+    return JobResponse(
+        id=job.id,
+        brand_id=job.brand_id,
+        title=job.title,
+        slug=job.slug,
+        description=job.description,
+        requirements=job.requirements,
+        is_active=bool(job.is_active),
+        form_id=job.form_id,
+        location=job.location,
+        pay_information=job.pay_information,
+        job_type=job.job_type,
+        created_at=to_app_tz(job.created_at),
+        expires_at=to_app_tz(job.expires_at),
+        archived_at=to_app_tz(job.archived_at) if job.archived_at else None,
+        is_expired=job.expires_at <= datetime.now(timezone.utc),
+    )
+
 @router.get("/brands/{brand_id}/jobs", response_model=BrandJobsResponse)
 async def list_brand_jobs(
     brand_id: uuid.UUID,
