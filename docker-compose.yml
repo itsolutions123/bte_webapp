@@ -30,6 +30,7 @@ services:
     environment:
       - RESUME_STORAGE_PATH=/app/data/resumes
       - WEBSITE_CAREERS_URL=http://10.0.10.37:8086/careers
+      - TERMS_VERSION=v.1.0
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:?DB_PASSWORD must be set in .env}@db:5432/${DB_NAME:-bte_careers}
       - APP_TIMEZONE=Asia/Manila
     depends_on:

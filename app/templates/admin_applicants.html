@@ -99,7 +99,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="detail-name" id="applicantDetailName">First Name &amp; Last Name</div>
-                    <div class="mb-2"><strong>Applying for:</strong> <span id="applicant-detail-job">Job Title</span></div>
+                    <div class="mb-2 detail-field"><strong>Applying for:</strong> <span id="applicant-detail-job">Job Title</span></div>
                     <div class="row">
                         <div class="col-6 detail-field">
                             <div><strong>Age:</strong> <span id="applicant-detail-age">&mdash;</span></div>
@@ -233,6 +233,7 @@
             document.getElementById('applicant-detail-address').textContent = show(values.address);
             document.getElementById('applicant-detail-gender').textContent = show(values.gender);
             document.getElementById('applicant-detail-phone').textContent = show(values.phone);
+            document.getElementById('applicant-detail-job').textContent = show(values.job);
         }
 
         function renderDetailAnswers(answers, message) {
@@ -281,7 +282,8 @@
                     age: d.applicant.age,
                     address: d.applicant.address,
                     gender: d.applicant.gender,
-                    phone: d.applicant.phone
+                    phone: d.applicant.phone,
+                    job: d.job_title
                 });
                 renderDetailAnswers(d.answers);
             } catch (err) {
