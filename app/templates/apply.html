@@ -87,6 +87,7 @@
         // Each question: {id, type, text, options: [{value, label}] or null}.
         // Answer values: YES/NO for YES_NO, the option id for MULTIPLE_CHOICE (never the letter), free text for OPEN_ENDED.
         var JOB_ID = {{ job.id | tojson }};
+        var TERMS_VERSION = {{ terms_version | tojson }};
         var QUESTIONS = [];
         var LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
         var answers = [];
@@ -242,7 +243,14 @@
             else { renderReview(); show('view-review'); }
         });
         $('btn-back-questions').addEventListener('click', function () { show('view-questions'); renderQuestion(); });
-        $('consent').addEventListener('change', function () { $('btn-submit').disabled = !this.checked; });
+        $('consent').addEventListener('change', function () { $('btn-submit').disabled = !this.checked || !TERMS_VERSION; });
+        if (!TERMS_VERSION) {
+            var termsNote = document.createElement('p');
+            termsNote.className = 'shell-note';
+            termsNote.textContent = 'This application form is temporarily unavailable (missing terms configuration). Please try again later.';
+            $('btn-submit').parentNode.parentNode.insertBefore(termsNote, $('btn-submit').parentNode);
+            $('consent').disabled = true;
+        }
         $('btn-submit').addEventListener('click', function () { $('shell-note').classList.remove('hidden'); });
         document.querySelectorAll('#view-details input').forEach(function (el) {
             el.addEventListener('input', function () { dirty = true; });

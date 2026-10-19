@@ -35,7 +35,11 @@ async def serve_apply_page(request: Request, job_id: str = ""):
     return templates.TemplateResponse(
         request=request,
         name="apply.html",
-        context={"job": {"id": job_id}, "website_careers_url": os.environ["WEBSITE_CAREERS_URL"]},
+        context={
+            "job": {"id": job_id},
+            "website_careers_url": os.environ["WEBSITE_CAREERS_URL"],
+            "terms_version": os.environ.get("TERMS_VERSION", ""),
+        },
     )
 
 @app.get("/careers", include_in_schema=False)
