@@ -36,6 +36,7 @@ class ApplicantAnswerItem(BaseModel):
 
 # --- Admin Schemas ---
 class JobCounts(BaseModel):
+    NEW: int = 0
     PASSED: int = 0
     FAILED: int = 0
     POOLING: int = 0
@@ -190,6 +191,7 @@ class SidebarMetadataResponse(BaseModel):
     forms: List[SidebarFormItem]
 
 class OverallTotals(BaseModel):
+    new: int = 0
     passed: int = 0
     failed: int = 0
     pooling: int = 0

@@ -34,22 +34,62 @@
         }
         .applicant-row { cursor: pointer; }
         .applicant-row:hover td { background-color: rgba(0, 0, 0, 0.03); }
-        /* Applicant detail modal (SHELL: every value is a placeholder, nothing is wired) */
+
+        /* Applicant detail modal */
+        .modal-content { border-radius: 20px; border: none; }
         .detail-status {
             display: inline-block;
             font-size: 0.75rem;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: var(--text-muted);
-            border: 1px solid var(--border-light);
+            color: var(--accent-gold);
+            background-color: rgba(212, 175, 55, 0.12);
+            border: none;
             border-radius: 999px;
-            padding: 0.2rem 0.8rem;
+            padding: 0.3rem 0.9rem;
         }
-        .detail-name { font-weight: 800; font-size: 1.75rem; margin: 0.5rem 0; }
+        .detail-name { font-weight: 800; font-size: 1.75rem; margin: 0.6rem 0 1rem; }
         .detail-field { font-size: 0.9rem; color: var(--text-muted); }
         .detail-field strong { color: var(--text-main); }
-        .detail-section-title { font-weight: 800; font-size: 1.05rem; }
+        .detail-pod {
+            background-color: var(--bg-main);
+            border-radius: 16px;
+            padding: 1.1rem 1.4rem;
+        }
+        .detail-job-line {
+            font-size: 0.9rem;
+            margin-bottom: 0.9rem;
+            padding-bottom: 0.9rem;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .detail-section-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 800;
+            color: var(--text-muted);
+            margin-bottom: 0.6rem;
+        }
+        .detail-section-block { margin-bottom: 1.5rem; }
+        .detail-section-block:last-child { margin-bottom: 0; }
+        #applicant-detail-answers.list-group { gap: 0.6rem; display: flex; flex-direction: column; }
+        #applicant-detail-answers .list-group-item {
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            padding: 0.9rem 1.1rem;
+        }
+        #applicant-detail-answers .list-group-item .fw-bold { font-size: 0.9rem; }
+        #applicant-detail-answers .list-group-item .text-muted {
+            display: inline-block;
+            margin-top: 0.35rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--accent-black) !important;
+            background-color: rgba(212, 175, 55, 0.12);
+            border-radius: 999px;
+            padding: 0.15rem 0.7rem;
+        }
     </style>
 </head>
 <body>
@@ -93,36 +133,41 @@
     <div class="modal fade" id="applicantDetailModal" tabindex="-1" aria-labelledby="applicantDetailName" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header d-block">
+                <div class="modal-header d-block border-0 pb-0">
                     <div class="d-flex justify-content-between align-items-start">
                         <span class="detail-status" id="applicant-detail-status">Status</span>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="detail-name" id="applicantDetailName">First Name &amp; Last Name</div>
-                    <div class="mb-2 detail-field"><strong>Applying for:</strong> <span id="applicant-detail-job">Job Title</span></div>
-                    <div class="row">
-                        <div class="col-6 detail-field">
-                            <div><strong>Age:</strong> <span id="applicant-detail-age">&mdash;</span></div>
-                            <div><strong>Address:</strong> <span id="applicant-detail-address">&mdash;</span></div>
-                        </div>
-                        <div class="col-6 detail-field">
-                            <div><strong>Gender:</strong> <span id="applicant-detail-gender">&mdash;</span></div>
-                            <div><strong>Phone Number:</strong> <span id="applicant-detail-phone">&mdash;</span></div>
+                    <div class="detail-pod">
+                        <div class="detail-job-line detail-field"><strong>Applying for:</strong> <span id="applicant-detail-job">Job Title</span></div>
+                        <div class="row">
+                            <div class="col-6 detail-field">
+                                <div class="mb-2"><strong>Age:</strong> <span id="applicant-detail-age">&mdash;</span></div>
+                                <div><strong>Address:</strong> <span id="applicant-detail-address">&mdash;</span></div>
+                            </div>
+                            <div class="col-6 detail-field">
+                                <div class="mb-2"><strong>Gender:</strong> <span id="applicant-detail-gender">&mdash;</span></div>
+                                <div><strong>Phone Number:</strong> <span id="applicant-detail-phone">&mdash;</span></div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-body">
-                    <button type="button" class="btn btn-outline-dark fw-bold mb-3" id="applicant-detail-resume" disabled>Resume Attachment</button>
-                    <div class="mb-3">
-                        <span class="detail-section-title">Form Assessment:</span>
+                <div class="modal-body pt-4">
+                    <div class="detail-section-block">
+                        <div class="detail-section-label">Resume</div>
+                        <button type="button" class="btn btn-outline-dark fw-bold" id="applicant-detail-resume" disabled>Resume Attachment</button>
+                    </div>
+                    <div class="detail-section-block detail-pod">
+                        <div class="detail-section-label">Form Assessment</div>
                         <span class="text-muted" id="applicant-detail-assessment">&mdash;</span>
                     </div>
-                    <div>
-                        <div class="detail-section-title mb-2">Non negotiable questions:</div>
+                    <div class="detail-section-block detail-pod">
+                        <div class="detail-section-label">Non Negotiable Questions</div>
                         <div class="text-muted" id="applicant-detail-nonneg">&mdash;</div>
                     </div>
-                    <div class="mt-4">
-                        <div class="detail-section-title mb-2">Answers:</div>
+                    <div class="detail-section-block">
+                        <div class="detail-section-label">Answers</div>
                         <ul class="list-group" id="applicant-detail-answers">
                             <li class="list-group-item">
                                 <div class="fw-bold">Question text</div>

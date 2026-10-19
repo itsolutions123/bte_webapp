@@ -62,12 +62,14 @@ async def get_dashboard_summary(
     for status, count in rows:
         if status:
             s = status.upper()
-            if s == "PASSED": totals.passed = count
+            if s == "NEW": totals.new = count
+            elif s == "PASSED": totals.passed = count
             elif s == "FAILED": totals.failed = count
             elif s == "POOLING": totals.pooling = count
             elif s == "ENDORSED": totals.endorsed = count
             elif s == "HIRED": totals.hired = count
-            total_processed += count
+            if s != "NEW":
+                total_processed += count
     totals.total_processed = total_processed
     
     return AdminSummaryResponse(overall_totals=totals, brand_summaries=[])

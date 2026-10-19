@@ -161,6 +161,7 @@
                             <thead>
                                 <tr>
                                     <th>Job Title</th>
+                                    <th>New</th>
                                     <th>Passed</th>
                                     <th>Failed</th>
                                     <th>Pooling</th>
@@ -170,7 +171,7 @@
                             </thead>
                             <tbody id="tally-body">
                                 <!-- Populated by JS -->
-                                <tr><td colspan="6" class="text-center text-muted fw-bold py-4">Loading pipeline...</td></tr>
+                                <tr><td colspan="7" class="text-center text-muted fw-bold py-4">Loading pipeline...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -196,6 +197,10 @@
                     const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
                     
                     document.getElementById('main-summary').innerHTML = `
+                        <div class="col col-divider">
+                            <div class="stat-label">New</div>
+                            <div class="stat-value" style="color: var(--text-muted);">${stats.new || 0}</div>
+                        </div>
                         <div class="col pass-rate-box">
                             <div class="stat-label">Pass Rate</div>
                             <div class="stat-value" style="color: var(--accent-gold);">${passRate}%</div>
@@ -243,6 +248,7 @@
                     document.getElementById('tally-body').innerHTML = tallyData.data.map(t => `
                         <tr>
                             <td class="fw-bold">${t.job_title}</td>
+                            <td style="color: var(--text-muted);">${t.counts.NEW || 0}</td>
                             <td style="color: var(--accent-gold);">${t.counts.PASSED || 0}</td>
                             <td style="color: var(--accent-black);">${t.counts.FAILED || 0}</td>
                             <td style="color: var(--text-muted);">${t.counts.POOLING || 0}</td>
