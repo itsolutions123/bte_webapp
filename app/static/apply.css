@@ -23,6 +23,8 @@
 .nav-row { display:flex; justify-content:space-between; margin-top:40px; }
 .nav-row .btn-outline { margin-top:0; padding:12px 32px; }
 .btn-outline[disabled] { opacity:.35; cursor:not-allowed; }
+.form-control.field-invalid { border-color:#d64545; }
+.field-error-note { margin-top:16px; padding:12px; border:1px dashed #d64545; color:#d64545; text-align:center; }
 .review-item { padding:14px 0; border-bottom:1px solid #2a2a2a; }
 .review-q { color:#cccccc; font-size:var(--font-body); margin-bottom:4px; }
 .review-a { color:#ffffff; font-weight:500; }

@@ -21,10 +21,16 @@
                 <div class="details-grid">
                     <div class="form-group"><label for="d_first">First Name</label><input type="text" id="d_first" class="form-control"></div>
                     <div class="form-group"><label for="d_last">Last Name</label><input type="text" id="d_last" class="form-control"></div>
-                    <div class="form-group"><label for="d_email">Email Address</label><input type="email" id="d_email" class="form-control"></div>
-                    <div class="form-group"><label for="d_phone">Phone Number</label><input type="tel" id="d_phone" class="form-control"></div>
+                    <div class="form-group"><label for="d_email">Email Address</label><input type="email" id="d_email" class="form-control" placeholder="name@example.com"></div>
+                    <div class="form-group"><label for="d_phone">Phone Number</label><input type="tel" id="d_phone" class="form-control" placeholder="09171234567" pattern="[0-9]*" inputmode="numeric"></div>
                     <div class="form-group"><label for="d_address">Address</label><input type="text" id="d_address" class="form-control"></div>
-                    <div class="form-group"><label for="d_gender">Gender</label><input type="text" id="d_gender" class="form-control"></div>
+                    <div class="form-group"><label for="d_gender">Gender</label>
+                        <select id="d_gender" class="form-control">
+                            <option value="" disabled selected>Select...</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
                     <div class="form-group"><label for="d_dob">Date of Birth</label><input type="date" id="d_dob" class="form-control"></div>
                     <div class="form-group"><label for="d_resume">Resume (PDF only)</label><input type="file" id="d_resume" accept="application/pdf" class="form-control"></div>
                 </div>
@@ -179,7 +185,45 @@
             });
         }
 
-        $('btn-proceed').addEventListener('click', function () { cur = 0; show('view-questions'); renderQuestion(); });
+        var DETAIL_FIELD_IDS = ['d_first', 'd_last', 'd_email', 'd_phone', 'd_address', 'd_gender', 'd_dob', 'd_resume'];
+        var detailErrorNote = document.createElement('p');
+        detailErrorNote.className = 'field-error-note hidden';
+        detailErrorNote.textContent = 'Please fill in all fields before proceeding.';
+        $('view-details').appendChild(detailErrorNote);
+
+        var EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        var PHONE_PATTERN = /^[0-9]{7,15}$/;
+        function fieldHasValue(id) {
+            var el = $(id);
+            if (id === 'd_resume') return el.files && el.files.length > 0;
+            var v = el.value.trim();
+            if (v === '') return false;
+            if (id === 'd_email') return EMAIL_PATTERN.test(v);
+            if (id === 'd_phone') return PHONE_PATTERN.test(v);
+            return true;
+        }
+        function validateDetails() {
+            var allValid = true;
+            DETAIL_FIELD_IDS.forEach(function (id) {
+                var ok = fieldHasValue(id);
+                $(id).classList.toggle('field-invalid', !ok);
+                if (!ok) allValid = false;
+            });
+            detailErrorNote.classList.toggle('hidden', allValid);
+            return allValid;
+        }
+        DETAIL_FIELD_IDS.forEach(function (id) {
+            $(id).addEventListener(id === 'd_resume' ? 'change' : 'input', function () {
+                if ($(id).classList.contains('field-invalid') && fieldHasValue(id)) {
+                    $(id).classList.remove('field-invalid');
+                }
+            });
+        });
+
+        $('btn-proceed').addEventListener('click', function () {
+            if (!validateDetails()) return;
+            cur = 0; show('view-questions'); renderQuestion();
+        });
 
         // ---- Load the real questions for this job ----
         function normalizeQuestion(q) {
