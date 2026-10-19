@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTE Careers - Applicants</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="/static/admin-sidebar.css" rel="stylesheet">
+    <style>
+        /* Applicants list (SHELL: every row is a placeholder, nothing is wired) */
+        .applicants-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 20px;
+            box-shadow: var(--soft-shadow);
+            padding: 1.5rem;
+        }
+        .applicants-table th {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+        .applicants-table td { color: var(--text-muted); }
+        .shell-note {
+            border: 1px dashed var(--accent-gold);
+            color: var(--accent-gold);
+            border-radius: 8px;
+            padding: 0.6rem 1rem;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .applicant-row { cursor: pointer; }
+        .applicant-row:hover td { background-color: rgba(0, 0, 0, 0.03); }
+        /* Applicant detail modal (SHELL: every value is a placeholder, nothing is wired) */
+        .detail-status {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            border: 1px solid var(--border-light);
+            border-radius: 999px;
+            padding: 0.2rem 0.8rem;
+        }
+        .detail-name { font-weight: 800; font-size: 1.75rem; margin: 0.5rem 0; }
+        .detail-field { font-size: 0.9rem; color: var(--text-muted); }
+        .detail-field strong { color: var(--text-main); }
+        .detail-section-title { font-weight: 800; font-size: 1.05rem; }
+    </style>
+</head>
+<body>
+    {% set active_page = 'applicants' %}
+    <div class="container-fluid p-0">
+        <div class="row g-0">
+            {% include '_sidebar.html' %}
+
+            <main class="col-md-10 px-4 pb-5">
+                <h4 class="fw-bold mt-4 mb-4">Applicants</h4>
+
+                <div class="applicants-card">
+                    <div class="table-responsive">
+                        <table class="table applicants-table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Applicant</th>
+                                    <th>Job</th>
+                                    <th>Status</th>
+                                    <th>Score</th>
+                                    <th>Applied</th>
+                                </tr>
+                            </thead>
+                            <tbody id="applicants-rows">
+                                <tr><td colspan="5" class="text-muted">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <button type="button" class="btn btn-outline-dark fw-bold" id="applicants-prev" disabled>Previous</button>
+                        <span class="text-muted small fw-bold" id="applicants-page-label">Page &mdash; of &mdash;</span>
+                        <button type="button" class="btn btn-outline-dark fw-bold" id="applicants-next" disabled>Next</button>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <div class="modal fade" id="applicantDetailModal" tabindex="-1" aria-labelledby="applicantDetailName" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header d-block">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <span class="detail-status" id="applicant-detail-status">Status</span>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="detail-name" id="applicantDetailName">First Name &amp; Last Name</div>
+                    <div class="row">
+                        <div class="col-6 detail-field">
+                            <div><strong>Age:</strong> <span id="applicant-detail-age">&mdash;</span></div>
+                            <div><strong>Address:</strong> <span id="applicant-detail-address">&mdash;</span></div>
+                        </div>
+                        <div class="col-6 detail-field">
+                            <div><strong>Gender:</strong> <span id="applicant-detail-gender">&mdash;</span></div>
+                            <div><strong>Phone Number:</strong> <span id="applicant-detail-phone">&mdash;</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <button type="button" class="btn btn-outline-dark fw-bold mb-3" id="applicant-detail-resume" disabled>Resume Attachment</button>
+                    <div class="mb-3">
+                        <span class="detail-section-title">Form Assessment:</span>
+                        <span class="text-muted" id="applicant-detail-assessment">&mdash;</span>
+                    </div>
+                    <div>
+                        <div class="detail-section-title mb-2">Non negotiable questions:</div>
+                        <div class="text-muted" id="applicant-detail-nonneg">&mdash;</div>
+                    </div>
+                    <div class="shell-note mt-4">Shell only: no applicant data is loaded.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% include '_form_builder.html' %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/admin-sidebar.js"></script>
+    <script>
+        // Applicants list: GET /api/v1/admin/applications (docs/API_CONTRACT.md). Cells use textContent only.
+        const APPLICANTS_PAGE_SIZE = 50;
+        let applicantsPage = 1;
+
+        function applicantsMessageRow(text) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 5;
+            td.className = 'text-muted';
+            td.textContent = text;
+            tr.appendChild(td);
+            return tr;
+        }
+
+        async function loadApplicants() {
+            const tbody = document.getElementById('applicants-rows');
+            const prev = document.getElementById('applicants-prev');
+            const next = document.getElementById('applicants-next');
+            const label = document.getElementById('applicants-page-label');
+            tbody.textContent = '';
+            tbody.appendChild(applicantsMessageRow('Loading...'));
+            prev.disabled = true;
+            next.disabled = true;
+            try {
+                const res = await fetch('/api/v1/admin/applications?page=' + applicantsPage + '&limit=' + APPLICANTS_PAGE_SIZE);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const body = await res.json();
+                const totalPages = Math.max(1, Math.ceil(body.total / APPLICANTS_PAGE_SIZE));
+                tbody.textContent = '';
+                if (body.data.length === 0) {
+                    tbody.appendChild(applicantsMessageRow('No applicants yet'));
+                }
+                body.data.forEach(function (a) {
+                    const tr = document.createElement('tr');
+                    tr.className = 'applicant-row';
+                    tr.setAttribute('role', 'button');
+                    tr.setAttribute('data-bs-toggle', 'modal');
+                    tr.setAttribute('data-bs-target', '#applicantDetailModal');
+                    tr.dataset.id = a.id;
+                    const applied = a.created_at ? a.created_at.slice(0, 10) + ' ' + a.created_at.slice(11, 16) : '\u2014';
+                    const cells = [
+                        a.applicant_name,
+                        a.job_title,
+                        a.status,
+                        a.score === null ? '\u2014' : String(a.score),
+                        applied
+                    ];
+                    cells.forEach(function (text) {
+                        const td = document.createElement('td');
+                        td.textContent = text;
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+                label.textContent = 'Page ' + applicantsPage + ' of ' + totalPages;
+                prev.disabled = applicantsPage <= 1;
+                next.disabled = applicantsPage >= totalPages;
+            } catch (err) {
+                console.error('Applicants load failed:', err);
+                tbody.textContent = '';
+                tbody.appendChild(applicantsMessageRow('Could not load applicants.'));
+                label.textContent = 'Page \u2014 of \u2014';
+            }
+        }
+
+        document.getElementById('applicants-prev').addEventListener('click', function () {
+            if (applicantsPage > 1) { applicantsPage -= 1; loadApplicants(); }
+        });
+        document.getElementById('applicants-next').addEventListener('click', function () {
+            applicantsPage += 1;
+            loadApplicants();
+        });
+        loadApplicants();
+    </script>
+</body>
+</html>

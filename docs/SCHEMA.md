@@ -102,7 +102,7 @@ Scoring rules (enforced by the API, recorded in API_CONTRACT.md):
 - `calculated_score` (Integer) - Computed percentage (e.g., 78), over scored questions only
 - `brand_points` (JSONB, nullable) - RETIRED 2026-10-15: job-level fit (see `application_fits`) replaces brand-level fit. If the column exists in the live DB it is unused; it is not dropped without your explicit confirmation (UNVERIFIED whether it exists).
 - `has_hard_fail_flag` (Boolean) - True if any hard requirement was missed
-- `status` (String, Indexed) - e.g., "NEW", "POOLING", "PASSED", "FAILED", "ENDORSED", "HIRED"
+- `status` (String, Indexed) - e.g., "NEW", "POOLING", "PASSED", "FAILED", "ENDORSED", "HIRED". Since 2026-10-19 the capture-first apply writes every new application as "NEW" (score NULL, no hard-fail flag) and increments `status_counts` (job, "NEW"). The dashboard cards and tally have no NEW column yet.
 - `is_manual_override` (Boolean) - True if status was changed by admin
 - `overridden_by_id` (UUID, nullable)
 - `overridden_at` (Timestamp, nullable)
@@ -113,9 +113,9 @@ Scoring rules (enforced by the API, recorded in API_CONTRACT.md):
 - `application_id` (UUID, Foreign Key -> applications.id)
 - `job_question_id` (UUID, Foreign Key -> job_questions.id)
 - `applicant_answer` (String)
-- `is_passed` (Boolean, nullable) - True when the chosen answer has no FAIL row in answer_points (YES_NO and MULTIPLE_CHOICE); NULL for OPEN_ENDED (not scored). For OPEN_ENDED, `applicant_answer` holds the applicant's full text.
+- `is_passed` (Boolean, nullable) - True when the chosen answer has no FAIL row in answer_points (YES_NO and MULTIPLE_CHOICE); NULL for OPEN_ENDED (not scored). For OPEN_ENDED, `applicant_answer` holds the applicant's full text. Migration 012 (applied 2026-10-19) dropped NOT NULL on the live column and `Answer.is_passed` is `nullable=True` in the model; the capture-first apply stores NULL for every answer until scoring exists.
 
-**`application_fits`** (PROPOSED 2026-10-15, not migrated yet, migration 011; job-level suggested fit)
+**`application_fits`** (PROPOSED 2026-10-15, not migrated yet, migration number TO BE RENUMBERED by Structure: 011 and 012 are taken; job-level suggested fit)
 - `application_id` (UUID, Foreign Key -> applications.id, Not Null)
 - `job_id` (UUID, Foreign Key -> jobs.id, Not Null) - another job on the same form that the same answers score higher on than the job applied to
 - `score` (Integer, Not Null) - percent for that job, same rule as `calculated_score`

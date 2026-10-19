@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone, timedelta
-from sqlalchemy import Column, String, Text, Integer, Boolean, ForeignKey, DateTime, Index
+from sqlalchemy import Column, String, Text, Integer, Boolean, ForeignKey, DateTime, Date, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from .database import Base
@@ -55,6 +55,9 @@ class Applicant(Base):
     email = Column(String, nullable=False)
     phone = Column(String, index=True, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utc_now)
+    address = Column(String, nullable=True)
+    gender = Column(String, nullable=True)
+    date_of_birth = Column(Date, nullable=True)
 
     applications = relationship("Application", back_populates="applicant")
 
@@ -123,7 +126,7 @@ class Answer(Base):
     application_id = Column(UUID(as_uuid=True), ForeignKey("applications.id"), nullable=False)
     job_question_id = Column(UUID(as_uuid=True), ForeignKey("job_questions.id"), nullable=False)
     applicant_answer = Column(String, nullable=False)
-    is_passed = Column(Boolean, nullable=False)
+    is_passed = Column(Boolean, nullable=True)
 
     application = relationship("Application", back_populates="answers")
 

@@ -148,6 +148,14 @@ def check_rate_limit(client_ip: str):
     RATE_LIMIT_CACHE[client_ip] = recent_requests
 
 
+import logging
+from datetime import date
+from uuid import uuid4
+from app.models import Applicant, Application, Answer, StatusCount
+
+logger = logging.getLogger(__name__)
+
+
 @router.post("/apply", status_code=201)
 async def submit_application(
     request: Request,
@@ -156,6 +164,9 @@ async def submit_application(
     last_name: str = Form(...),
     email: str = Form(...),
     phone: str = Form(...),
+    address: str = Form(...),
+    gender: str = Form(...),
+    date_of_birth: str = Form(...),
     answers: str = Form(default="[]"),
     terms_version: str = Form(...),
     consent_agreed: bool = Form(...),
@@ -168,22 +179,98 @@ async def submit_application(
     if not consent_agreed:
         raise HTTPException(status_code=400, detail="Consent to RA 10173 is required.")
 
-    # 1. Validate File constraints (Security Rule 1)
+    # 1. Personal fields (contract: fixed, required on every job)
+    first_name = first_name.strip()
+    last_name = last_name.strip()
+    email = email.strip().lower()
+    phone = phone.strip()
+    address = address.strip()
+    gender = gender.strip()
+    if not all([first_name, last_name, email, phone, address, gender]):
+        raise HTTPException(status_code=422, detail="All personal fields are required.")
+
+    dob_text = date_of_birth.strip()
+    try:
+        if len(dob_text) != 10:
+            raise ValueError
+        dob = date.fromisoformat(dob_text)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="date_of_birth must be a valid YYYY-MM-DD date.")
+    if dob >= date.today():
+        raise HTTPException(status_code=422, detail="date_of_birth must be a past date.")
+
+    # 2. Job: same visibility rule as GET /api/v1/public/jobs/{job_id}
+    job = await db.scalar(
+        select(Job).where(
+            Job.id == job_id,
+            Job.is_active == True,
+            Job.archived_at.is_(None),
+            Job.expires_at > func.now(),
+        )
+    )
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.form_id is None:
+        raise HTTPException(status_code=409, detail="This job has no application form.")
+
+    # 3. Questions come from the job's form (jobs.form_id)
+    q_result = await db.execute(
+        select(JobQuestion).where(JobQuestion.form_id == job.form_id).order_by(JobQuestion.display_order.asc())
+    )
+    questions = {str(q.id): q for q in q_result.scalars().all()}
+
+    # 4. Validate answers BEFORE anything is written to disk
+    try:
+        parsed_answers = json.loads(answers)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=422, detail="answers must be valid JSON.")
+    if not isinstance(parsed_answers, list):
+        raise HTTPException(status_code=422, detail="answers must be a JSON array.")
+
+    given = {}
+    for item in parsed_answers:
+        if not isinstance(item, dict):
+            raise HTTPException(status_code=422, detail="Each answer must be an object.")
+        q_id = str(item.get("question_id", ""))
+        if q_id not in questions:
+            raise HTTPException(status_code=422, detail="Unknown question id.")
+        if q_id in given:
+            raise HTTPException(status_code=422, detail="Duplicate answer for a question.")
+        raw = item.get("answer")
+        given[q_id] = "" if raw is None else str(raw).strip()
+
+    answer_rows = []
+    for q_id, q in questions.items():
+        val = given.get(q_id, "")
+        if q.question_type in ("YES_NO", "MULTIPLE_CHOICE"):
+            if not val:
+                raise HTTPException(status_code=422, detail="Every question must be answered.")
+            if q.question_type == "YES_NO":
+                val = val.upper()
+                if val not in ("YES", "NO"):
+                    raise HTTPException(status_code=422, detail="Invalid answer value.")
+            else:
+                option_ids = {str(o.get("id")) for o in (q.options or []) if isinstance(o, dict)}
+                if val not in option_ids:
+                    raise HTTPException(status_code=422, detail="Unknown option id.")
+        elif not val:
+            continue
+        answer_rows.append((q.id, val))
+
+    # 5. Validate the PDF, then stream it to disk (Security Rule 1)
     if resume.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
-    
+
     magic_bytes = await resume.read(4)
     if magic_bytes != b"%PDF":
         raise HTTPException(status_code=400, detail="Invalid PDF file format")
-    
-    # 2. File Size & Streaming to disk
+
     storage_path = os.environ.get("RESUME_STORAGE_PATH", "/data/resumes")
     os.makedirs(storage_path, mode=0o700, exist_ok=True)
-    
-    from uuid import uuid4
+
     app_id = uuid4()
     file_on_disk = os.path.join(storage_path, f"{app_id}.pdf")
-    
+
     file_size = 4
     try:
         async with aiofiles.open(file_on_disk, 'wb') as f:
@@ -194,118 +281,73 @@ async def submit_application(
                     raise HTTPException(status_code=413, detail="File size exceeds 5MB limit")
                 await f.write(chunk)
         os.chmod(file_on_disk, 0o600)
-    except HTTPException:
+    except Exception:
         if os.path.exists(file_on_disk):
             os.remove(file_on_disk)
         raise
-    
-    # 3. Clean string inputs
-    first_name = first_name.strip()
-    last_name = last_name.strip()
-    email = email.strip().lower()
-    phone = phone.strip()
-    
+
+    # 6. One transaction: applicant, application, raw answers, NEW counter (no scoring in this slice)
     try:
-        parsed_answers = json.loads(answers)
-    except json.JSONDecodeError:
-        parsed_answers = []
-
-    # 4. Matching Engine Logic
-    job_query = select(Job).where(Job.id == job_id, Job.is_active == True)
-    job = await db.scalar(job_query)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found or inactive")
-
-    questions_query = select(JobQuestion).where(JobQuestion.job_id == job_id).order_by(JobQuestion.display_order.asc())
-    questions_result = await db.execute(questions_query)
-    job_questions = {str(q.id): q for q in questions_result.scalars().all()}
-
-    has_hard_fail_flag = False
-    passed_count = 0
-    total_questions = len(job_questions)
-    answer_records = []
-
-    from app.models import Applicant, Application, Answer, StatusCount
-    
-    for ans in parsed_answers:
-        q_id = str(ans.get("question_id"))
-        val = str(ans.get("answer", "")).strip()
-        if q_id in job_questions:
-            q_obj = job_questions[q_id]
-            is_passed = (val.lower() == q_obj.expected_answer.lower())
-            if is_passed:
-                passed_count += 1
-            elif q_obj.is_hard_requirement:
-                has_hard_fail_flag = True
-                
-            answer_records.append(Answer(
-                id=uuid4(),
-                application_id=app_id,
-                job_question_id=q_obj.id,
-                applicant_answer=val,
-                is_passed=is_passed
-            ))
-
-    score = int((passed_count / total_questions) * 100) if total_questions > 0 else 100
-    
-    # Status Evaluation
-    if has_hard_fail_flag:
-        final_status = "FAILED"
-    elif score >= job.pass_threshold:
-        final_status = "PASSED"
-    elif score >= job.pooling_threshold:
-        final_status = "POOLING"
-    else:
-        final_status = "FAILED"
-
-    # 5. Database Transaction
-    try:
-        # Applicant check/create
-        applicant_query = select(Applicant).where(Applicant.email == email)
-        applicant = await db.scalar(applicant_query)
-        if not applicant:
-            applicant = Applicant(first_name=first_name, last_name=last_name, email=email, phone=phone)
+        applicant = await db.scalar(select(Applicant).where(Applicant.email == email))
+        if applicant:
+            applicant.first_name = first_name
+            applicant.last_name = last_name
+            applicant.phone = phone
+            applicant.address = address
+            applicant.gender = gender
+            applicant.date_of_birth = dob
+        else:
+            applicant = Applicant(
+                first_name=first_name, last_name=last_name, email=email, phone=phone,
+                address=address, gender=gender, date_of_birth=dob
+            )
             db.add(applicant)
-            await db.flush()
-        
-        # Application create
-        application = Application(
+        await db.flush()
+
+        db.add(Application(
             id=app_id,
             applicant_id=applicant.id,
             job_id=job.id,
             terms_version=terms_version,
             consent_agreed=consent_agreed,
             resume_path=file_on_disk,
-            resume_filename=resume.filename,
+            resume_filename=resume.filename or "resume.pdf",
             resume_size_bytes=file_size,
-            calculated_score=score,
-            has_hard_fail_flag=has_hard_fail_flag,
-            status=final_status
-        )
-        db.add(application)
-        
-        # Answers add
-        for arec in answer_records:
-            db.add(arec)
+            calculated_score=None,
+            has_hard_fail_flag=False,
+            status="NEW"
+        ))
+        await db.flush()
 
-        # StatusCount Update (Rule 13.3)
-        count_query = select(StatusCount).where(
-            StatusCount.job_id == job.id, StatusCount.status == final_status
-        ).with_for_update()
-        status_count = await db.scalar(count_query)
+        for question_uuid, val in answer_rows:
+            db.add(Answer(
+                id=uuid4(),
+                application_id=app_id,
+                job_question_id=question_uuid,
+                applicant_answer=val,
+                is_passed=None
+            ))
+
+        # status_counts increment (Rule 18.3: counter, never a recount)
+        status_count = await db.scalar(
+            select(StatusCount)
+            .where(StatusCount.job_id == job.id, StatusCount.status == "NEW")
+            .with_for_update()
+        )
         if status_count:
             status_count.count += 1
         else:
-            db.add(StatusCount(job_id=job.id, status=final_status, count=1))
-            
+            db.add(StatusCount(job_id=job.id, status="NEW", count=1))
+
         await db.commit()
     except Exception as e:
         await db.rollback()
         if os.path.exists(file_on_disk):
             os.remove(file_on_disk)
+        logger.error("Application submit failed: %s", type(e).__name__)
         raise HTTPException(status_code=500, detail="Database transaction failed")
-        
+
     return JSONResponse(
-        status_code=201, 
+        status_code=201,
         content={"message": "Application submitted successfully", "application_id": str(app_id)}
     )

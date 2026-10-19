@@ -50,6 +50,11 @@ async def serve_admin_dashboard(request: Request):
 async def serve_admin_archive(request: Request):
     return templates.TemplateResponse(request=request, name="archive.html")
 
+@app.get("/admin/applicants", include_in_schema=False)
+async def serve_admin_applicants(request: Request):
+    # Shell only (section 8): no data is fetched yet.
+    return templates.TemplateResponse(request=request, name="admin_applicants.html")
+
 @app.get("/admin/forms/{form_id}", include_in_schema=False)
 async def serve_admin_form_detail(request: Request, form_id: str):
     # Shell only (section 8): form_id is accepted but not used to fetch data yet.

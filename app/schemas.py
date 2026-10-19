@@ -53,6 +53,7 @@ class AdminTallyResponse(BaseModel):
 class AdminApplicationListItem(BaseModel):
     id: UUID4
     applicant_name: str
+    job_title: str
     score: Optional[int]
     status: str
     has_hard_fail_flag: bool

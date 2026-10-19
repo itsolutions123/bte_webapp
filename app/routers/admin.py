@@ -9,6 +9,7 @@ from sqlalchemy import select, func, or_, literal
 from app.database import get_db
 from app.timeutil import to_app_tz
 from app.html_clean import clean_rich_text
+from app.models import Application, Applicant
 from app.models import Brand, Job, StatusCount, Parameter, Parameter, Form, JobQuestion, Answer, Answer
 from app.schemas import (
     SidebarMetadataResponse, SidebarBrandItem, SidebarFormItem, SidebarFormItem,
@@ -20,6 +21,7 @@ from app.schemas import (
     FormListItem, FormListResponse,
     QuestionCreateRequest, QuestionResponse, QuestionUpdateRequest,
     JobSummaryItem, FormDetailResponse,
+    AdminApplicationListItem, AdminApplicationListResponse,
 )
 
 router = APIRouter()
@@ -314,6 +316,40 @@ async def archive_job(brand_id: uuid.UUID, job_id: uuid.UUID, db: AsyncSession =
         archived_at=to_app_tz(job.archived_at) if job.archived_at else None,
         is_expired=job.expires_at <= datetime.now(timezone.utc),
     )
+
+@router.get("/applications", response_model=AdminApplicationListResponse)
+async def list_applications(
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    # First slice (docs/API_CONTRACT.md): page and limit only; job_id, form_id, status, search come later.
+    total_result = await db.execute(select(func.count()).select_from(Application))
+    total = total_result.scalar_one()
+
+    result = await db.execute(
+        select(Application, Applicant.first_name, Applicant.last_name, Job.title)
+        .join(Applicant, Applicant.id == Application.applicant_id)
+        .join(Job, Job.id == Application.job_id)
+        .order_by(Application.created_at.desc().nulls_last(), Application.id)
+        .offset((page - 1) * limit)
+        .limit(limit)
+    )
+
+    items = [
+        AdminApplicationListItem(
+            id=app_row.id,
+            applicant_name=f"{first} {last}".strip(),
+            job_title=title,
+            score=app_row.calculated_score,
+            status=app_row.status,
+            has_hard_fail_flag=bool(app_row.has_hard_fail_flag),
+            created_at=to_app_tz(app_row.created_at),
+        )
+        for app_row, first, last, title in result.all()
+    ]
+    return AdminApplicationListResponse(data=items, total=total)
+
 
 @router.get("/brands/{brand_id}/jobs", response_model=BrandJobsResponse)
 async def list_brand_jobs(
