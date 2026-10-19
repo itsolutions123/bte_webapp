@@ -99,6 +99,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="detail-name" id="applicantDetailName">First Name &amp; Last Name</div>
+                    <div class="mb-2"><strong>Applying for:</strong> <span id="applicant-detail-job">Job Title</span></div>
                     <div class="row">
                         <div class="col-6 detail-field">
                             <div><strong>Age:</strong> <span id="applicant-detail-age">&mdash;</span></div>
@@ -120,7 +121,20 @@
                         <div class="detail-section-title mb-2">Non negotiable questions:</div>
                         <div class="text-muted" id="applicant-detail-nonneg">&mdash;</div>
                     </div>
-                    <div class="shell-note mt-4">Shell only: no applicant data is loaded.</div>
+                    <div class="mt-4">
+                        <div class="detail-section-title mb-2">Answers:</div>
+                        <ul class="list-group" id="applicant-detail-answers">
+                            <li class="list-group-item">
+                                <div class="fw-bold">Question text</div>
+                                <div class="text-muted">Answer</div>
+                            </li>
+                            <li class="list-group-item">
+                                <div class="fw-bold">Question text</div>
+                                <div class="text-muted">Answer</div>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="shell-note mt-4">Header fields and answers are wired. Resume, assessment and non negotiable questions are placeholders.</div>
                 </div>
             </div>
         </div>
@@ -204,6 +218,79 @@
             loadApplicants();
         });
         loadApplicants();
+
+        // Applicant detail modal, header fields only: GET /api/v1/admin/applications/{application_id}
+        // (docs/API_CONTRACT.md). Values use textContent only. Resume, assessment, questions and answers are not wired yet.
+        let applicantDetailRequest = 0;
+        const detailModalEl = document.getElementById('applicantDetailModal');
+
+        function setDetailHeader(values) {
+            const dash = '\u2014';
+            const show = function (v) { return (v === null || v === undefined || v === '') ? dash : String(v); };
+            document.getElementById('applicant-detail-status').textContent = values.status;
+            document.getElementById('applicantDetailName').textContent = values.name;
+            document.getElementById('applicant-detail-age').textContent = show(values.age);
+            document.getElementById('applicant-detail-address').textContent = show(values.address);
+            document.getElementById('applicant-detail-gender').textContent = show(values.gender);
+            document.getElementById('applicant-detail-phone').textContent = show(values.phone);
+        }
+
+        function renderDetailAnswers(answers, message) {
+            const list = document.getElementById('applicant-detail-answers');
+            list.textContent = '';
+            if (!Array.isArray(answers) || answers.length === 0) {
+                const li = document.createElement('li');
+                li.className = 'list-group-item text-muted';
+                li.textContent = message || 'No answers recorded.';
+                list.appendChild(li);
+                return;
+            }
+            answers.forEach(function (a) {
+                const li = document.createElement('li');
+                li.className = 'list-group-item';
+                const q = document.createElement('div');
+                q.className = 'fw-bold';
+                q.textContent = a.question;
+                const ans = document.createElement('div');
+                ans.className = 'text-muted';
+                ans.textContent = a.applicant_answer === '' ? '\u2014' : a.applicant_answer;
+                li.appendChild(q);
+                li.appendChild(ans);
+                list.appendChild(li);
+            });
+        }
+
+        detailModalEl.addEventListener('show.bs.modal', async function (event) {
+            const row = event.relatedTarget;
+            const applicationId = row && row.dataset ? row.dataset.id : null;
+            const requestNo = ++applicantDetailRequest;
+            setDetailHeader({ status: '\u2014', name: 'Loading...' });
+            renderDetailAnswers(null, 'Loading...');
+            if (!applicationId) {
+                setDetailHeader({ status: '\u2014', name: 'Could not load applicant.' });
+                return;
+            }
+            try {
+                const res = await fetch('/api/v1/admin/applications/' + encodeURIComponent(applicationId));
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const d = await res.json();
+                if (requestNo !== applicantDetailRequest) return;
+                setDetailHeader({
+                    status: d.status,
+                    name: d.applicant.name,
+                    age: d.applicant.age,
+                    address: d.applicant.address,
+                    gender: d.applicant.gender,
+                    phone: d.applicant.phone
+                });
+                renderDetailAnswers(d.answers);
+            } catch (err) {
+                console.error('Applicant detail load failed:', err);
+                if (requestNo !== applicantDetailRequest) return;
+                setDetailHeader({ status: '\u2014', name: 'Could not load applicant.' });
+                renderDetailAnswers(null, 'Could not load answers.');
+            }
+        });
     </script>
 </body>
 </html>

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, literal
 
 from app.database import get_db
-from app.timeutil import to_app_tz
+from app.timeutil import to_app_tz, APP_TIMEZONE
 from app.html_clean import clean_rich_text
 from app.models import Application, Applicant
 from app.models import Brand, Job, StatusCount, Parameter, Parameter, Form, JobQuestion, Answer, Answer
@@ -22,6 +22,7 @@ from app.schemas import (
     QuestionCreateRequest, QuestionResponse, QuestionUpdateRequest,
     JobSummaryItem, FormDetailResponse,
     AdminApplicationListItem, AdminApplicationListResponse,
+    AdminApplicantDetail, AdminAnswerDetail, AdminApplicationDetailResponse,
 )
 
 router = APIRouter()
@@ -349,6 +350,73 @@ async def list_applications(
         for app_row, first, last, title in result.all()
     ]
     return AdminApplicationListResponse(data=items, total=total)
+
+
+@router.get("/applications/{application_id}", response_model=AdminApplicationDetailResponse)
+async def get_application_detail(
+    application_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    # First slice (docs/API_CONTRACT.md): id, status, score, applicant fields, answers.
+    row = (
+        await db.execute(
+            select(Application, Applicant, Job.title)
+            .join(Applicant, Applicant.id == Application.applicant_id)
+            .join(Job, Job.id == Application.job_id)
+            .where(Application.id == application_id)
+        )
+    ).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="application not found")
+    application, applicant, job_title = row
+
+    age = None
+    if applicant.date_of_birth is not None:
+        today = datetime.now(APP_TIMEZONE).date()
+        dob = applicant.date_of_birth
+        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+
+    answer_rows = (
+        await db.execute(
+            select(Answer, JobQuestion)
+            .join(JobQuestion, JobQuestion.id == Answer.job_question_id)
+            .where(Answer.application_id == application_id)
+            .order_by(JobQuestion.display_order, Answer.id)
+        )
+    ).all()
+
+    answers = []
+    for ans, q in answer_rows:
+        value = ans.applicant_answer
+        if q.question_type == "MULTIPLE_CHOICE":
+            for o in (q.options or []):
+                if isinstance(o, dict) and str(o.get("id")) == value:
+                    value = str(o.get("text", value))
+                    break
+        answers.append(
+            AdminAnswerDetail(
+                question=q.question_text,
+                question_type=q.question_type,
+                applicant_answer=value,
+                is_passed=ans.is_passed,
+            )
+        )
+
+    return AdminApplicationDetailResponse(
+        id=application.id,
+        applicant=AdminApplicantDetail(
+            name=f"{applicant.first_name} {applicant.last_name}".strip(),
+            email=applicant.email,
+            phone=applicant.phone,
+            gender=applicant.gender,
+            address=applicant.address,
+            age=age,
+        ),
+        job_title=job_title,
+        score=application.calculated_score,
+        status=application.status,
+        answers=answers,
+    )
 
 
 @router.get("/brands/{brand_id}/jobs", response_model=BrandJobsResponse)

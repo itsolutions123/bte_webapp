@@ -67,11 +67,15 @@ class AdminApplicantDetail(BaseModel):
     name: str
     email: str
     phone: Optional[str]
+    gender: Optional[str]
+    address: Optional[str]
+    age: Optional[int]
 
 class AdminAnswerDetail(BaseModel):
     question: str
+    question_type: Optional[str]
     applicant_answer: str
-    is_passed: bool
+    is_passed: Optional[bool]
 
 class AdminDuplicateApplication(BaseModel):
     job_title: str
@@ -81,12 +85,10 @@ class AdminDuplicateApplication(BaseModel):
 class AdminApplicationDetailResponse(BaseModel):
     id: UUID4
     applicant: AdminApplicantDetail
+    job_title: str
     score: Optional[int]
     status: str
-    parsed_data: Optional[Dict[str, Any]]
-    flags: List[str]
     answers: List[AdminAnswerDetail]
-    duplicate_applications: List[AdminDuplicateApplication]
 
 class AdminStatusPatchRequest(BaseModel):
     status: str
