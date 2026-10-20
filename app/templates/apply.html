@@ -6,6 +6,7 @@
     <title>Apply - BTE Careers</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/apply.css">
+    <link rel="stylesheet" href="/static/date-picker.css">
 </head>
 <body class="careers-body">
     <div class="apply-shell-banner">Shell preview: placeholder content only. Nothing is saved or submitted.</div>
@@ -31,7 +32,7 @@
                             <option value="Female">Female</option>
                         </select>
                     </div>
-                    <div class="form-group"><label for="d_dob">Date of Birth</label><input type="date" id="d_dob" class="form-control"></div>
+                    <div class="form-group"><label for="d_dob">Date of Birth</label><input type="text" id="d_dob" class="form-control" placeholder="YYYY-MM-DD" readonly></div>
                     <div class="form-group"><label for="d_resume">Resume (PDF only)</label><input type="file" id="d_resume" accept="application/pdf" class="form-control"></div>
                 </div>
                 <div class="center-align"><button type="button" id="btn-proceed" class="btn-outline">Proceed with questions</button></div>
@@ -88,6 +89,7 @@
         </div>
     </div>
 
+    <script src="/static/date-picker.js"></script>
     <script>
     (function () {
         // Loaded from GET /api/v1/public/jobs/{job_id}/questions (see loader below).
@@ -194,6 +196,25 @@
 
         var EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         var PHONE_PATTERN = /^[0-9]{7,15}$/;
+        function isoDate(d) {
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        }
+        var yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        var DOB_MAX = isoDate(yesterday);
+        $('d_dob').max = DOB_MAX;
+        DatePicker.attach($('d_dob'), { min: (yesterday.getFullYear() - 100) + '-01-01', max: DOB_MAX });
+        var dobNote = document.createElement('p');
+        dobNote.className = 'field-error-note hidden';
+        dobNote.textContent = 'Date of birth must be in the past.';
+        $('d_dob').parentNode.appendChild(dobNote);
+        function dobCheck() {
+            var v = $('d_dob').value;
+            var tooLate = v !== '' && v > DOB_MAX;
+            $('d_dob').classList.toggle('field-invalid', tooLate);
+            dobNote.classList.toggle('hidden', !tooLate);
+        }
+        ['input', 'change'].forEach(function (ev) { $('d_dob').addEventListener(ev, dobCheck); });
         function fieldHasValue(id) {
             var el = $(id);
             if (id === 'd_resume') return el.files && el.files.length > 0;
@@ -201,6 +222,7 @@
             if (v === '') return false;
             if (id === 'd_email') return EMAIL_PATTERN.test(v);
             if (id === 'd_phone') return PHONE_PATTERN.test(v);
+            if (id === 'd_dob') return v <= DOB_MAX;
             return true;
         }
         function validateDetails() {
@@ -222,6 +244,7 @@
         });
 
         $('btn-proceed').addEventListener('click', function () {
+            dobCheck();
             if (!validateDetails()) return;
             cur = 0; show('view-questions'); renderQuestion();
         });
