@@ -1,4 +1,3 @@
-.apply-shell-banner { background:#2a2200; border-bottom:1px dashed #cfa838; color:#cfa838; text-align:center; padding:10px; font-size:var(--font-small); letter-spacing:1px; text-transform:uppercase; }
 .apply-wrap { max-width:800px; margin:0 auto; padding:30px 20px 60px; }
 .back-link { color:#cccccc; text-decoration:none; font-size:var(--font-small); }
 .back-link:hover { color:#cfa838; }
