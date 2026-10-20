@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link href="/static/admin-sidebar.css" rel="stylesheet">
     <style>
-        /* Applicants list (SHELL: every row is a placeholder, nothing is wired) */
+        /* Applicants list (2026-10-20 reference layout): cards wired to GET /api/v1/admin/applications; stat cards, search, filters and sort are placeholders */
         .applicants-card {
             background-color: var(--bg-card);
             border: 1px solid var(--border-light);
@@ -16,14 +16,42 @@
             box-shadow: var(--soft-shadow);
             padding: 1.5rem;
         }
-        .applicants-table th {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            font-weight: 800;
-            letter-spacing: 0.5px;
+        .applicants-header-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-black);
+            background-color: var(--accent-gold);
         }
-        .applicants-table td { color: var(--text-muted); }
+        .applicants-header-sub { font-size: 0.9rem; color: var(--text-muted); }
+        .applicants-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        @media (max-width: 991px) { .applicants-stats { grid-template-columns: repeat(2, 1fr); } }
+        .applicants-stat {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            padding: 1rem 1.1rem;
+        }
+        .applicants-stat-label { font-size: 0.85rem; color: var(--text-muted); }
+        .applicants-stat-value { font-weight: 800; font-size: 1.5rem; color: var(--text-main); }
+        .applicants-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .applicants-search, .applicants-select { border-radius: 999px; font-size: 0.9rem; }
+        .applicants-count { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
         .shell-note {
             border: 1px dashed var(--accent-gold);
             color: var(--accent-gold);
@@ -32,8 +60,49 @@
             text-align: center;
             font-size: 0.9rem;
         }
-        .applicant-row { cursor: pointer; }
-        .applicant-row:hover td { background-color: rgba(0, 0, 0, 0.03); }
+        .applicant-list { display: flex; flex-direction: column; gap: 0.6rem; }
+        .applicant-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.9rem;
+            width: 100%;
+            text-align: left;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            padding: 0.9rem 1.1rem;
+            color: var(--text-main);
+        }
+        .applicant-card:hover { background-color: rgba(0, 0, 0, 0.03); }
+        .applicant-avatar {
+            width: 40px;
+            height: 40px;
+            flex: 0 0 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.9rem;
+            color: var(--accent-black);
+            background-color: rgba(212, 175, 55, 0.18);
+        }
+        .applicant-card-main { flex: 1; min-width: 0; }
+        .applicant-card-row { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; }
+        .applicant-card-name { font-weight: 800; }
+        .applicant-card-job { font-size: 0.85rem; color: var(--text-muted); }
+        .applicant-card-meta { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; }
+        .applicant-status {
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--accent-gold);
+            background-color: rgba(212, 175, 55, 0.12);
+            border-radius: 999px;
+            padding: 0.2rem 0.7rem;
+        }
+        .applicant-chevron { color: var(--text-muted); }
 
         /* Applicant detail modal (layout follows the 2026-10-20 reference, light palette) */
         .modal-content { border-radius: 20px; border: none; overflow: hidden; }
@@ -126,24 +195,39 @@
             {% include '_sidebar.html' %}
 
             <main class="col-md-10 px-4 pb-5">
-                <h4 class="fw-bold mt-4 mb-4">Applicants</h4>
+                <div class="d-flex align-items-center gap-3 mt-4 mb-4">
+                    <div class="applicants-header-icon" aria-hidden="true">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                    <div>
+                        <h4 class="fw-bold mb-0">Applicants</h4>
+                        <div class="applicants-header-sub">Manage candidates across your brands</div>
+                    </div>
+                </div>
+
+                <div class="applicants-stats">
+                    <div class="applicants-stat"><div class="applicants-stat-label">Total applicants</div><div class="applicants-stat-value">&mdash;</div></div>
+                    <div class="applicants-stat"><div class="applicants-stat-label">New</div><div class="applicants-stat-value">&mdash;</div></div>
+                    <div class="applicants-stat"><div class="applicants-stat-label">In review</div><div class="applicants-stat-value">&mdash;</div></div>
+                    <div class="applicants-stat"><div class="applicants-stat-label">Interview</div><div class="applicants-stat-value">&mdash;</div></div>
+                </div>
+                <div class="shell-note mb-3">Applicant cards are wired. Stat cards, search, filters and sort are placeholders.</div>
 
                 <div class="applicants-card">
-                    <div class="table-responsive">
-                        <table class="table applicants-table align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Applicant</th>
-                                    <th>Job</th>
-                                    <th>Status</th>
-                                    <th>Score</th>
-                                    <th>Applied</th>
-                                </tr>
-                            </thead>
-                            <tbody id="applicants-rows">
-                                <tr><td colspan="5" class="text-muted">Loading...</td></tr>
-                            </tbody>
-                        </table>
+                    <div class="fw-bold mb-3">Candidate directory</div>
+                    <div class="applicants-controls">
+                        <input type="search" class="form-control applicants-search" placeholder="Search applicants or positions..." disabled aria-label="Search applicants">
+                        <div class="row g-2">
+                            <div class="col-md-6"><select class="form-select applicants-select" disabled aria-label="Filter by status"><option>All statuses</option></select></div>
+                            <div class="col-md-6"><select class="form-select applicants-select" disabled aria-label="Filter by brand"><option>All brands</option></select></div>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="applicants-count" id="applicants-count">&mdash;</span>
+                            <select class="form-select applicants-select flex-grow-1" disabled aria-label="Sort applicants"><option>Newest first</option></select>
+                        </div>
+                    </div>
+                    <div class="applicant-list" id="applicants-rows">
+                        <div class="text-muted p-3">Loading...</div>
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center mt-3">
@@ -244,13 +328,10 @@
         let applicantsPage = 1;
 
         function applicantsMessageRow(text) {
-            const tr = document.createElement('tr');
-            const td = document.createElement('td');
-            td.colSpan = 5;
-            td.className = 'text-muted';
-            td.textContent = text;
-            tr.appendChild(td);
-            return tr;
+            const div = document.createElement('div');
+            div.className = 'text-muted p-3';
+            div.textContent = text;
+            return div;
         }
 
         async function loadApplicants() {
@@ -271,28 +352,44 @@
                 if (body.data.length === 0) {
                     tbody.appendChild(applicantsMessageRow('No applicants yet'));
                 }
+                const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const initialsOf = function (name) {
+                    const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+                    if (parts.length === 0) return '\u2014';
+                    return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+                };
+                const addEl = function (parent, tag, className, text) {
+                    const el = document.createElement(tag);
+                    if (className) el.className = className;
+                    if (text !== undefined) el.textContent = text;
+                    parent.appendChild(el);
+                    return el;
+                };
                 body.data.forEach(function (a) {
-                    const tr = document.createElement('tr');
-                    tr.className = 'applicant-row';
-                    tr.setAttribute('role', 'button');
-                    tr.setAttribute('data-bs-toggle', 'modal');
-                    tr.setAttribute('data-bs-target', '#applicantDetailModal');
-                    tr.dataset.id = a.id;
-                    const applied = a.created_at ? a.created_at.slice(0, 10) + ' ' + a.created_at.slice(11, 16) : '\u2014';
-                    const cells = [
-                        a.applicant_name,
-                        a.job_title,
-                        a.status,
-                        a.score === null ? '\u2014' : String(a.score),
-                        applied
-                    ];
-                    cells.forEach(function (text) {
-                        const td = document.createElement('td');
-                        td.textContent = text;
-                        tr.appendChild(td);
-                    });
-                    tbody.appendChild(tr);
+                    const card = document.createElement('button');
+                    card.type = 'button';
+                    card.className = 'applicant-card';
+                    card.setAttribute('data-bs-toggle', 'modal');
+                    card.setAttribute('data-bs-target', '#applicantDetailModal');
+                    card.dataset.id = a.id;
+                    let applied = '\u2014';
+                    if (a.created_at && MONTHS[parseInt(a.created_at.slice(5, 7), 10) - 1]) {
+                        applied = MONTHS[parseInt(a.created_at.slice(5, 7), 10) - 1] + ' ' + parseInt(a.created_at.slice(8, 10), 10) + ', ' + a.created_at.slice(0, 4) + ' \u00b7 ' + a.created_at.slice(11, 16);
+                    }
+                    addEl(card, 'div', 'applicant-avatar', initialsOf(a.applicant_name));
+                    const main = addEl(card, 'div', 'applicant-card-main');
+                    const top = addEl(main, 'div', 'applicant-card-row');
+                    addEl(top, 'span', 'applicant-card-name', a.applicant_name);
+                    const right = addEl(top, 'span', 'd-flex align-items-center gap-2');
+                    addEl(right, 'span', 'applicant-status', a.status);
+                    addEl(right, 'span', 'applicant-chevron', '\u203a').setAttribute('aria-hidden', 'true');
+                    addEl(main, 'div', 'applicant-card-job', a.job_title);
+                    const meta = addEl(main, 'div', 'applicant-card-row applicant-card-meta');
+                    addEl(meta, 'span', '', applied);
+                    addEl(meta, 'span', '', 'Score: ' + ((a.score === null || a.score === undefined) ? '\u2014' : String(a.score)));
+                    tbody.appendChild(card);
                 });
+                document.getElementById('applicants-count').textContent = body.data.length + (body.data.length === 1 ? ' applicant shown' : ' applicants shown');
                 label.textContent = 'Page ' + applicantsPage + ' of ' + totalPages;
                 prev.disabled = applicantsPage <= 1;
                 next.disabled = applicantsPage >= totalPages;
@@ -301,6 +398,7 @@
                 tbody.textContent = '';
                 tbody.appendChild(applicantsMessageRow('Could not load applicants.'));
                 label.textContent = 'Page \u2014 of \u2014';
+                document.getElementById('applicants-count').textContent = '\u2014';
             }
         }
 
