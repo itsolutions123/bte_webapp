@@ -35,8 +35,27 @@
         .applicant-row { cursor: pointer; }
         .applicant-row:hover td { background-color: rgba(0, 0, 0, 0.03); }
 
-        /* Applicant detail modal */
-        .modal-content { border-radius: 20px; border: none; }
+        /* Applicant detail modal (layout follows the 2026-10-20 reference, light palette) */
+        .modal-content { border-radius: 20px; border: none; overflow: hidden; }
+        .detail-header {
+            background-color: var(--bg-main);
+            padding: 1.25rem 1.5rem 1rem;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .detail-avatar {
+            width: 48px;
+            height: 48px;
+            flex: 0 0 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1rem;
+            color: var(--accent-black);
+            background-color: rgba(212, 175, 55, 0.18);
+        }
+        .detail-name { font-weight: 800; font-size: 1.15rem; }
         .detail-status {
             display: inline-block;
             font-size: 0.75rem;
@@ -49,30 +68,28 @@
             border-radius: 999px;
             padding: 0.3rem 0.9rem;
         }
-        .detail-name { font-weight: 800; font-size: 1.75rem; margin: 0.6rem 0 1rem; }
-        .detail-field { font-size: 0.9rem; color: var(--text-muted); }
-        .detail-field strong { color: var(--text-main); }
-        .detail-pod {
-            background-color: var(--bg-main);
-            border-radius: 16px;
-            padding: 1.1rem 1.4rem;
-        }
-        .detail-job-line {
+        .detail-subline { font-size: 0.9rem; color: var(--text-muted); margin-top: 0.15rem; }
+        .detail-contact {
+            margin-top: 1rem;
+            padding-top: 0.9rem;
+            border-top: 1px solid var(--border-light);
             font-size: 0.9rem;
-            margin-bottom: 0.9rem;
-            padding-bottom: 0.9rem;
-            border-bottom: 1px solid var(--border-light);
-        }
-        .detail-section-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 800;
             color: var(--text-muted);
-            margin-bottom: 0.6rem;
         }
-        .detail-section-block { margin-bottom: 1.5rem; }
-        .detail-section-block:last-child { margin-bottom: 0; }
+        .detail-contact-row + .detail-contact-row { margin-top: 0.6rem; }
+        .detail-contact-item { display: inline-flex; align-items: center; gap: 0.5rem; }
+        .detail-contact-item svg { flex: 0 0 auto; }
+        .detail-body { padding: 1.25rem 1.5rem; background-color: var(--bg-card); }
+        .detail-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        .detail-stat-value { font-weight: 800; font-size: 1.1rem; color: var(--text-main); }
+        .detail-stat-label { font-size: 0.8rem; color: var(--text-muted); }
+        .detail-responses-title { font-weight: 800; font-size: 1rem; }
+        .detail-responses-sub { font-size: 0.9rem; color: var(--text-muted); margin: 0.5rem 0 0.9rem; }
         #applicant-detail-answers.list-group { gap: 0.6rem; display: flex; flex-direction: column; }
         #applicant-detail-answers .list-group-item {
             border: 1px solid var(--border-light);
@@ -80,16 +97,26 @@
             padding: 0.9rem 1.1rem;
         }
         #applicant-detail-answers .list-group-item .fw-bold { font-size: 0.9rem; }
-        #applicant-detail-answers .list-group-item .text-muted {
-            display: inline-block;
-            margin-top: 0.35rem;
+        .detail-answer-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
+        .detail-answer-pill {
             font-size: 0.8rem;
             font-weight: 700;
-            color: var(--accent-black) !important;
+            color: var(--accent-black);
             background-color: rgba(212, 175, 55, 0.12);
             border-radius: 999px;
             padding: 0.15rem 0.7rem;
         }
+        .detail-answer-label { font-size: 0.8rem; color: var(--text-muted); }
+        .detail-footer {
+            background-color: var(--bg-card);
+            border-top: 1px solid var(--border-light);
+            padding: 0.9rem 1.5rem;
+            flex-wrap: nowrap;
+            gap: 0.6rem;
+        }
+        .detail-footer > .btn, .detail-footer > .dropdown { margin: 0; }
+        .detail-footer .dropdown-menu { border: 1px solid var(--border-light); border-radius: 12px; box-shadow: var(--soft-shadow); }
+        .detail-footer .dropdown-item { font-weight: 700; font-size: 0.9rem; }
     </style>
 </head>
 <body>
@@ -133,53 +160,75 @@
     <div class="modal fade" id="applicantDetailModal" tabindex="-1" aria-labelledby="applicantDetailName" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header d-block border-0 pb-0">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <span class="detail-status" id="applicant-detail-status">Status</span>
+                <div class="modal-header detail-header d-block">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="detail-avatar" id="applicant-detail-avatar" aria-hidden="true">&mdash;</div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="detail-name" id="applicantDetailName">First Name &amp; Last Name</span>
+                                <span class="detail-status" id="applicant-detail-status">Status</span>
+                            </div>
+                            <div class="detail-subline" id="applicant-detail-subline">Application details</div>
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="detail-name" id="applicantDetailName">First Name &amp; Last Name</div>
-                    <div class="detail-pod">
-                        <div class="detail-job-line detail-field"><strong>Applying for:</strong> <span id="applicant-detail-job">Job Title</span></div>
-                        <div class="row">
-                            <div class="col-6 detail-field">
-                                <div class="mb-2"><strong>Age:</strong> <span id="applicant-detail-age">&mdash;</span></div>
-                                <div><strong>Address:</strong> <span id="applicant-detail-address">&mdash;</span></div>
-                            </div>
-                            <div class="col-6 detail-field">
-                                <div class="mb-2"><strong>Gender:</strong> <span id="applicant-detail-gender">&mdash;</span></div>
-                                <div><strong>Phone Number:</strong> <span id="applicant-detail-phone">&mdash;</span></div>
-                            </div>
+                    <div class="detail-contact">
+                        <div class="detail-contact-row d-flex justify-content-between flex-wrap gap-2">
+                            <span class="detail-contact-item">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                                <span id="applicant-detail-phone">&mdash;</span>
+                            </span>
+                            <span class="detail-contact-item">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                <span><span id="applicant-detail-age">&mdash;</span> &middot; <span id="applicant-detail-gender">&mdash;</span></span>
+                            </span>
+                        </div>
+                        <div class="detail-contact-row">
+                            <span class="detail-contact-item">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                <span id="applicant-detail-address">&mdash;</span>
+                            </span>
                         </div>
                     </div>
                 </div>
-                <div class="modal-body pt-4">
-                    <div class="detail-section-block">
-                        <div class="detail-section-label">Resume</div>
-                        <button type="button" class="btn btn-outline-dark fw-bold" id="applicant-detail-resume" disabled>Resume Attachment</button>
+                <div class="modal-body detail-body">
+                    <div class="detail-stats">
+                        <div>
+                            <div class="detail-stat-value" id="applicant-detail-answered">&mdash;</div>
+                            <div class="detail-stat-label">Questions answered</div>
+                        </div>
+                        <div>
+                            <div class="detail-stat-value" id="applicant-detail-documents">&mdash;</div>
+                            <div class="detail-stat-label">Documents</div>
+                        </div>
+                        <div>
+                            <div class="detail-stat-value" id="applicant-detail-assessment">&mdash;</div>
+                            <div class="detail-stat-label">Assessment</div>
+                        </div>
                     </div>
-                    <div class="detail-section-block detail-pod">
-                        <div class="detail-section-label">Form Assessment</div>
-                        <span class="text-muted" id="applicant-detail-assessment">&mdash;</span>
-                    </div>
-                    <div class="detail-section-block detail-pod">
-                        <div class="detail-section-label">Non Negotiable Questions</div>
-                        <div class="text-muted" id="applicant-detail-nonneg">&mdash;</div>
-                    </div>
-                    <div class="detail-section-block">
-                        <div class="detail-section-label">Answers</div>
-                        <ul class="list-group" id="applicant-detail-answers">
-                            <li class="list-group-item">
-                                <div class="fw-bold">Question text</div>
-                                <div class="text-muted">Answer</div>
-                            </li>
-                            <li class="list-group-item">
-                                <div class="fw-bold">Question text</div>
-                                <div class="text-muted">Answer</div>
-                            </li>
+                    <div class="detail-responses-title">Application responses</div>
+                    <div class="detail-responses-sub" id="applicant-detail-responses-sub">Screening questions</div>
+                    <ul class="list-group" id="applicant-detail-answers">
+                        <li class="list-group-item">
+                            <div class="fw-bold">Question text</div>
+                            <div class="detail-answer-row"><span class="detail-answer-pill">Answer</span><span class="detail-answer-label">Applicant's answer</span></div>
+                        </li>
+                        <li class="list-group-item">
+                            <div class="fw-bold">Question text</div>
+                            <div class="detail-answer-row"><span class="detail-answer-pill">Answer</span><span class="detail-answer-label">Applicant's answer</span></div>
+                        </li>
+                    </ul>
+                    <div class="shell-note mt-4">Header fields, answers and the answered count are wired. Documents, assessment and the footer buttons are placeholders.</div>
+                </div>
+                <div class="modal-footer detail-footer">
+                    <button type="button" class="btn btn-outline-dark fw-bold flex-fill" disabled>Reject</button>
+                    <button type="button" class="btn btn-dark fw-bold flex-fill" disabled>Move to Interview</button>
+                    <div class="dropdown dropup">
+                        <button type="button" class="btn btn-outline-dark fw-bold" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions">&hellip;</button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><button type="button" class="dropdown-item disabled" id="applicant-detail-resume-download" aria-disabled="true" tabindex="-1">Download resume</button></li>
                         </ul>
                     </div>
-                    <div class="shell-note mt-4">Header fields and answers are wired. Resume, assessment and non negotiable questions are placeholders.</div>
                 </div>
             </div>
         </div>
@@ -272,36 +321,62 @@
         function setDetailHeader(values) {
             const dash = '\u2014';
             const show = function (v) { return (v === null || v === undefined || v === '') ? dash : String(v); };
+            // A loaded applicant always passes the 'job' key (even when null); loading and error states do not.
+            const loaded = ('job' in values);
+            let initials = dash;
+            if (loaded) {
+                const parts = String(values.name || '').trim().split(/\s+/).filter(Boolean);
+                if (parts.length > 0) {
+                    initials = (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+                }
+            }
+            document.getElementById('applicant-detail-avatar').textContent = initials;
             document.getElementById('applicant-detail-status').textContent = values.status;
             document.getElementById('applicantDetailName').textContent = values.name;
-            document.getElementById('applicant-detail-age').textContent = show(values.age);
-            document.getElementById('applicant-detail-address').textContent = show(values.address);
+            document.getElementById('applicant-detail-subline').textContent = loaded
+                ? 'Applied for ' + show(values.job) + ' \u00b7 Application details'
+                : 'Application details';
+            document.getElementById('applicant-detail-age').textContent =
+                show(values.age) === dash ? dash : String(values.age) + ' years old';
             document.getElementById('applicant-detail-gender').textContent = show(values.gender);
             document.getElementById('applicant-detail-phone').textContent = show(values.phone);
-            document.getElementById('applicant-detail-job').textContent = show(values.job);
+            document.getElementById('applicant-detail-address').textContent = show(values.address);
         }
 
         function renderDetailAnswers(answers, message) {
             const list = document.getElementById('applicant-detail-answers');
+            const answeredEl = document.getElementById('applicant-detail-answered');
+            const subEl = document.getElementById('applicant-detail-responses-sub');
             list.textContent = '';
             if (!Array.isArray(answers) || answers.length === 0) {
+                answeredEl.textContent = Array.isArray(answers) ? '0' : '\u2014';
+                subEl.textContent = 'Screening questions';
                 const li = document.createElement('li');
                 li.className = 'list-group-item text-muted';
                 li.textContent = message || 'No answers recorded.';
                 list.appendChild(li);
                 return;
             }
+            answeredEl.textContent = String(answers.length);
+            subEl.textContent = 'Screening questions \u00b7 ' + answers.length + (answers.length === 1 ? ' response' : ' responses');
             answers.forEach(function (a) {
                 const li = document.createElement('li');
                 li.className = 'list-group-item';
                 const q = document.createElement('div');
                 q.className = 'fw-bold';
                 q.textContent = a.question;
-                const ans = document.createElement('div');
-                ans.className = 'text-muted';
-                ans.textContent = a.applicant_answer === '' ? '\u2014' : a.applicant_answer;
+                const row = document.createElement('div');
+                row.className = 'detail-answer-row';
+                const pill = document.createElement('span');
+                pill.className = 'detail-answer-pill';
+                pill.textContent = a.applicant_answer === '' ? '\u2014' : a.applicant_answer;
+                const label = document.createElement('span');
+                label.className = 'detail-answer-label';
+                label.textContent = "Applicant's answer";
+                row.appendChild(pill);
+                row.appendChild(label);
                 li.appendChild(q);
-                li.appendChild(ans);
+                li.appendChild(row);
                 list.appendChild(li);
             });
         }
