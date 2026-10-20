@@ -238,6 +238,7 @@
                                 <li><button type="button" class="dropdown-item" data-edit-publish-state="draft">Save as draft</button></li>
                             </ul>
                         </div>
+                        <span class="jd-chip d-none" id="job-detail-archived-badge">Archived</span>
                         <button type="button" class="jd-btn" id="job-detail-edit-btn">Edit</button>
                         <button type="button" class="jd-btn jd-btn-gold" id="job-detail-renew-btn">Renew</button>
                         <button type="button" class="jd-btn" id="job-detail-archive-btn">Archive</button>
@@ -431,6 +432,10 @@
             const modalEl = document.getElementById('jobDetailModal');
             if (!modalEl) return;
             const editBtn = document.getElementById('job-detail-edit-btn');
+            const renewBtn = document.getElementById('job-detail-renew-btn');
+            const archiveBtn = document.getElementById('job-detail-archive-btn');
+            const setDurationBtn = document.getElementById('job-detail-set-duration-btn');
+            const archivedBadge = document.getElementById('job-detail-archived-badge');
             const viewEls = modalEl.querySelectorAll('[data-jd-view]');
             const editEls = modalEl.querySelectorAll('[data-jd-edit]');
             const titleInput = document.getElementById('job-edit-title');
@@ -477,12 +482,23 @@
                 ['job-detail-location', 'job-detail-pay', 'job-detail-type'].forEach(function (id) {
                     document.getElementById(id).textContent = dash;
                 });
+                archivedBadge.classList.add('d-none');
+                editBtn.disabled = false;
+                renewBtn.disabled = false;
+                archiveBtn.disabled = false;
+                setDurationBtn.disabled = false;
             });
             modalEl.addEventListener('jobdetail:loaded', function (e) {
                 loaded = e.detail;
                 document.getElementById('job-detail-location').textContent = loaded.location || dash;
                 document.getElementById('job-detail-pay').textContent = loaded.pay_information || dash;
                 document.getElementById('job-detail-type').textContent = loaded.job_type || dash;
+                const isArchived = !!loaded.archived_at;
+                archivedBadge.classList.toggle('d-none', !isArchived);
+                editBtn.disabled = isArchived;
+                renewBtn.disabled = isArchived;
+                archiveBtn.disabled = isArchived;
+                setDurationBtn.disabled = isArchived;
             });
             editBtn.addEventListener('click', function () {
                 if (editing) { setEditing(false); return; }

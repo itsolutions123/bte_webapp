@@ -433,7 +433,7 @@ async def list_brand_jobs(
     if brand is None:
         raise HTTPException(status_code=404, detail="brand not found")
 
-    flt = [Job.brand_id == brand_id]
+    flt = [Job.brand_id == brand_id, Job.archived_at.is_(None)]
     term = (q or "").strip()
     if term:
         # is_local=true: applies to this transaction only (already open from db.get above),
