@@ -69,11 +69,12 @@
                         <label for="consent">I have read, understood, and agree to the Terms and Conditions and consent to the processing of my personal data under the Philippine Data Privacy Act (RA 10173).</label>
                     </div>
                 </div>
-                <div class="nav-row">
+                <div class="nav-row" id="review-nav-row">
                     <button type="button" id="btn-back-questions" class="btn-outline">Back to questions</button>
                     <button type="button" id="btn-submit" class="btn-outline" disabled>Submit application</button>
                 </div>
-                <p id="shell-note" class="shell-note hidden">Shell only: nothing was submitted.</p>
+                <p id="submit-error" class="field-error-note hidden"></p>
+                <p id="submit-success" class="shell-note hidden">Application submitted. Thank you &mdash; we'll be in touch.</p>
             </section>
         </div>
     </div>
@@ -295,7 +296,66 @@
             $('btn-submit').parentNode.parentNode.insertBefore(termsNote, $('btn-submit').parentNode);
             $('consent').disabled = true;
         }
-        $('btn-submit').addEventListener('click', function () { $('shell-note').classList.remove('hidden'); });
+        var SUBMITTING = false;
+        function formatAnswers() {
+            return QUESTIONS.map(function (q, i) {
+                return { question_id: q.id, answer: answers[i] || '' };
+            });
+        }
+        function showSubmitError(msg) {
+            $('submit-error').textContent = msg;
+            $('submit-error').classList.remove('hidden');
+        }
+        function hideSubmitError() {
+            $('submit-error').classList.add('hidden');
+        }
+        $('btn-submit').addEventListener('click', function () {
+            if (SUBMITTING) return;
+            SUBMITTING = true;
+            hideSubmitError();
+            $('btn-submit').disabled = true;
+            $('btn-submit').textContent = 'Submitting...';
+
+            var fd = new FormData();
+            fd.append('job_id', JOB_ID);
+            fd.append('first_name', $('d_first').value.trim());
+            fd.append('last_name', $('d_last').value.trim());
+            fd.append('email', $('d_email').value.trim());
+            fd.append('phone', $('d_phone').value.trim());
+            fd.append('address', $('d_address').value.trim());
+            fd.append('gender', $('d_gender').value);
+            fd.append('date_of_birth', $('d_dob').value);
+            fd.append('answers', JSON.stringify(formatAnswers()));
+            fd.append('resume', $('d_resume').files[0]);
+            fd.append('terms_version', TERMS_VERSION);
+            fd.append('consent_agreed', $('consent').checked ? 'true' : 'false');
+
+            fetch('/api/v1/public/apply', { method: 'POST', body: fd })
+                .then(function (res) {
+                    return res.json().catch(function () { return {}; }).then(function (body) {
+                        return { ok: res.ok, status: res.status, body: body };
+                    });
+                })
+                .then(function (result) {
+                    SUBMITTING = false;
+                    if (result.ok) {
+                        dirty = false;
+                        $('review-nav-row').classList.add('hidden');
+                        $('submit-success').classList.remove('hidden');
+                    } else {
+                        $('btn-submit').disabled = false;
+                        $('btn-submit').textContent = 'Submit application';
+                        var msg = (result.body && result.body.detail) ? result.body.detail : ('Something went wrong (HTTP ' + result.status + '). Please try again.');
+                        showSubmitError(msg);
+                    }
+                })
+                .catch(function () {
+                    SUBMITTING = false;
+                    $('btn-submit').disabled = false;
+                    $('btn-submit').textContent = 'Submit application';
+                    showSubmitError('Could not reach the server. Please check your connection and try again.');
+                });
+        });
         document.querySelectorAll('#view-details input').forEach(function (el) {
             el.addEventListener('input', function () { dirty = true; });
         });
