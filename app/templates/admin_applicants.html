@@ -9,13 +9,7 @@
     <link href="/static/admin-sidebar.css" rel="stylesheet">
     <style>
         /* Applicants list (2026-10-20 reference layout): cards wired to GET /api/v1/admin/applications; stat cards, search, filters and sort are placeholders */
-        .applicants-card {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border-light);
-            border-radius: 20px;
-            box-shadow: var(--soft-shadow);
-            padding: 1.5rem;
-        }
+        .applicants-card { padding: 0; }
         .applicants-header-icon {
             width: 44px;
             height: 44px;
@@ -27,50 +21,27 @@
             background-color: var(--accent-gold);
         }
         .applicants-header-sub { font-size: 0.9rem; color: var(--text-muted); }
-        .applicants-stats {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 0.75rem;
-            margin-bottom: 1rem;
-        }
-        @media (max-width: 991px) { .applicants-stats { grid-template-columns: repeat(2, 1fr); } }
-        .applicants-stat {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border-light);
-            border-radius: 16px;
-            padding: 1rem 1.1rem;
-        }
-        .applicants-stat-label { font-size: 0.85rem; color: var(--text-muted); }
-        .applicants-stat-value { font-weight: 800; font-size: 1.5rem; color: var(--text-main); }
-        .applicants-controls {
-            display: flex;
-            flex-direction: column;
-            gap: 0.6rem;
-            padding-bottom: 1rem;
-            margin-bottom: 1rem;
-            border-bottom: 1px solid var(--border-light);
-        }
-        .applicants-search, .applicants-select { border-radius: 999px; font-size: 0.9rem; }
+        .applicants-tabs { display: flex; gap: 1.5rem; border-bottom: 1px solid var(--border-light); margin-bottom: 1rem; }
+        .applicants-tab { font-weight: 700; font-size: 0.95rem; color: var(--text-main); padding-bottom: 0.6rem; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+        .applicants-tab.active { border-bottom-color: var(--text-main); }
+        .applicants-tab-count { color: var(--text-muted); font-weight: 600; font-size: 0.8rem; }
+        .applicants-toolbar { display: flex; gap: 0.75rem; margin-bottom: 0.5rem; }
+        .applicants-search { flex: 1; border-radius: 12px; font-size: 0.9rem; }
+        .applicants-filters-btn { border: 1px solid var(--border-light); border-radius: 12px; font-weight: 700; background-color: var(--bg-card); color: var(--text-main); }
+        .applicants-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
         .applicants-count { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
-        .shell-note {
-            border: 1px dashed var(--accent-gold);
-            color: var(--accent-gold);
-            border-radius: 8px;
-            padding: 0.6rem 1rem;
-            text-align: center;
-            font-size: 0.9rem;
-        }
-        .applicant-list { display: flex; flex-direction: column; gap: 0.6rem; }
+        .applicant-list { display: flex; flex-direction: column; }
         .applicant-card {
             display: flex;
-            align-items: flex-start;
-            gap: 0.9rem;
+            align-items: center;
+            gap: 1rem;
             width: 100%;
             text-align: left;
-            background-color: var(--bg-card);
-            border: 1px solid var(--border-light);
-            border-radius: 14px;
-            padding: 0.9rem 1.1rem;
+            background-color: transparent;
+            border: 0;
+            border-bottom: 1px solid var(--border-light);
+            border-radius: 0;
+            padding: 1rem 0.5rem;
             color: var(--text-main);
         }
         .applicant-card:hover { background-color: rgba(0, 0, 0, 0.03); }
@@ -87,22 +58,22 @@
             color: var(--accent-black);
             background-color: rgba(212, 175, 55, 0.18);
         }
-        .applicant-card-main { flex: 1; min-width: 0; }
-        .applicant-card-row { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; }
+        .applicant-who { flex: 1 1 0; min-width: 0; }
         .applicant-card-name { font-weight: 800; }
         .applicant-card-job { font-size: 0.85rem; color: var(--text-muted); }
-        .applicant-card-meta { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; }
+        .applicant-cell { font-size: 0.85rem; color: var(--text-muted); }
+        .applicant-cell-brand { flex: 0 0 130px; }
+        .applicant-cell-date { flex: 0 0 140px; }
+        .applicant-cell-score { flex: 0 0 70px; }
         .applicant-status {
-            font-size: 0.7rem;
+            flex: 0 0 auto;
+            font-size: 0.75rem;
             font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
             color: var(--accent-gold);
             background-color: rgba(212, 175, 55, 0.12);
             border-radius: 999px;
             padding: 0.2rem 0.7rem;
         }
-        .applicant-chevron { color: var(--text-muted); }
 
         /* Applicant detail modal (layout follows the 2026-10-20 reference, light palette) */
         .modal-content { border-radius: 20px; border: none; overflow: hidden; }
@@ -201,39 +172,33 @@
                     </div>
                     <div>
                         <h4 class="fw-bold mb-0">Applicants</h4>
-                        <div class="applicants-header-sub">Manage candidates across your brands</div>
+                        <div class="applicants-header-sub">&mdash; new applicants are waiting for a review</div>
                     </div>
                 </div>
 
-                <div class="applicants-stats">
-                    <div class="applicants-stat"><div class="applicants-stat-label">Total applicants</div><div class="applicants-stat-value">&mdash;</div></div>
-                    <div class="applicants-stat"><div class="applicants-stat-label">New</div><div class="applicants-stat-value">&mdash;</div></div>
-                    <div class="applicants-stat"><div class="applicants-stat-label">In review</div><div class="applicants-stat-value">&mdash;</div></div>
-                    <div class="applicants-stat"><div class="applicants-stat-label">Interview</div><div class="applicants-stat-value">&mdash;</div></div>
+                <div class="applicants-tabs">
+                    <span class="applicants-tab active">All <span class="applicants-tab-count">&mdash;</span></span>
+                    <span class="applicants-tab">New <span class="applicants-tab-count">&mdash;</span></span>
+                    <span class="applicants-tab">In review <span class="applicants-tab-count">&mdash;</span></span>
+                    <span class="applicants-tab">Interview <span class="applicants-tab-count">&mdash;</span></span>
                 </div>
-                <div class="shell-note mb-3">Applicant cards are wired. Stat cards, search, filters and sort are placeholders.</div>
 
                 <div class="applicants-card">
-                    <div class="fw-bold mb-3">Candidate directory</div>
-                    <div class="applicants-controls">
-                        <input type="search" class="form-control applicants-search" placeholder="Search applicants or positions..." disabled aria-label="Search applicants">
-                        <div class="row g-2">
-                            <div class="col-md-6"><select class="form-select applicants-select" disabled aria-label="Filter by status"><option>All statuses</option></select></div>
-                            <div class="col-md-6"><select class="form-select applicants-select" disabled aria-label="Filter by brand"><option>All brands</option></select></div>
-                        </div>
-                        <div class="d-flex align-items-center gap-3">
-                            <span class="applicants-count" id="applicants-count">&mdash;</span>
-                            <select class="form-select applicants-select flex-grow-1" disabled aria-label="Sort applicants"><option>Newest first</option></select>
-                        </div>
+                    <div class="applicants-toolbar">
+                        <input type="search" class="form-control applicants-search" placeholder="Search applicants or positions" disabled aria-label="Search applicants">
+                        <button type="button" class="btn applicants-filters-btn" disabled>Filters</button>
                     </div>
                     <div class="applicant-list" id="applicants-rows">
                         <div class="text-muted p-3">Loading...</div>
                     </div>
 
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <button type="button" class="btn btn-outline-dark fw-bold" id="applicants-prev" disabled>Previous</button>
-                        <span class="text-muted small fw-bold" id="applicants-page-label">Page &mdash; of &mdash;</span>
-                        <button type="button" class="btn btn-outline-dark fw-bold" id="applicants-next" disabled>Next</button>
+                    <div class="applicants-footer">
+                        <span class="applicants-count" id="applicants-count">&mdash;</span>
+                        <div class="d-flex align-items-center gap-3">
+                            <button type="button" class="btn btn-outline-dark fw-bold" id="applicants-prev" disabled>Previous</button>
+                            <span class="text-muted small fw-bold" id="applicants-page-label">Page &mdash; of &mdash;</span>
+                            <button type="button" class="btn btn-outline-dark fw-bold" id="applicants-next" disabled>Next</button>
+                        </div>
                     </div>
                 </div>
 
@@ -377,19 +342,17 @@
                         applied = MONTHS[parseInt(a.created_at.slice(5, 7), 10) - 1] + ' ' + parseInt(a.created_at.slice(8, 10), 10) + ', ' + a.created_at.slice(0, 4) + ' \u00b7 ' + a.created_at.slice(11, 16);
                     }
                     addEl(card, 'div', 'applicant-avatar', initialsOf(a.applicant_name));
-                    const main = addEl(card, 'div', 'applicant-card-main');
-                    const top = addEl(main, 'div', 'applicant-card-row');
-                    addEl(top, 'span', 'applicant-card-name', a.applicant_name);
-                    const right = addEl(top, 'span', 'd-flex align-items-center gap-2');
-                    addEl(right, 'span', 'applicant-status', a.status);
-                    addEl(right, 'span', 'applicant-chevron', '\u203a').setAttribute('aria-hidden', 'true');
-                    addEl(main, 'div', 'applicant-card-job', a.job_title);
-                    const meta = addEl(main, 'div', 'applicant-card-row applicant-card-meta');
-                    addEl(meta, 'span', '', applied);
-                    addEl(meta, 'span', '', 'Score: ' + ((a.score === null || a.score === undefined) ? '\u2014' : String(a.score)));
+                    const who = addEl(card, 'div', 'applicant-who');
+                    addEl(who, 'div', 'applicant-card-name', a.applicant_name);
+                    addEl(who, 'div', 'applicant-card-job', a.job_title);
+                    addEl(card, 'span', 'applicant-cell applicant-cell-brand', '[Brand]');
+                    addEl(card, 'span', 'applicant-cell applicant-cell-date', applied);
+                    const statusText = String(a.status || '');
+                    addEl(card, 'span', 'applicant-status', statusText.charAt(0) + statusText.slice(1).toLowerCase());
+                    addEl(card, 'span', 'applicant-cell applicant-cell-score', 'Score ' + ((a.score === null || a.score === undefined) ? '\u2014' : String(a.score)));
                     tbody.appendChild(card);
                 });
-                document.getElementById('applicants-count').textContent = body.data.length + (body.data.length === 1 ? ' applicant shown' : ' applicants shown');
+                document.getElementById('applicants-count').textContent = 'Showing ' + body.data.length + ' of ' + body.total + (body.total === 1 ? ' applicant' : ' applicants') + ' \u00b7 newest first';
                 label.textContent = 'Page ' + applicantsPage + ' of ' + totalPages;
                 prev.disabled = applicantsPage <= 1;
                 next.disabled = applicantsPage >= totalPages;
