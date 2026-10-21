@@ -46,7 +46,7 @@ async def serve_apply_page(request: Request, job_id: str = ""):
 async def serve_careers_board(request: Request):
     return templates.TemplateResponse(request=request, name="careers.html")
 
-@app.get("/admin", include_in_schema=False)
+@app.get("/admin/home", include_in_schema=False)
 async def serve_admin_dashboard(request: Request):
     return templates.TemplateResponse(request=request, name="admin.html")
 

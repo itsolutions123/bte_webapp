@@ -12,7 +12,7 @@
         /* Top Bar Styling */
         .top-bar {
             padding: 1.5rem 0;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -46,6 +46,20 @@
             color: var(--accent-gold);
         }
 
+        /* Page heading */
+        .page-heading { margin-bottom: 1.5rem; }
+        .page-heading h1 {
+            font-weight: 800;
+            font-size: 1.9rem;
+            color: var(--accent-black);
+            margin-bottom: 0.25rem;
+        }
+        .page-heading p {
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 0;
+        }
+
         /* Card Styling */
         .dashboard-card {
             background-color: var(--bg-card);
@@ -53,7 +67,6 @@
             border-radius: 20px;
             box-shadow: var(--soft-shadow);
             padding: 1.5rem;
-            margin-bottom: 2rem;
         }
         .stat-label {
             font-size: 0.75rem;
@@ -69,23 +82,76 @@
             color: var(--accent-black);
         }
 
-        /* Pass Rate Specific */
-        .pass-rate-box {
-            position: relative;
+        /* Stat grid */
+        .stat-grid { margin-bottom: 1rem; }
+        .stat-card-pass {
+            background-color: var(--accent-black);
+            border-color: var(--accent-black);
         }
-        .pass-rate-box::after, .col-divider::after {
-            content: '';
-            position: absolute;
-            right: 0;
-            top: 15%;
-            height: 70%;
-            width: 1px;
-            background-color: var(--border-light);
+        .stat-card-pass .stat-label { color: rgba(255,255,255,0.6); }
+        .stat-value-lg {
+            font-size: 2.25rem;
+            font-weight: 800;
+            color: var(--accent-gold);
+            line-height: 1.1;
         }
         .pass-rate-sub {
             font-size: 0.85rem;
             font-weight: 600;
+            color: rgba(255,255,255,0.6);
+        }
+        .stat-value-hired { color: var(--accent-gold); }
+        .stat-value-failed { color: var(--accent-black); }
+
+        /* Brand matches */
+        .brand-card .stat-label {
+            font-size: 0.65rem;
+            margin-bottom: 0.25rem;
+        }
+        .brand-card .brand-name {
+            color: var(--text-main);
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+        .brand-card .stat-value {
+            font-size: 1.5rem;
+            color: var(--accent-gold);
+        }
+
+        /* Empty-state dashed banner */
+        .empty-banner {
+            border: 2px dashed var(--border-light);
+            border-radius: 16px;
+            background-color: var(--bg-main);
             color: var(--text-muted);
+            font-weight: 700;
+            padding: 1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 2rem;
+        }
+        .empty-banner .icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 1px solid var(--text-muted);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        /* Live tally card header */
+        .tally-card h5 {
+            font-weight: 800;
+            margin-bottom: 0.1rem;
+        }
+        .tally-card .tally-subtitle {
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.85rem;
         }
 
         /* Table Styling */
@@ -137,23 +203,71 @@
                     <button class="btn-profile">PROFILE</button>
                 </div>
 
-                <!-- Aggregate Summary Card -->
-                <div class="dashboard-card mb-4">
-                    <div class="row text-center align-items-center" id="main-summary">
-                        <!-- Populated by JS -->
-                        <div class="col"><span class="text-muted fw-bold">Loading metrics...</span></div>
+                <!-- Page Heading -->
+                <div class="page-heading">
+                    <h1>Hiring overview</h1>
+                    <p>Candidate pipeline across all brands, updated live.</p>
+                </div>
+
+                <!-- Stat Cards Row 1 -->
+                <div class="row g-3 stat-grid">
+                    <div class="col-md-3">
+                        <div class="dashboard-card h-100">
+                            <div class="stat-label">New Applicants</div>
+                            <div class="stat-value" id="stat-new">—</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="dashboard-card stat-card-pass h-100">
+                            <div class="stat-label">Pass Rate</div>
+                            <div class="stat-value-lg" id="stat-passrate">—</div>
+                            <div class="pass-rate-sub" id="stat-passrate-sub">0 / 0</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="dashboard-card h-100">
+                            <div class="stat-label">Endorsed</div>
+                            <div class="stat-value" id="stat-endorsed">—</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="dashboard-card h-100">
+                            <div class="stat-label">Pooling</div>
+                            <div class="stat-value" id="stat-pooling">—</div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Top Matches Cards -->
-                <div class="row mb-4" id="brand-summary-cards">
-                    <!-- Populated by JS -->
+                <!-- Stat Cards Row 2 -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="dashboard-card h-100">
+                            <div class="stat-label">Hired</div>
+                            <div class="stat-value stat-value-hired" id="stat-hired">—</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="dashboard-card h-100">
+                            <div class="stat-label">Failed</div>
+                            <div class="stat-value stat-value-failed" id="stat-failed">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Brand matches: either cards or empty banner -->
+                <div id="brand-summary-cards" class="row mb-2"></div>
+                <div id="no-brand-banner" class="empty-banner" style="display:none;">
+                    <span class="icon">!</span>
+                    <span>No brand data yet — results will populate once a brand reports activity.</span>
                 </div>
 
                 <!-- Live Tally Table -->
-                <div class="dashboard-card">
+                <div class="dashboard-card tally-card">
                     <div class="d-flex justify-content-between align-items-center mb-3 px-2">
-                        <h5 class="m-0 fw-bold">Live Status Tally</h5>
+                        <div>
+                            <h5 class="m-0">Live status tally</h5>
+                            <div class="tally-subtitle">Candidates by job title and stage</div>
+                        </div>
                         <span class="badge-auto">Auto-updating</span>
                     </div>
                     <div class="table-responsive px-2">
@@ -191,53 +305,37 @@
                 if (summaryRes.ok) {
                     const summaryData = await summaryRes.json();
                     const stats = summaryData.overall_totals || {};
-                    
+
                     const passed = stats.passed || 0;
                     const total = stats.total_processed || 0;
                     const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
-                    
-                    document.getElementById('main-summary').innerHTML = `
-                        <div class="col col-divider">
-                            <div class="stat-label">New</div>
-                            <div class="stat-value" style="color: var(--text-muted);">${stats.new || 0}</div>
-                        </div>
-                        <div class="col pass-rate-box">
-                            <div class="stat-label">Pass Rate</div>
-                            <div class="stat-value" style="color: var(--accent-gold);">${passRate}%</div>
-                            <div class="pass-rate-sub">${passed}/${total}</div>
-                        </div>
-                        <div class="col col-divider">
-                            <div class="stat-label">Endorsed</div>
-                            <div class="stat-value" style="color: var(--accent-black);">${stats.endorsed || 0}</div>
-                        </div>
-                        <div class="col col-divider">
-                            <div class="stat-label">Pooling</div>
-                            <div class="stat-value" style="color: var(--text-muted);">${stats.pooling || 0}</div>
-                        </div>
-                        <div class="col col-divider">
-                            <div class="stat-label">Hired</div>
-                            <div class="stat-value" style="color: var(--accent-gold);">${stats.hired || 0}</div>
-                        </div>
-                        <div class="col">
-                            <div class="stat-label">Failed</div>
-                            <div class="stat-value" style="color: var(--accent-black);">${stats.failed || 0}</div>
-                        </div>
-                    `;
 
+                    document.getElementById('stat-new').textContent = stats.new || 0;
+                    document.getElementById('stat-passrate').textContent = passRate + '%';
+                    document.getElementById('stat-passrate-sub').textContent = `${passed}/${total}`;
+                    document.getElementById('stat-endorsed').textContent = stats.endorsed || 0;
+                    document.getElementById('stat-pooling').textContent = stats.pooling || 0;
+                    document.getElementById('stat-hired').textContent = stats.hired || 0;
+                    document.getElementById('stat-failed').textContent = stats.failed || 0;
+
+                    const brandCardsEl = document.getElementById('brand-summary-cards');
+                    const noBrandEl = document.getElementById('no-brand-banner');
                     if (summaryData.brand_matches && summaryData.brand_matches.length > 0) {
-                        document.getElementById('brand-summary-cards').innerHTML = summaryData.brand_matches.map(b => `
-                            <div class="col-md-4">
-                                <div class="dashboard-card h-100 d-flex justify-content-between align-items-center mb-0">
+                        noBrandEl.style.display = 'none';
+                        brandCardsEl.innerHTML = summaryData.brand_matches.map(b => `
+                            <div class="col-md-4 mb-3">
+                                <div class="dashboard-card brand-card h-100 d-flex flex-row justify-content-between align-items-center mb-0">
                                     <div>
-                                        <div class="stat-label mb-0" style="color: var(--text-main); font-size: 0.85rem;">${b.name}</div>
-                                        <div class="stat-label mt-1" style="font-size: 0.65rem;">Top Matches</div>
+                                        <div class="brand-name">${b.name}</div>
+                                        <div class="stat-label mt-1">Top Matches</div>
                                     </div>
-                                    <div class="stat-value" style="color: var(--accent-gold);">${b.matches || 0}</div>
+                                    <div class="stat-value">${b.matches || 0}</div>
                                 </div>
                             </div>
                         `).join('');
                     } else {
-                        document.getElementById('brand-summary-cards').innerHTML = '<div class="col-12"><span class="text-muted small fw-bold">No brand data yet</span></div>';
+                        brandCardsEl.innerHTML = '';
+                        noBrandEl.style.display = 'flex';
                     }
                 }
 

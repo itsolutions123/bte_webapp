@@ -1,13 +1,13 @@
 {# Shared admin sidebar. The including page sets: {% set active_page = 'dashboard' %} or 'archive'. #}
 <nav class="col-md-2 sidebar d-none d-md-block">
     <div class="sidebar-brand">
-        <span class="logo-box"></span>
+        <img src="/static/images/logo2.png" alt="Bigtime Empire" class="logo-box">
         BIGTIME EMPIRE
     </div>
 
     <div class="nav-section">WORKSPACE</div>
     <div class="nav flex-column">
-        <a href="/admin" class="{% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
+        <a href="/admin/home" class="{% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
         <a href="/admin/applicants" class="{% if active_page == 'applicants' %}active{% endif %}">Applicants</a>
     </div>
 

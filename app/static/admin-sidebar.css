@@ -43,9 +43,9 @@ body {
 .sidebar-brand .logo-box {
     width: 28px;
     height: 28px;
-    background-color: var(--accent-gold);
     border-radius: 8px;
     display: inline-block;
+    object-fit: cover;
 }
 .nav-section {
     font-size: 0.75rem;
