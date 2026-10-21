@@ -6,6 +6,7 @@
 - `id` (UUID, Primary Key)
 - `slug` (String, Unique, Indexed) - e.g., "sapporo", "tsg"
 - `name` (String) - e.g., "TSG", "PR", "SAPPORO"
+- `archived_at` (Timestamp with time zone, Nullable, Indexed `idx_brands_archived_at`) - NULL = active; set = archived (migration 013, applied 2026-10-21). Archiving a brand cascades in one transaction: every non-archived job of that brand gets the same archive action (unlike forms, which block with 409 while jobs still use them). Archived brands are hidden from the sidebar metadata. No unarchive endpoint exists for brands or forms.
 
 **`jobs`**
 - `id` (UUID, Primary Key)
@@ -140,6 +141,7 @@ Scoring rules (enforced by the API, recorded in API_CONTRACT.md):
 - `idx_jobs_brand_created` ON jobs (brand_id, created_at DESC NULLS LAST, id) - serves GET /api/v1/admin/brands/{brand_id}/jobs (migration 006, applied 2026-10-14)
 - `idx_jobs_title_trgm` ON jobs USING gin (title gin_trgm_ops) - typo-tolerant title search for GET /api/v1/admin/brands/{brand_id}/jobs `q` (migration 007, applied 2026-10-14; also installs extension `pg_trgm` 1.6)
 - `idx_forms_archived_at` ON forms (archived_at)
+- `idx_brands_archived_at` ON brands (archived_at) - brand archive filter (migration 013, applied 2026-10-21)
 - `idx_answer_points_question_id` ON answer_points (question_id)
 - `uq_answer_points_q_answer_job` UNIQUE ON answer_points (question_id, answer_value, job_id) - PROPOSED 2026-10-15 (migration 010)
 - `idx_answers_application_id` ON answers (application_id)

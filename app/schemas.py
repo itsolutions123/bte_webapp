@@ -129,6 +129,13 @@ class BrandResponse(BaseModel):
     name: str
     slug: str
 
+class BrandArchiveResponse(BaseModel):
+    id: UUID4
+    slug: str
+    name: str
+    archived_at: datetime
+    jobs_archived: int
+
 class JobCreateRequest(BaseModel):
     title: str
     description: Optional[str] = None

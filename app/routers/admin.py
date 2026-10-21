@@ -4,7 +4,7 @@ import re
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_, literal
+from sqlalchemy import select, func, or_, literal, update
 
 from app.database import get_db
 from app.timeutil import to_app_tz, APP_TIMEZONE
@@ -18,6 +18,7 @@ from app.schemas import (
     BrandCreateRequest, BrandResponse,
     JobCreateRequest, JobUpdateRequest, JobResponse, BrandJobItem, BrandJobsResponse,
     FormCreateRequest, FormResponse, FormArchiveResponse,
+    BrandArchiveResponse,
     FormListItem, FormListResponse,
     QuestionCreateRequest, QuestionResponse, QuestionUpdateRequest,
     JobSummaryItem, FormDetailResponse,
@@ -34,7 +35,11 @@ JOB_SEARCH_MAX_LENGTH = 100
 
 @router.get("/metadata/sidebar", response_model=SidebarMetadataResponse)
 async def get_sidebar_metadata(db: AsyncSession = Depends(get_db)):
-    brand_result = await db.execute(select(Brand).order_by(func.lower(Brand.name), Brand.name))
+    brand_result = await db.execute(
+        select(Brand)
+        .where(Brand.archived_at.is_(None))
+        .order_by(func.lower(Brand.name), Brand.name)
+    )
     brands = brand_result.scalars().all()
     brand_items = [SidebarBrandItem(id=b.id, name=b.name, slug=b.slug) for b in brands]
 
@@ -318,6 +323,38 @@ async def archive_job(brand_id: uuid.UUID, job_id: uuid.UUID, db: AsyncSession =
         expires_at=to_app_tz(job.expires_at),
         archived_at=to_app_tz(job.archived_at) if job.archived_at else None,
         is_expired=job.expires_at <= datetime.now(timezone.utc),
+    )
+
+
+@router.post("/brands/{brand_id}/archive", response_model=BrandArchiveResponse)
+async def archive_brand(brand_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    brand = await db.get(Brand, brand_id)
+    if brand is None:
+        raise HTTPException(status_code=404, detail="brand not found")
+
+    if brand.archived_at is not None:
+        raise HTTPException(status_code=409, detail="brand is already archived")
+
+    now = datetime.now(timezone.utc)
+
+    # Cascade: every non-archived job under this brand is archived in the same transaction.
+    result = await db.execute(
+        update(Job)
+        .where(Job.brand_id == brand.id, Job.archived_at.is_(None))
+        .values(archived_at=now)
+    )
+    jobs_archived = result.rowcount or 0
+
+    brand.archived_at = now
+    await db.commit()
+    await db.refresh(brand)
+
+    return BrandArchiveResponse(
+        id=brand.id,
+        slug=brand.slug,
+        name=brand.name,
+        archived_at=to_app_tz(brand.archived_at),
+        jobs_archived=jobs_archived,
     )
 
 @router.get("/applications", response_model=AdminApplicationListResponse)
