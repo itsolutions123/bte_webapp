@@ -492,13 +492,14 @@ async def list_brand_jobs(
     total = total_result.scalar_one()
 
     result = await db.execute(
-        select(Job)
+        select(Job, Form.name)
+        .outerjoin(Form, Form.id == Job.form_id)
         .where(*flt)
         .order_by(Job.created_at.desc().nulls_last(), Job.id)
         .offset((page - 1) * limit)
         .limit(limit)
     )
-    jobs = result.scalars().all()
+    rows = result.all()
 
     items = [
         BrandJobItem(
@@ -506,8 +507,9 @@ async def list_brand_jobs(
             title=j.title,
             is_active=bool(j.is_active),
             created_at=to_app_tz(j.created_at),
+            form_name=form_name,
         )
-        for j in jobs
+        for j, form_name in rows
     ]
     return BrandJobsResponse(data=items, total=total)
 
@@ -705,12 +707,55 @@ async def attach_job_to_form(form_id: str, job_id: str, db: AsyncSession = Depen
     if job is None:
         raise HTTPException(status_code=404, detail="job not found")
 
-    if job.form_id is not None and job.form_id != form_uuid:
-        raise HTTPException(status_code=409, detail="job already uses a different form; detach it first")
+    if job.archived_at is not None:
+        raise HTTPException(status_code=409, detail="job is archived")
+
+    if job.form_id == form_uuid:
+        return {"message": "Job attached"}
+
+    if job.form_id is not None:
+        current_name = await db.scalar(select(Form.name).where(Form.id == job.form_id))
+        raise HTTPException(status_code=409, detail=f'job already uses the form "{current_name}"; detach it first')
+
+    if form.archived_at is not None:
+        raise HTTPException(status_code=409, detail="form is archived")
 
     job.form_id = form_uuid
     await db.commit()
     return {"message": "Job attached"}
+
+
+@router.delete("/forms/{form_id}/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def detach_job_from_form(form_id: str, job_id: str, db: AsyncSession = Depends(get_db)):
+    try:
+        form_uuid = uuid.UUID(form_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="form_id must be a valid UUID")
+    try:
+        job_uuid = uuid.UUID(job_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="job_id must be a valid UUID")
+
+    form = await db.scalar(select(Form).where(Form.id == form_uuid))
+    if form is None:
+        raise HTTPException(status_code=404, detail="form not found")
+
+    job = await db.scalar(select(Job).where(Job.id == job_uuid).with_for_update())
+    if job is None:
+        raise HTTPException(status_code=404, detail="job not found")
+
+    if job.form_id != form_uuid:
+        raise HTTPException(status_code=404, detail="job does not use this form")
+
+    app_check = await db.execute(
+        select(Application.id).where(Application.job_id == job_uuid).limit(1)
+    )
+    if app_check.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=409, detail="job already has applications")
+
+    job.form_id = None
+    await db.commit()
+    return None
 
 
 QUESTION_TYPES = {"YES_NO", "MULTIPLE_CHOICE", "OPEN_ENDED"}

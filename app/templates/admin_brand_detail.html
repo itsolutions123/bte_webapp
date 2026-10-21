@@ -220,6 +220,11 @@
         }
         .job-card { border-radius: 24px; transition: transform .15s ease, box-shadow .15s ease; }
         .job-card:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(17,24,39,.07); }
+        .job-card { position: relative; }
+        .job-card-form {
+            position: absolute; right: 1.5rem; top: 50%; transform: translateY(-50%);
+            font-weight: 800; font-size: 1.5rem; color: #111;
+        }
         .job-card-expiry {
             display: inline-block; margin-top: .35rem; padding: .1rem .7rem; border-radius: 999px;
             font-size: .78rem; font-weight: 700; color: #7a6212; background: #fbf5df;
@@ -249,9 +254,15 @@
                     <div class="mb-3">
                         <span class="jd-chip">Expires: <span id="job-detail-expiry">&mdash;</span></span>
                     </div>
-                    <div class="d-flex align-items-center gap-2 mb-4">
-                        <input type="datetime-local" class="jd-input" id="job-detail-expiry-input">
-                        <button type="button" class="jd-btn jd-btn-gold" id="job-detail-set-duration-btn">Set duration</button>
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="datetime-local" class="jd-input" id="job-detail-expiry-input">
+                            <button type="button" class="jd-btn jd-btn-gold" id="job-detail-set-duration-btn">Set duration</button>
+                            <select class="jd-input ms-auto" id="job-detail-form-select" aria-label="Form" disabled>
+                                <option value="">Form: &mdash;</option>
+                            </select>
+                        </div>
+                        <div class="text-danger small text-end mt-1 d-none" id="job-detail-form-error" role="alert"></div>
                     </div>
                     <div class="jd-label">Title</div>
                     <div class="jd-pod fw-bold" id="job-detail-title" data-jd-view>Job Title</div>
@@ -366,6 +377,10 @@
                     const expiry = document.createElement('div');
                     expiry.className = 'job-card-meta job-card-expiry';
                     expiry.textContent = 'Expires: \u2014';
+                    const formLabel = document.createElement('div');
+                    formLabel.className = 'job-card-form';
+                    formLabel.textContent = 'Form: \u2014';
+                    card.appendChild(formLabel);
                     card.style.cursor = 'pointer';
                     card.addEventListener('click', function () {
                         const detailEl = document.getElementById('jobDetailModal');
@@ -384,6 +399,54 @@
                                 document.getElementById('job-detail-description').innerHTML = d.description || '\u2014';
                                 document.getElementById('job-detail-requirements').innerHTML = d.requirements || '\u2014';
                                 detailEl.dispatchEvent(new CustomEvent('jobdetail:loaded', { detail: d }));
+                                fetch('/api/v1/admin/forms?limit=100')
+                                    .then(function (res) { return res.ok ? res.json() : Promise.reject(res.status); })
+                                    .then(function (list) {
+                                        if (detailEl.dataset.jobId !== job.id) return;
+                                        const sel = document.getElementById('job-detail-form-select');
+                                        sel.replaceChildren(new Option('No form', ''));
+                                        (list.data || []).forEach(function (f) { sel.add(new Option(f.name, f.id)); });
+                                        if (d.form_id && !Array.from(sel.options).some(function (o) { return o.value === d.form_id; })) {
+                                            sel.add(new Option('Archived form', d.form_id));
+                                        }
+                                        sel.value = d.form_id || '';
+                                        sel.dataset.current = d.form_id || '';
+                                        sel.disabled = !!d.archived_at;
+                                        const formErrEl = document.getElementById('job-detail-form-error');
+                                        formErrEl.classList.add('d-none');
+                                        sel.onchange = async function () {
+                                            const previous = sel.dataset.current || '';
+                                            const chosen = sel.value;
+                                            formErrEl.classList.add('d-none');
+                                            if (chosen === previous) return;
+                                            sel.disabled = true;
+                                            let failure = null;
+                                            try {
+                                                const formId = chosen === '' ? previous : chosen;
+                                                const res = await fetch('/api/v1/admin/forms/' + encodeURIComponent(formId) + '/jobs/' + encodeURIComponent(job.id),
+                                                    { method: chosen === '' ? 'DELETE' : 'PUT' });
+                                                if (!res.ok) {
+                                                    failure = 'Could not update the form.';
+                                                    try {
+                                                        const body = await res.json();
+                                                        if (body && typeof body.detail === 'string') failure = body.detail;
+                                                    } catch (e) { /* keep the generic message */ }
+                                                } else {
+                                                    sel.dataset.current = chosen;
+                                                }
+                                            } catch (e) {
+                                                failure = 'Could not reach the server.';
+                                            }
+                                            if (detailEl.dataset.jobId !== job.id) return;
+                                            if (failure) {
+                                                sel.value = previous;
+                                                formErrEl.textContent = failure;
+                                                formErrEl.classList.remove('d-none');
+                                            }
+                                            sel.disabled = !!d.archived_at;
+                                        };
+                                    })
+                                    .catch(function () { /* leave the placeholder option */ });
                             })
                             .catch(function () {
                                 if (detailEl.dataset.jobId !== job.id) return;
@@ -483,6 +546,12 @@
                     document.getElementById(id).textContent = dash;
                 });
                 archivedBadge.classList.add('d-none');
+                (function () {
+                    const formSel = document.getElementById('job-detail-form-select');
+                    formSel.onchange = null;
+                    formSel.disabled = true;
+                    document.getElementById('job-detail-form-error').classList.add('d-none');
+                })();
                 editBtn.disabled = false;
                 renewBtn.disabled = false;
                 archiveBtn.disabled = false;

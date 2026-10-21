@@ -176,6 +176,7 @@ class BrandJobItem(BaseModel):
     title: str
     is_active: bool
     created_at: Optional[datetime] = None
+    form_name: Optional[str] = None
 
 class BrandJobsResponse(BaseModel):
     data: List[BrandJobItem]
