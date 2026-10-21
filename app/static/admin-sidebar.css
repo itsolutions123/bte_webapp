@@ -78,8 +78,8 @@ body {
 }
 
 /* Form row: 3-dot button + floating menu */
-.form-row { position: relative; display: flex; align-items: center; }
-.form-row > a { flex: 1; min-width: 0; }
+.form-row, .brand-row { position: relative; display: flex; align-items: center; }
+.form-row > a, .brand-row > a { flex: 1; min-width: 0; }
 .form-menu-btn {
     background: none; border: 0; color: var(--text-muted);
     font-size: 1.2rem; line-height: 1; padding: 0.25rem 0.6rem;

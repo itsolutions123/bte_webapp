@@ -43,6 +43,31 @@
         return row;
     }
 
+    function brandRow(b) {
+        const row = document.createElement('div');
+        row.className = 'brand-row';
+        row.dataset.brandId = b.id;
+        const a = document.createElement('a');
+        a.href = '/admin/brands/' + encodeURIComponent(b.id);
+        a.textContent = b.name; // textContent: names are never parsed as HTML
+        if (window.location.pathname === a.getAttribute('href')) {
+            a.classList.add('active');
+        }
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'form-menu-btn';
+        btn.setAttribute('aria-label', 'Brand options');
+        btn.setAttribute('aria-haspopup', 'true');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.innerHTML = '&#8942;';
+        const menu = document.createElement('div');
+        menu.className = 'form-menu';
+        menu.hidden = true;
+        menu.appendChild(menuItem('archive', 'Archive brand'));
+        row.append(a, btn, menu);
+        return row;
+    }
+
     function emptyNote(text) {
         const s = document.createElement('span');
         s.className = 'px-3 text-muted small fw-bold';
@@ -54,15 +79,7 @@
         const brandBox = document.getElementById('brand-list');
         const formBox = document.getElementById('form-list');
         brandBox.textContent = '';
-        (data.brands || []).forEach(function (b) {
-            const a = document.createElement('a');
-            a.href = '/admin/brands/' + encodeURIComponent(b.id);
-            a.textContent = b.name;
-            if (window.location.pathname === a.getAttribute('href')) {
-                a.classList.add('active');
-            }
-            brandBox.appendChild(a);
-        });
+        (data.brands || []).forEach(function (b) { brandBox.appendChild(brandRow(b)); });
         formBox.textContent = '';
         if (data.forms && data.forms.length > 0) {
             data.forms.forEach(function (f) { formBox.appendChild(formRow(f)); });
@@ -242,6 +259,66 @@
             if (e.key === 'Enter') {
                 e.preventDefault();
                 saveBrand();
+            }
+        });
+    }
+
+    // Archive brand: the Archive button in a brand's 3-dot menu opens a confirm modal; Confirm calls the archive endpoint (cascades to the brand's active jobs)
+    const archiveBrandModalEl = document.getElementById('archiveBrandModal');
+    if (archiveBrandModalEl) {
+        const archiveBrandNameEl = document.getElementById('archive-brand-name');
+        const archiveBrandError = document.getElementById('archive-brand-error');
+        const archiveBrandConfirmBtn = document.getElementById('archive-brand-confirm-btn');
+        let archiveBrandId = null;
+
+        const showArchiveBrandError = function (msg) {
+            archiveBrandError.textContent = msg;
+            archiveBrandError.classList.remove('d-none');
+        };
+
+        document.addEventListener('click', function (e) {
+            const item = e.target.closest('.form-menu-item[data-action="archive"]');
+            if (!item) return;
+            const row = item.closest('.brand-row');
+            if (!row) return;
+            archiveBrandId = row.dataset.brandId;
+            archiveBrandNameEl.textContent = row.querySelector('a').textContent;
+            archiveBrandError.classList.add('d-none');
+            bootstrap.Modal.getOrCreateInstance(archiveBrandModalEl).show();
+        });
+
+        archiveBrandConfirmBtn.addEventListener('click', async function () {
+            archiveBrandError.classList.add('d-none');
+            archiveBrandConfirmBtn.disabled = true;
+            try {
+                const res = await fetch('/api/v1/admin/brands/' + encodeURIComponent(archiveBrandId) + '/archive', {
+                    method: 'POST'
+                });
+                if (res.status === 200) {
+                    const data = await res.json();
+                    bootstrap.Modal.getInstance(archiveBrandModalEl).hide();
+                    const toastEl = document.getElementById('form-created-toast');
+                    if (toastEl) {
+                        const n = data.jobs_archived;
+                        const jobsLabel = (n === 1) ? '1 job' : n + ' job(s)';
+                        document.getElementById('form-created-toast-body').textContent = 'Brand "' + data.name + '" archived \u2014 ' + jobsLabel + ' archived with it.';
+                        new bootstrap.Toast(toastEl).show();
+                    }
+                    refreshSidebar();
+                    document.dispatchEvent(new CustomEvent('brands:changed'));
+                } else if (res.status === 409) {
+                    showArchiveBrandError('This brand is already archived.');
+                    refreshSidebar();
+                } else if (res.status === 404) {
+                    showArchiveBrandError('This brand no longer exists.');
+                    refreshSidebar();
+                } else {
+                    showArchiveBrandError('Could not archive the brand. Please try again.');
+                }
+            } catch (err) {
+                showArchiveBrandError('Could not reach the server.');
+            } finally {
+                archiveBrandConfirmBtn.disabled = false;
             }
         });
     }
