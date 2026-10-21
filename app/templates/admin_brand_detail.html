@@ -379,7 +379,7 @@
                     expiry.textContent = 'Expires: \u2014';
                     const formLabel = document.createElement('div');
                     formLabel.className = 'job-card-form';
-                    formLabel.textContent = 'Form: \u2014';
+                    formLabel.textContent = 'Form: ' + (job.form_name || '\u2014');
                     card.appendChild(formLabel);
                     card.style.cursor = 'pointer';
                     card.addEventListener('click', function () {
@@ -411,7 +411,7 @@
                                         }
                                         sel.value = d.form_id || '';
                                         sel.dataset.current = d.form_id || '';
-                                        sel.disabled = !!d.archived_at;
+                                        sel.disabled = detailEl.dataset.editing !== '1';
                                         const formErrEl = document.getElementById('job-detail-form-error');
                                         formErrEl.classList.add('d-none');
                                         sel.onchange = async function () {
@@ -443,7 +443,7 @@
                                                 formErrEl.textContent = failure;
                                                 formErrEl.classList.remove('d-none');
                                             }
-                                            sel.disabled = !!d.archived_at;
+                                            sel.disabled = detailEl.dataset.editing !== '1';
                                         };
                                     })
                                     .catch(function () { /* leave the placeholder option */ });
@@ -532,6 +532,8 @@
                 viewEls.forEach(function (el) { el.classList.toggle('d-none', on); });
                 editEls.forEach(function (el) { el.classList.toggle('d-none', !on); });
                 editBtn.textContent = on ? 'Cancel' : 'Edit';
+                modalEl.dataset.editing = on ? '1' : '0';
+                document.getElementById('job-detail-form-select').disabled = !on;
                 saveBtn.disabled = !on;
                 errorEl.classList.add('d-none');
             };
