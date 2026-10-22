@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi.responses import FileResponse
 from typing import Optional
+import logging
+import os
 import re
 import uuid
+from pathlib import Path
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, literal, update
@@ -27,6 +31,7 @@ from app.schemas import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # Brand page job search (docs/API_CONTRACT.md, Search (q)). Threshold confirmed by the user 2026-10-14;
 # revisit once there are real job titles.
@@ -455,6 +460,40 @@ async def get_application_detail(
         score=application.calculated_score,
         status=application.status,
         answers=answers,
+    )
+
+
+@router.get("/applications/{application_id}/resume")
+async def get_application_resume(
+    application_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    # docs/API_CONTRACT.md: GET /api/v1/admin/applications/{application_id}/resume
+    row = (
+        await db.execute(
+            select(Application.resume_path, Application.resume_filename)
+            .where(Application.id == application_id)
+        )
+    ).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="application not found")
+    resume_path, resume_filename = row
+
+    storage_root = Path(os.environ.get("RESUME_STORAGE_PATH", "/data/resumes")).resolve()
+    file_path = Path(resume_path).resolve()
+    if storage_root not in file_path.parents or not file_path.is_file():
+        logger.warning("resume file missing or outside storage root for application %s", application_id)
+        raise HTTPException(status_code=404, detail="resume file not found")
+
+    safe_name = re.sub(r'[^A-Za-z0-9._ -]', '_', resume_filename or "resume.pdf").strip() or "resume.pdf"
+    return FileResponse(
+        str(file_path),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="{safe_name}"',
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
     )
 
 
