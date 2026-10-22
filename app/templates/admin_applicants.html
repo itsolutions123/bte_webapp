@@ -94,7 +94,7 @@
             top: 0;
             right: 0;
             bottom: 0;
-            width: min(480px, 100vw);
+            width: min(640px, 100vw);
             background-color: var(--bg-card);
             box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
             transform: translateX(100%);
@@ -106,7 +106,7 @@
         .applicant-panel.is-open { transform: translateX(0); }
         .detail-header {
             background-color: var(--bg-main);
-            padding: 1.25rem 1.5rem 1rem;
+            padding: 1.25rem 2rem 1rem;
             border-bottom: 1px solid var(--border-light);
             flex: 0 0 auto;
         }
@@ -158,7 +158,7 @@
         .detail-step:first-child .detail-step-line { display: none; }
         .detail-step-label { display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; }
         .detail-step.is-current .detail-step-label { color: var(--text-main); }
-        .detail-body { padding: 1.25rem 1.5rem; overflow-y: auto; flex: 1 1 auto; }
+        .detail-body { padding: 1.25rem 2rem; overflow-y: auto; flex: 1 1 auto; }
         .detail-actions { display: flex; gap: 0.6rem; margin-top: 1.1rem; }
         .detail-actions .btn { flex: 1 1 auto; }
         .detail-actions .dropdown .btn { flex: 0 0 auto; }
@@ -267,11 +267,13 @@
         .detail-footer {
             background-color: var(--bg-card);
             border-top: 1px solid var(--border-light);
-            padding: 0.9rem 1.5rem;
+            padding: 0.9rem 2rem;
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             flex: 0 0 auto;
         }
+        .detail-footer-next:not(:disabled) { cursor: pointer; color: var(--text-main); }
+        .detail-footer-next:disabled { opacity: 0.4; cursor: default; }
         .detail-footer-next {
             background: transparent;
             border: 0;
@@ -409,7 +411,8 @@
             </div>
         </div>
         <div class="detail-footer">
-            <button type="button" class="detail-footer-next" disabled>Next applicant</button>
+            <button type="button" class="detail-footer-next" id="applicant-detail-prev" disabled>Previous applicant</button>
+            <button type="button" class="detail-footer-next" id="applicant-detail-next" disabled>Next applicant</button>
         </div>
     </div>
 
@@ -565,7 +568,33 @@
 
         const detailBackdropEl = document.getElementById('applicantDetailBackdrop');
 
+        let applicantDetailCurrentId = null;
+        const nextApplicantBtnEl = document.getElementById('applicant-detail-next');
+        function nextApplicantCard() {
+            if (!applicantDetailCurrentId) return null;
+            const cards = Array.from(document.querySelectorAll('#applicants-rows .applicant-card'));
+            const i = cards.findIndex(function (c) { return c.dataset.id === applicantDetailCurrentId; });
+            return (i >= 0 && i < cards.length - 1) ? cards[i + 1] : null;
+        }
+        nextApplicantBtnEl.addEventListener('click', function () {
+            const card = nextApplicantCard();
+            if (card) openApplicantDetail(card.dataset.id);
+        });
+        const prevApplicantBtnEl = document.getElementById('applicant-detail-prev');
+        function prevApplicantCard() {
+            if (!applicantDetailCurrentId) return null;
+            const cards = Array.from(document.querySelectorAll('#applicants-rows .applicant-card'));
+            const i = cards.findIndex(function (c) { return c.dataset.id === applicantDetailCurrentId; });
+            return i > 0 ? cards[i - 1] : null;
+        }
+        prevApplicantBtnEl.addEventListener('click', function () {
+            const card = prevApplicantCard();
+            if (card) openApplicantDetail(card.dataset.id);
+        });
         function openApplicantDetail(applicationId) {
+            applicantDetailCurrentId = applicationId;
+            nextApplicantBtnEl.disabled = !nextApplicantCard();
+            prevApplicantBtnEl.disabled = !prevApplicantCard();
             detailModalEl.classList.add('is-open');
             detailModalEl.setAttribute('aria-hidden', 'false');
             detailBackdropEl.classList.add('is-open');

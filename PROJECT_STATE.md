@@ -831,3 +831,14 @@ DOCS UPDATED NOTE: rule 17.4 satisfied; the contract diff is non-empty.
 - PROCESS NOTE: `app/templates/admin_brand_detail.html` still has uncommitted earlier Brands changes; it was left out of this commit.
 - DOCS UPDATED: `API_CONTRACT.md` (resume entry flipped to IMPLEMENTED and VERIFIED LIVE, Client line, Last verified, line 83 note) and this file. `SCHEMA.md`, `SECURITY.md`: no change.
 - NEXT STEPS, in order: (1) decide on the redundant "Download resume" menu item; (2) remove the dead CSS listed above; (3) Security: HR auth and resume access control; (4) wire the next drawer piece (status stepper and primary action need a PATCH contract from Structure first; Next applicant, Assessment).
+
+## Session Log 2026-10-22 (continued, after 82c3c1a): Applicants drawer width, Previous and Next applicant
+- HANDOFF SUMMARY: work mode = shell (UI) plus one feature-wiring step (frontend only). Page: `/admin/applicants` drawer (`app/templates/admin_applicants.html`). Confirmed by the user in the browser.
+- DONE, frontend (CSS): drawer width 480px to 640px; header, body and footer side padding 1.5rem to 2rem.
+- DONE, frontend (JS and markup): Next applicant and Previous applicant buttons in the drawer footer (`#applicant-detail-next`, `#applicant-detail-prev`). They open the adjacent row in the list already loaded on the page (`#applicants-rows .applicant-card`, matched by `data-id`), with no new request. Next is disabled on the last loaded row and Previous on the first. Footer is now `justify-content: space-between`. Confirmed in the browser: Next greyed out on the last row.
+- NO backend change, no endpoint change, no migration.
+- NOT VERIFIED: the Previous button greyed out on the first row, and Previous then Next round-trips, beyond what the user confirmed; behaviour past the first page (the buttons only see the loaded page; with 8 of 8 applicants this cannot occur yet and needs its own step with a call-site note in API_CONTRACT.md when pagination is real); phone-width layout of the 640px drawer.
+- HARDCODES: 640px width and 2rem padding (layout values); `[Brand]` placeholder in list cards (still a shell item). Dead CSS still pending cleanup (see the previous log).
+- PROCESS NOTE: `app/templates/admin_brand_detail.html` still has uncommitted earlier Brands changes; it is left out of this commit.
+- DOCS UPDATED: `API_CONTRACT.md` (Last verified line: commit 82c3c1a recorded, drawer width and Previous/Next noted) and this file. `SCHEMA.md`, `SECURITY.md`: no change.
+- NEXT STEPS, in order: (1) decide on the redundant "Download resume" menu item; (2) remove the dead CSS; (3) Security: HR auth and resume access control; (4) status stepper and "Move to In review" need a PATCH contract from Structure first (live statuses do not match the drawer stages); (5) Assessment.
