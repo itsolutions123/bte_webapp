@@ -75,12 +75,40 @@
             padding: 0.2rem 0.7rem;
         }
 
-        /* Applicant detail modal (layout follows the 2026-10-20 reference, light palette) */
-        .modal-content { border-radius: 20px; border: none; overflow: hidden; }
+        /* Applicant detail panel (2026-10-22 revision: right-side slide-over.
+           Stepper is a SHELL ONLY per section 8 -- see HANDOFF note on the markup below;
+           the live status model (NEW/PASSED/FAILED/POOLING/ENDORSED/HIRED) does not match
+           this linear stage set, and no PATCH endpoint exists yet to drive it. */
+        .applicant-panel-backdrop {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.35);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 1040;
+        }
+        .applicant-panel-backdrop.is-open { opacity: 1; pointer-events: auto; }
+        .applicant-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: min(480px, 100vw);
+            background-color: var(--bg-card);
+            box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
+            transform: translateX(100%);
+            transition: transform 0.25s ease;
+            z-index: 1050;
+            display: flex;
+            flex-direction: column;
+        }
+        .applicant-panel.is-open { transform: translateX(0); }
         .detail-header {
             background-color: var(--bg-main);
             padding: 1.25rem 1.5rem 1rem;
             border-bottom: 1px solid var(--border-light);
+            flex: 0 0 auto;
         }
         .detail-avatar {
             width: 48px;
@@ -96,35 +124,65 @@
             background-color: rgba(212, 175, 55, 0.18);
         }
         .detail-name { font-weight: 800; font-size: 1.15rem; }
-        .detail-status {
-            display: inline-block;
+        .detail-subline { font-size: 0.9rem; color: var(--text-muted); margin-top: 0.15rem; }
+        .detail-close {
+            border: 0;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 1.25rem;
+            line-height: 1;
+            padding: 0.25rem;
+        }
+        .detail-stepper { display: flex; align-items: flex-start; margin-top: 1.1rem; padding-top: 0.1rem; }
+        .detail-step { flex: 1 1 0; text-align: center; position: relative; }
+        .detail-step-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background-color: var(--border-light);
+            margin: 0 auto 0.4rem;
+            position: relative;
+            z-index: 1;
+        }
+        .detail-step.is-current .detail-step-dot { background-color: var(--accent-gold); }
+        .detail-step-line {
+            position: absolute;
+            top: 6px;
+            left: -50%;
+            width: 100%;
+            height: 2px;
+            background-color: var(--border-light);
+            z-index: 0;
+        }
+        .detail-step:first-child .detail-step-line { display: none; }
+        .detail-step-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 700; }
+        .detail-step.is-current .detail-step-label { color: var(--text-main); }
+        .detail-body { padding: 1.25rem 1.5rem; overflow-y: auto; flex: 1 1 auto; }
+        .detail-actions { display: flex; gap: 0.6rem; margin-top: 1.1rem; }
+        .detail-actions .btn { flex: 1 1 auto; }
+        .detail-actions .dropdown .btn { flex: 0 0 auto; }
+        .detail-fields-title {
             font-size: 0.75rem;
             font-weight: 800;
-            text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: var(--accent-gold);
-            background-color: rgba(212, 175, 55, 0.12);
-            border: none;
-            border-radius: 999px;
-            padding: 0.3rem 0.9rem;
-        }
-        .detail-subline { font-size: 0.9rem; color: var(--text-muted); margin-top: 0.15rem; }
-        .detail-contact {
-            margin-top: 1rem;
-            padding-top: 0.9rem;
-            border-top: 1px solid var(--border-light);
-            font-size: 0.9rem;
+            text-transform: uppercase;
             color: var(--text-muted);
         }
-        .detail-contact-row + .detail-contact-row { margin-top: 0.6rem; }
-        .detail-contact-item { display: inline-flex; align-items: center; gap: 0.5rem; }
-        .detail-contact-item svg { flex: 0 0 auto; }
-        .detail-body { padding: 1.25rem 1.5rem; background-color: var(--bg-card); }
+        .detail-field-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 0.7rem 0;
+            border-bottom: 1px solid var(--border-light);
+            font-size: 0.9rem;
+        }
+        .detail-field-label { color: var(--text-muted); }
+        .detail-field-value { font-weight: 700; color: var(--text-main); text-align: right; }
         .detail-stats {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             text-align: center;
-            margin-bottom: 1.5rem;
+            margin: 1.5rem 0;
         }
         .detail-stat-value { font-weight: 800; font-size: 1.1rem; color: var(--text-main); }
         .detail-stat-label { font-size: 0.8rem; color: var(--text-muted); }
@@ -151,12 +209,19 @@
             background-color: var(--bg-card);
             border-top: 1px solid var(--border-light);
             padding: 0.9rem 1.5rem;
-            flex-wrap: nowrap;
-            gap: 0.6rem;
+            display: flex;
+            justify-content: center;
+            flex: 0 0 auto;
         }
-        .detail-footer > .btn, .detail-footer > .dropdown { margin: 0; }
-        .detail-footer .dropdown-menu { border: 1px solid var(--border-light); border-radius: 12px; box-shadow: var(--soft-shadow); }
-        .detail-footer .dropdown-item { font-weight: 700; font-size: 0.9rem; }
+        .detail-footer-next {
+            background: transparent;
+            border: 0;
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
     </style>
 </head>
 <body>
@@ -206,80 +271,104 @@
         </div>
     </div>
 
-    <div class="modal fade" id="applicantDetailModal" tabindex="-1" aria-labelledby="applicantDetailName" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header detail-header d-block">
-                    <div class="d-flex align-items-start gap-3">
-                        <div class="detail-avatar" id="applicant-detail-avatar" aria-hidden="true">&mdash;</div>
-                        <div class="flex-grow-1">
-                            <div class="d-flex align-items-center gap-2 flex-wrap">
-                                <span class="detail-name" id="applicantDetailName">First Name &amp; Last Name</span>
-                                <span class="detail-status" id="applicant-detail-status">Status</span>
-                            </div>
-                            <div class="detail-subline" id="applicant-detail-subline">Application details</div>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="detail-contact">
-                        <div class="detail-contact-row d-flex justify-content-between flex-wrap gap-2">
-                            <span class="detail-contact-item">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                                <span id="applicant-detail-phone">&mdash;</span>
-                            </span>
-                            <span class="detail-contact-item">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                                <span><span id="applicant-detail-age">&mdash;</span> &middot; <span id="applicant-detail-gender">&mdash;</span></span>
-                            </span>
-                        </div>
-                        <div class="detail-contact-row">
-                            <span class="detail-contact-item">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                                <span id="applicant-detail-address">&mdash;</span>
-                            </span>
-                        </div>
-                    </div>
+    <div class="applicant-panel-backdrop" id="applicantDetailBackdrop" aria-hidden="true"></div>
+    <div class="applicant-panel" id="applicantDetailModal" role="dialog" aria-modal="true" aria-labelledby="applicantDetailName" aria-hidden="true">
+        <div class="detail-header">
+            <div class="d-flex align-items-start gap-3">
+                <div class="detail-avatar" id="applicant-detail-avatar" aria-hidden="true">&mdash;</div>
+                <div class="flex-grow-1">
+                    <span class="detail-name" id="applicantDetailName">First Name &amp; Last Name</span>
+                    <div class="detail-subline" id="applicant-detail-subline">Application details</div>
                 </div>
-                <div class="modal-body detail-body">
-                    <div class="detail-stats">
-                        <div>
-                            <div class="detail-stat-value" id="applicant-detail-answered">&mdash;</div>
-                            <div class="detail-stat-label">Questions answered</div>
-                        </div>
-                        <div>
-                            <div class="detail-stat-value" id="applicant-detail-documents">&mdash;</div>
-                            <div class="detail-stat-label">Documents</div>
-                        </div>
-                        <div>
-                            <div class="detail-stat-value" id="applicant-detail-assessment">&mdash;</div>
-                            <div class="detail-stat-label">Assessment</div>
-                        </div>
-                    </div>
-                    <div class="detail-responses-title">Application responses</div>
-                    <div class="detail-responses-sub" id="applicant-detail-responses-sub">Screening questions</div>
-                    <ul class="list-group" id="applicant-detail-answers">
-                        <li class="list-group-item">
-                            <div class="fw-bold">Question text</div>
-                            <div class="detail-answer-row"><span class="detail-answer-pill">Answer</span><span class="detail-answer-label">Applicant's answer</span></div>
-                        </li>
-                        <li class="list-group-item">
-                            <div class="fw-bold">Question text</div>
-                            <div class="detail-answer-row"><span class="detail-answer-pill">Answer</span><span class="detail-answer-label">Applicant's answer</span></div>
-                        </li>
-                    </ul>
-                    <div class="shell-note mt-4">Header fields, answers and the answered count are wired. Documents, assessment and the footer buttons are placeholders.</div>
+                <button type="button" class="detail-close" id="applicant-detail-close" aria-label="Close">&times;</button>
+            </div>
+            <!-- SHELL ONLY, NOT WIRED (section 8): stage labels follow the 2026-10-21 reference mockup, not the
+                 live status model (NEW/PASSED/FAILED/POOLING/ENDORSED/HIRED). HANDOFF -> Structure needed before
+                 this reflects a real applications.status or drives a transition -- no PATCH endpoint exists yet
+                 either (AdminStatusPatchRequest is defined but unused). "New" is marked current only because it
+                 matches the one real status every unscored application starts in; the other three dots are
+                 decorative placeholders, not a claim about this applicant's real stage. -->
+            <div class="detail-stepper" aria-hidden="true">
+                <div class="detail-step is-current">
+                    <span class="detail-step-line"></span>
+                    <span class="detail-step-dot"></span>
+                    <span class="detail-step-label">New</span>
                 </div>
-                <div class="modal-footer detail-footer">
-                    <button type="button" class="btn btn-outline-dark fw-bold flex-fill" disabled>Reject</button>
-                    <button type="button" class="btn btn-dark fw-bold flex-fill" disabled>Move to Interview</button>
-                    <div class="dropdown dropup">
-                        <button type="button" class="btn btn-outline-dark fw-bold" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions">&hellip;</button>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><button type="button" class="dropdown-item disabled" id="applicant-detail-resume-download" aria-disabled="true" tabindex="-1">Download resume</button></li>
-                        </ul>
-                    </div>
+                <div class="detail-step">
+                    <span class="detail-step-line"></span>
+                    <span class="detail-step-dot"></span>
+                    <span class="detail-step-label">In review</span>
+                </div>
+                <div class="detail-step">
+                    <span class="detail-step-line"></span>
+                    <span class="detail-step-dot"></span>
+                    <span class="detail-step-label">Interview</span>
+                </div>
+                <div class="detail-step">
+                    <span class="detail-step-line"></span>
+                    <span class="detail-step-dot"></span>
+                    <span class="detail-step-label">Hired</span>
                 </div>
             </div>
+            <div class="detail-actions">
+                <button type="button" class="btn btn-dark fw-bold" disabled>Move to In review</button>
+                <div class="dropdown">
+                    <button type="button" class="btn btn-outline-dark fw-bold" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions">&hellip;</button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><button type="button" class="dropdown-item disabled" aria-disabled="true" tabindex="-1">Reject</button></li>
+                        <li><button type="button" class="dropdown-item disabled" id="applicant-detail-resume-download" aria-disabled="true" tabindex="-1">Download resume</button></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="detail-body">
+            <div class="detail-fields-title">From the application form</div>
+            <div class="detail-field-row">
+                <span class="detail-field-label">Email</span>
+                <span class="detail-field-value" id="applicant-detail-email">&mdash;</span>
+            </div>
+            <div class="detail-field-row">
+                <span class="detail-field-label">Contact number</span>
+                <span class="detail-field-value" id="applicant-detail-phone">&mdash;</span>
+            </div>
+            <div class="detail-field-row">
+                <span class="detail-field-label">Address</span>
+                <span class="detail-field-value" id="applicant-detail-address">&mdash;</span>
+            </div>
+            <div class="detail-field-row">
+                <span class="detail-field-label">Age &middot; Gender</span>
+                <span class="detail-field-value"><span id="applicant-detail-age">&mdash;</span> &middot; <span id="applicant-detail-gender">&mdash;</span></span>
+            </div>
+            <div class="detail-stats">
+                <div>
+                    <div class="detail-stat-value" id="applicant-detail-answered">&mdash;</div>
+                    <div class="detail-stat-label">Questions answered</div>
+                </div>
+                <div>
+                    <div class="detail-stat-value" id="applicant-detail-documents">&mdash;</div>
+                    <div class="detail-stat-label">Documents</div>
+                </div>
+                <div>
+                    <div class="detail-stat-value" id="applicant-detail-assessment">&mdash;</div>
+                    <div class="detail-stat-label">Assessment</div>
+                </div>
+            </div>
+            <div class="detail-responses-title">Application responses</div>
+            <div class="detail-responses-sub" id="applicant-detail-responses-sub">Screening questions</div>
+            <ul class="list-group" id="applicant-detail-answers">
+                <li class="list-group-item">
+                    <div class="fw-bold">Question text</div>
+                    <div class="detail-answer-row"><span class="detail-answer-pill">Answer</span><span class="detail-answer-label">Applicant's answer</span></div>
+                </li>
+                <li class="list-group-item">
+                    <div class="fw-bold">Question text</div>
+                    <div class="detail-answer-row"><span class="detail-answer-pill">Answer</span><span class="detail-answer-label">Applicant's answer</span></div>
+                </li>
+            </ul>
+            <div class="shell-note mt-4">Header fields (including email), answers and the answered count are wired. The stepper, primary action, Reject, Download resume, Documents, Assessment and Next applicant are placeholders.</div>
+        </div>
+        <div class="detail-footer">
+            <button type="button" class="detail-footer-next" disabled>Next applicant</button>
         </div>
     </div>
 
@@ -334,9 +423,8 @@
                     const card = document.createElement('button');
                     card.type = 'button';
                     card.className = 'applicant-card';
-                    card.setAttribute('data-bs-toggle', 'modal');
-                    card.setAttribute('data-bs-target', '#applicantDetailModal');
                     card.dataset.id = a.id;
+                    card.addEventListener('click', function () { openApplicantDetail(a.id); });
                     let applied = '\u2014';
                     if (a.created_at && MONTHS[parseInt(a.created_at.slice(5, 7), 10) - 1]) {
                         applied = MONTHS[parseInt(a.created_at.slice(5, 7), 10) - 1] + ' ' + parseInt(a.created_at.slice(8, 10), 10) + ', ' + a.created_at.slice(0, 4) + ' \u00b7 ' + a.created_at.slice(11, 16);
@@ -392,11 +480,11 @@
                 }
             }
             document.getElementById('applicant-detail-avatar').textContent = initials;
-            document.getElementById('applicant-detail-status').textContent = values.status;
             document.getElementById('applicantDetailName').textContent = values.name;
             document.getElementById('applicant-detail-subline').textContent = loaded
                 ? 'Applied for ' + show(values.job) + ' \u00b7 Application details'
                 : 'Application details';
+            document.getElementById('applicant-detail-email').textContent = show(values.email);
             document.getElementById('applicant-detail-age').textContent =
                 show(values.age) === dash ? dash : String(values.age) + ' years old';
             document.getElementById('applicant-detail-gender').textContent = show(values.gender);
@@ -442,14 +530,35 @@
             });
         }
 
-        detailModalEl.addEventListener('show.bs.modal', async function (event) {
-            const row = event.relatedTarget;
-            const applicationId = row && row.dataset ? row.dataset.id : null;
+        const detailBackdropEl = document.getElementById('applicantDetailBackdrop');
+
+        function openApplicantDetail(applicationId) {
+            detailModalEl.classList.add('is-open');
+            detailModalEl.setAttribute('aria-hidden', 'false');
+            detailBackdropEl.classList.add('is-open');
+            detailBackdropEl.setAttribute('aria-hidden', 'false');
+            loadApplicantDetail(applicationId);
+        }
+
+        function closeApplicantDetail() {
+            detailModalEl.classList.remove('is-open');
+            detailModalEl.setAttribute('aria-hidden', 'true');
+            detailBackdropEl.classList.remove('is-open');
+            detailBackdropEl.setAttribute('aria-hidden', 'true');
+        }
+
+        document.getElementById('applicant-detail-close').addEventListener('click', closeApplicantDetail);
+        detailBackdropEl.addEventListener('click', closeApplicantDetail);
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && detailModalEl.classList.contains('is-open')) closeApplicantDetail();
+        });
+
+        async function loadApplicantDetail(applicationId) {
             const requestNo = ++applicantDetailRequest;
-            setDetailHeader({ status: '\u2014', name: 'Loading...' });
+            setDetailHeader({ name: 'Loading...' });
             renderDetailAnswers(null, 'Loading...');
             if (!applicationId) {
-                setDetailHeader({ status: '\u2014', name: 'Could not load applicant.' });
+                setDetailHeader({ name: 'Could not load applicant.' });
                 return;
             }
             try {
@@ -458,8 +567,8 @@
                 const d = await res.json();
                 if (requestNo !== applicantDetailRequest) return;
                 setDetailHeader({
-                    status: d.status,
                     name: d.applicant.name,
+                    email: d.applicant.email,
                     age: d.applicant.age,
                     address: d.applicant.address,
                     gender: d.applicant.gender,
@@ -470,10 +579,10 @@
             } catch (err) {
                 console.error('Applicant detail load failed:', err);
                 if (requestNo !== applicantDetailRequest) return;
-                setDetailHeader({ status: '\u2014', name: 'Could not load applicant.' });
+                setDetailHeader({ name: 'Could not load applicant.' });
                 renderDetailAnswers(null, 'Could not load answers.');
             }
-        });
+        }
     </script>
 </body>
 </html>
