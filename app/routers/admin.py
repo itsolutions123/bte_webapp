@@ -367,16 +367,32 @@ async def archive_brand(brand_id: uuid.UUID, db: AsyncSession = Depends(get_db))
 async def list_applications(
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=100),
+    form_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    # First slice (docs/API_CONTRACT.md): page and limit only; job_id, form_id, status, search come later.
-    total_result = await db.execute(select(func.count()).select_from(Application))
-    total = total_result.scalar_one()
+    # docs/API_CONTRACT.md: page, limit and form_id are wired; job_id, status, search come later.
+    form_uuid = None
+    if form_id is not None:
+        try:
+            form_uuid = uuid.UUID(form_id)
+        except ValueError:
+            raise HTTPException(status_code=422, detail="form_id must be a valid UUID")
 
-    result = await db.execute(
+    count_query = select(func.count()).select_from(Application)
+    list_query = (
         select(Application, Applicant.first_name, Applicant.last_name, Job.title)
         .join(Applicant, Applicant.id == Application.applicant_id)
         .join(Job, Job.id == Application.job_id)
+    )
+    if form_uuid is not None:
+        count_query = count_query.join(Job, Job.id == Application.job_id).where(Job.form_id == form_uuid)
+        list_query = list_query.where(Job.form_id == form_uuid)
+
+    total_result = await db.execute(count_query)
+    total = total_result.scalar_one()
+
+    result = await db.execute(
+        list_query
         .order_by(Application.created_at.desc().nulls_last(), Application.id)
         .offset((page - 1) * limit)
         .limit(limit)

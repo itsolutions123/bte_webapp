@@ -154,7 +154,7 @@
                             <input type="date" class="date-box">
                         </div>
                         <div class="d-flex align-items-center gap-3">
-                            <span class="submission-count">0 submissions</span>
+                            <span class="submission-count" id="submission-count">&mdash; submissions</span>
                             <button class="icon-btn" aria-label="Export" title="Export">&#8595;</button>
                         </div>
                     </div>
@@ -170,22 +170,8 @@
                                     <th style="width: 3rem;"></th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <!-- Two obviously-fake placeholder rows; real submissions wire in a later step -->
-                                <tr>
-                                    <td><input type="checkbox" aria-label="Select submission"></td>
-                                    <td>—</td>
-                                    <td>MM/DD/YYYY, --:--</td>
-                                    <td><span class="status-pill">—</span></td>
-                                    <td><button class="icon-btn" aria-label="View" title="View" disabled>&#128065;</button></td>
-                                </tr>
-                                <tr>
-                                    <td><input type="checkbox" aria-label="Select submission"></td>
-                                    <td>—</td>
-                                    <td>MM/DD/YYYY, --:--</td>
-                                    <td><span class="status-pill">—</span></td>
-                                    <td><button class="icon-btn" aria-label="View" title="View" disabled>&#128065;</button></td>
-                                </tr>
+                            <tbody id="submissions-body">
+                                <tr><td colspan="5" class="text-muted">Loading submissions...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -216,6 +202,81 @@
             }
         }
         fetchFormName();
+
+        function formatSubmitted(iso) {
+            if (!iso || iso.length < 16) return '\u2014';
+            return iso.slice(5, 7) + '/' + iso.slice(8, 10) + '/' + iso.slice(0, 4) + ', ' + iso.slice(11, 16);
+        }
+
+        function messageRow(text) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 5;
+            td.className = 'text-muted';
+            td.textContent = text;
+            tr.appendChild(td);
+            return tr;
+        }
+
+        async function fetchSubmissions() {
+            const formId = window.location.pathname.split('/').filter(Boolean).pop();
+            const body = document.getElementById('submissions-body');
+            const badge = document.getElementById('submission-count');
+            try {
+                const res = await fetch('/api/v1/admin/applications?form_id=' + encodeURIComponent(formId) + '&limit=100');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                const rows = data.data || [];
+                badge.textContent = data.total + (data.total === 1 ? ' submission' : ' submissions');
+                body.replaceChildren();
+                if (rows.length === 0) {
+                    body.appendChild(messageRow('No submissions yet.'));
+                    return;
+                }
+                rows.forEach(function (r) {
+                    const tr = document.createElement('tr');
+
+                    const tdCheck = document.createElement('td');
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.setAttribute('aria-label', 'Select submission');
+                    tdCheck.appendChild(cb);
+                    tr.appendChild(tdCheck);
+
+                    const tdName = document.createElement('td');
+                    tdName.textContent = r.applicant_name || '\u2014';
+                    tr.appendChild(tdName);
+
+                    const tdDate = document.createElement('td');
+                    tdDate.textContent = formatSubmitted(r.created_at);
+                    tr.appendChild(tdDate);
+
+                    const tdStatus = document.createElement('td');
+                    const pill = document.createElement('span');
+                    pill.className = 'status-pill';
+                    pill.textContent = r.status || '\u2014';
+                    tdStatus.appendChild(pill);
+                    tr.appendChild(tdStatus);
+
+                    const tdView = document.createElement('td');
+                    const btn = document.createElement('button');
+                    btn.className = 'icon-btn';
+                    btn.setAttribute('aria-label', 'View');
+                    btn.title = 'View';
+                    btn.disabled = true;
+                    btn.innerHTML = '&#128065;';
+                    tdView.appendChild(btn);
+                    tr.appendChild(tdView);
+
+                    body.appendChild(tr);
+                });
+            } catch (err) {
+                console.error('Failed to load submissions:', err);
+                badge.textContent = '\u2014 submissions';
+                body.replaceChildren(messageRow('Unable to load submissions.'));
+            }
+        }
+        fetchSubmissions();
 
         document.getElementById('form-edit-btn').addEventListener('click', function () {
             const formId = window.location.pathname.split('/').filter(Boolean).pop();
