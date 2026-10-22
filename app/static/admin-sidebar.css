@@ -98,3 +98,104 @@ body {
     padding: 0.4rem 0.55rem; border-radius: 8px; cursor: pointer; line-height: 1;
 }
 .form-menu-item:hover { background-color: #f8f9fa; color: var(--accent-gold); }
+
+/* ===== Form builder modal redesign (shell step, 2026-10-22) ===== */
+#formBuilderModal .modal-header { border-bottom: 1px solid #e5e7eb; padding: 14px 24px; }
+#formBuilderModal .modal-footer { border-top: 1px solid #e5e7eb; padding: 14px 24px; }
+#formBuilderModal .modal-footer .btn { border-radius: 9px; padding: 8px 22px; font-weight: 500; border: 0; }
+#formBuilderModal .modal-footer .btn-secondary { background: #f4f4f5; color: #111; }
+#formBuilderModal .modal-footer .btn-secondary:hover { background: #e5e7eb; }
+
+/* question list as a numbered timeline */
+#form-contents-list { position: relative; counter-reset: fq; padding-left: 44px; }
+#form-contents-list::before { content: ""; position: absolute; left: 11px; top: 26px; bottom: 26px; width: 1px; background: #e5e7eb; }
+#form-contents-list > div { position: relative; counter-increment: fq; background: #fff; border: 1px solid #e5e7eb !important; border-radius: 12px !important; padding: 16px 18px !important; margin-bottom: 14px !important; transition: border-color .15s, box-shadow .15s; }
+#form-contents-list > div:hover, #form-contents-list > div:focus-within { border-color: #111 !important; box-shadow: 0 4px 14px rgba(0,0,0,.08); }
+#form-contents-list > div::before { content: counter(fq); position: absolute; left: -44px; top: 14px; width: 24px; height: 24px; border-radius: 50%; background: #111; color: #fff; display: grid; place-items: center; font-size: 11px; font-weight: 600; }
+
+/* type pill above the question text */
+#form-contents-list .element-title { font-size: 15px; font-weight: 600 !important; line-height: 1.45; }
+#form-contents-list .element-title::before { display: block; width: max-content; margin-bottom: 6px; padding: 2px 9px; border-radius: 999px; background: #f4f4f5; font-size: 11px; font-weight: 500; color: #111; }
+#form-contents-list [data-element-type="YES_NO"] .element-title::before { content: "Yes / No"; }
+#form-contents-list [data-element-type="OPEN_ENDED"] .element-title::before { content: "Open ended"; }
+#form-contents-list [data-element-type="MULTIPLE_CHOICE"] .element-title::before { content: "Multiple choice"; }
+#form-contents-list > [data-element-type="YES_NO"] .element-title::before { content: "Yes / No"; }
+#form-contents-list > [data-element-type="OPEN_ENDED"] .element-title::before { content: "Open ended"; }
+#form-contents-list > [data-element-type="MULTIPLE_CHOICE"] .element-title::before { content: "Multiple choice"; }
+
+/* choice chips */
+#form-contents-list .element-choices { flex-wrap: wrap; margin-top: 12px !important; }
+#form-contents-list .element-choices > span { border-radius: 8px !important; padding: 6px 16px !important; font-size: 12px; background: #fff; color: #111 !important; }
+#form-contents-list > [data-element-type="MULTIPLE_CHOICE"] .element-choices > span { border-radius: 999px !important; color: #6b7280 !important; }
+
+/* Edit / Delete as quiet ghost buttons */
+#form-contents-list .btn { border: 0; background: transparent; color: #6b7280; padding: 2px 8px; font-size: 12px; }
+#form-contents-list .btn:hover { background: #f4f4f5; color: #111; }
+#form-contents-list .element-delete-btn { color: #dc2626; }
+#form-contents-list .element-delete-btn:hover { background: #fef2f2; color: #dc2626; }
+
+/* ===== Form builder: Elements panel (step 2, 2026-10-22) ===== */
+#formBuilderModal .form-elements-label { font-size: 11px; font-weight: 600; letter-spacing: .08em; color: #6b7280; margin-bottom: 12px; }
+#formBuilderModal .form-element-btn { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; color: #111; font-size: 14px; }
+#formBuilderModal .form-element-btn:hover, #formBuilderModal .form-element-btn:focus { background: #fff; border-color: #111; color: #111; }
+#formBuilderModal .form-element-icon { width: 16px; height: 16px; flex: none; stroke: #6b7280; fill: none; stroke-width: 1.8; }
+#formBuilderModal .form-elements-hint { font-size: 12px; line-height: 1.5; color: #6b7280; margin-top: 4px; }
+
+/* ===== Form builder: scrolling and motion (step 3, 2026-10-22) ===== */
+#formBuilderModal .modal-body .row { min-height: 0 !important; }
+#formBuilderModal #form-contents-panel {
+  max-height: calc(100vh - 11.5rem);
+  min-height: 320px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #d4d4d8 transparent;
+  background-color: #fff;
+  background-image:
+    linear-gradient(#fff 30%, rgba(255,255,255,0)),
+    linear-gradient(rgba(255,255,255,0), #fff 70%),
+    radial-gradient(farthest-side at 50% 0, rgba(0,0,0,.16), rgba(0,0,0,0)),
+    radial-gradient(farthest-side at 50% 100%, rgba(0,0,0,.16), rgba(0,0,0,0));
+  background-position: top, bottom, top, bottom;
+  background-size: 100% 28px, 100% 28px, 100% 10px, 100% 10px;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
+}
+#formBuilderModal #form-contents-panel::-webkit-scrollbar { width: 8px; }
+#formBuilderModal #form-contents-panel::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 8px; }
+#formBuilderModal #form-contents-panel::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
+
+@keyframes fq-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+#form-contents-list > div { animation: fq-in .28s ease both; }
+#form-contents-list > div:nth-child(2) { animation-delay: .04s; }
+#form-contents-list > div:nth-child(3) { animation-delay: .08s; }
+#form-contents-list > div:nth-child(4) { animation-delay: .12s; }
+#form-contents-list > div:nth-child(5) { animation-delay: .16s; }
+#form-contents-list > div:nth-child(n+6) { animation-delay: .2s; }
+@media (prefers-reduced-motion: reduce) {
+  #form-contents-list > div { animation: none; }
+  #formBuilderModal #form-contents-panel { scroll-behavior: auto; }
+}
+
+/* ===== Form builder: element editor popup (step 4, 2026-10-22) ===== */
+#element-modal-overlay > div { width: min(440px, 92vw) !important; border-radius: 14px !important; padding: 24px !important; max-height: calc(100vh - 2rem); overflow-y: auto; animation: fq-in .2s ease both; }
+#element-modal-title { text-align: left !important; font-size: 16px; font-weight: 600 !important; margin: 0 0 18px !important; padding-right: 28px; }
+#element-modal-overlay label.form-label, #element-modal-overlay .fw-bold.mt-3, #element-choices-label { font-size: 11px; font-weight: 600 !important; letter-spacing: .08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px !important; }
+#element-modal-overlay .form-control { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 14px; font-size: 14px; box-shadow: none; }
+#element-modal-overlay .form-control:focus { border-color: #111; box-shadow: 0 0 0 3px rgba(17,17,17,.08); }
+#element-modal-overlay #element-name-input { font-weight: 600; }
+#element-choices-row .form-control { border-radius: 8px; font-size: 13px; }
+
+/* multiple choice rows: lettered badge, quiet remove button */
+#element-mc-choices-list { counter-reset: mc; max-height: 38vh; overflow-y: auto; padding: 2px 4px 2px 0; scrollbar-width: thin; scrollbar-color: #d4d4d8 transparent; }
+#element-mc-choices-list > * { counter-increment: mc; align-items: center; }
+#element-mc-choices-list > *::before { content: counter(mc, upper-alpha); flex: none; width: 24px; height: 24px; margin-right: 8px; border-radius: 50%; background: #f4f4f5; color: #6b7280; display: grid; place-items: center; font-size: 11px; font-weight: 600; }
+#element-mc-choices-list .mc-choice-input { border-radius: 999px; font-size: 13px; padding: 8px 16px; }
+#element-mc-choices-list .btn { border: 0; background: transparent; color: #a1a1aa; width: 30px; height: 30px; padding: 0; border-radius: 8px; line-height: 1; }
+#element-mc-choices-list .btn:hover { background: #fef2f2; color: #dc2626; }
+#element-mc-add-choice-btn { display: block; width: 100%; margin-top: 10px !important; padding: 9px 12px !important; border: 1px dashed #a1a1aa; border-radius: 10px; color: #6b7280; text-decoration: none; font-size: 13px; text-align: center; }
+#element-mc-add-choice-btn:hover { border-color: #111; color: #111; }
+
+/* confirm button */
+#element-confirm-btn { border-radius: 9px; padding: 9px 26px; font-weight: 500; }

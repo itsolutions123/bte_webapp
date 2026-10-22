@@ -776,3 +776,15 @@ DOCS UPDATED NOTE: rule 17.4 satisfied; the contract diff is non-empty.
 - PROCESS NOTE: `app/templates/admin_brand_detail.html` had uncommitted changes from earlier Brands work during this commit; it was left out and staged separately by the user's choice.
 - DOCS UPDATED: `API_CONTRACT.md` (line 2 Last verified, applications list status entry), this file. `SCHEMA.md`, `SECURITY.md`: no change.
 - NEXT STEPS, in order: (1) Structure contract for the brand field on the applications list item, then wire the `[Brand]` column; (2) tab counts and subtitle count (contract first, counters not recounts per rule 18.3); (3) search, then Filters.
+
+## Session Log 2026-10-22: Form builder modal and form detail page redesign (shell, visual only)
+- HANDOFF SUMMARY: work mode = shell (UI redesign of already-wired screens), documentation. Pages: the form builder modal (shared, `_form_builder.html`) and /admin/forms/{form-UID}. Task: restyle both to the user's reference mockup while keeping the existing admin look. Confirmed by the user in the browser.
+- DONE, frontend only: (1) builder question cards as a numbered timeline with type pills (Yes / No, Open ended, Multiple choice), chips, ghost Edit/Delete buttons, light Cancel and black Save footer; (2) Elements panel with an ELEMENTS label, three icons and a helper line, in `app/templates/_form_builder.html`; (3) the question list scrolls inside the modal (footer stays visible), with edge shadows, a thin scrollbar and a fade-in on cards, reduced-motion respected; (4) the element editor popup restyled, with lettered A, B, C badges on multiple choice rows, a dashed "+ Add choice" and a restyled Confirm (shared by all three element types); (5) /admin/forms/{form-UID} header, toolbar and table restyled in `app/templates/admin_form_detail.html` using the existing design tokens.
+- Styles for (1), (3) and (4) are appended blocks in `app/static/admin-sidebar.css`, scoped to #formBuilderModal, #form-contents-list and #element-modal-overlay. They rely on the existing card classes (`.element-title`, `.element-choices`, `.element-delete-btn`), so the card-building JS was not touched.
+- NO backend change, no endpoint change, no migration, no JS change.
+- NOT DONE (needs JS, separate steps): collapsing answered questions, a "Question N of M" label, the Advanced settings row (its content, scoring/logic/visibility, is undefined), auto-scroll to a newly added question.
+- STILL PLACEHOLDERS: the submissions table rows on /admin/forms/{form-UID} (two dash rows) until submissions are wired.
+- HARDCODES: none new beyond static UI copy (helper line under Elements, page subtitle "Submissions for this assessment form").
+- PROCESS NOTE: `app/templates/admin_brand_detail.html` has uncommitted earlier Brands changes; it was left out of this commit.
+- DOCS UPDATED: this file only. `API_CONTRACT.md`, `SCHEMA.md`, `SECURITY.md`: no change.
+- NEXT STEPS, in order: (1) the JS behaviours listed under NOT DONE, one per step, starting with auto-scroll to a new question; (2) wire real submissions into the form detail table (contract first).

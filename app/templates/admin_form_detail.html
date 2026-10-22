@@ -99,6 +99,32 @@
             font-weight: 700;
             font-size: 0.85rem;
         }
+
+        /* ===== Form detail page redesign (shell step, 2026-10-22) ===== */
+        .form-detail-card { padding: 1.75rem; animation: fq-in .3s ease both; }
+        .form-detail-head { margin-bottom: 1.5rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border-light); }
+        .form-detail-title { font-size: 1.4rem; margin-bottom: 0.15rem; }
+        .form-detail-sub { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+        #form-edit-btn { display: inline-flex; align-items: center; gap: 0.4rem; border-radius: 10px; padding: 0.45rem 1rem; }
+        #form-edit-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+        .submissions-toolbar .search-box {
+            width: 280px; padding-left: 2.6rem;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: 0.95rem center; background-size: 15px;
+        }
+        .submission-count { background-color: var(--bg-main); border: 1px solid var(--border-light); border-radius: 999px; padding: 0.3rem 0.85rem; }
+        .icon-btn { transition: background-color .15s, border-color .15s, color .15s; }
+        .icon-btn:hover:not(:disabled) { background-color: var(--bg-main); }
+        .icon-btn:disabled { opacity: .55; cursor: default; }
+        .table { --bs-table-hover-bg: var(--bg-main); }
+        .table thead th { background-color: var(--bg-main); border-bottom: 0; letter-spacing: 0.06em; padding: 0.85rem 0.75rem; }
+        .table thead th:first-child { border-radius: 10px 0 0 10px; }
+        .table thead th:last-child { border-radius: 0 10px 10px 0; }
+        .table tbody td { font-weight: 600; padding: 1rem 0.75rem; }
+        .table tbody tr:last-child td { border-bottom: 0; }
+        .table input[type="checkbox"] { accent-color: #111; width: 16px; height: 16px; cursor: pointer; }
+        @media (max-width: 576px) { .submissions-toolbar .search-box { width: 100%; } .submissions-toolbar .d-flex.gap-3 { width: 100%; } }
+        @media (prefers-reduced-motion: reduce) { .form-detail-card { animation: none; } }
     </style>
 </head>
 <body>
@@ -107,11 +133,14 @@
             {% include '_sidebar.html' %}
             <main class="col-md-10 px-4 pt-4 pb-5">
                 <div class="form-detail-card">
-                    <div class="d-flex justify-content-between align-items-start gap-3">
+                    <div class="d-flex justify-content-between align-items-start gap-3 form-detail-head">
                         <!-- Form name is fetched client-side from the forms list (see script below) -->
-                        <div class="form-detail-title" id="form-title">FORM NAME</div>
+                        <div>
+                            <div class="form-detail-title" id="form-title">FORM NAME</div>
+                            <div class="form-detail-sub">Submissions for this assessment form</div>
+                        </div>
                         <!-- Opens the form builder modal on this form (admin-sidebar.js: openFormBuilderForEdit) -->
-                        <button type="button" class="btn btn-sm btn-outline-dark fw-bold" id="form-edit-btn">Edit</button>
+                        <button type="button" class="btn btn-sm btn-outline-dark fw-bold" id="form-edit-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Edit</button>
                     </div>
 
                     <div id="bulk-delete-bar">
