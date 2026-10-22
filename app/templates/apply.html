@@ -79,6 +79,16 @@
         </div>
     </div>
 
+    <div id="intro-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="intro-title">
+        <div class="modal-box intro-box">
+            <h3 id="intro-title">Before you begin</h3>
+            <p>Part ito ng application mo for our Store Staff positions. May 6 short sections lang na sasagutan tungkol sa iyong personal background, family, education, work experience, availability, health, at iba pang importanteng information.</p>
+            <p>May ilang questions na medyo personal, pero don’t worry! Makakatulong lang ito sa aming Talent Acquisition Team para mas makilala ka, maintindihan ang iyong current situation, at malaman ang iyong readiness for work. Kaya please answer honestly and completely.</p>
+            <p>All information you provide will be kept confidential and used for recruitment purposes only. Your answers will help us determine the next step ng iyong application.</p>
+            <button type="button" id="intro-ok" class="btn-outline">I understand</button>
+        </div>
+    </div>
+
     <div id="leave-modal" class="modal-backdrop hidden">
         <div class="modal-box">
             <h3>Leave this application?</h3>
@@ -278,7 +288,19 @@
         $('btn-proceed').addEventListener('click', function () {
             dobCheck();
             if (!validateDetails()) return;
+            $('intro-modal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            $('intro-ok').focus();
+        });
+        // Intro pre-page: not closable by backdrop click, Esc or an X; only "I understand" continues.
+        $('intro-ok').addEventListener('click', function () {
+            $('intro-modal').classList.add('hidden');
+            document.body.style.overflow = '';
             cur = 0; show('view-questions'); renderQuestion();
+        });
+        document.addEventListener('keydown', function (e) {
+            if ($('intro-modal').classList.contains('hidden')) return;
+            if (e.key === 'Tab' || e.key === 'Escape') { e.preventDefault(); $('intro-ok').focus(); }
         });
 
         // ---- Load the real questions for this job ----
