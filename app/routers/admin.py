@@ -6,6 +6,7 @@ import os
 import re
 import uuid
 from pathlib import Path
+from urllib.parse import quote
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, literal, update
@@ -466,18 +467,21 @@ async def get_application_detail(
 @router.get("/applications/{application_id}/resume")
 async def get_application_resume(
     application_id: uuid.UUID,
+    download: bool = Query(False),
     db: AsyncSession = Depends(get_db),
 ):
     # docs/API_CONTRACT.md: GET /api/v1/admin/applications/{application_id}/resume
     row = (
         await db.execute(
-            select(Application.resume_path, Application.resume_filename)
+            select(Application.resume_path, Applicant.first_name, Applicant.last_name, Job.title)
+            .join(Applicant, Applicant.id == Application.applicant_id)
+            .join(Job, Job.id == Application.job_id)
             .where(Application.id == application_id)
         )
     ).first()
     if row is None:
         raise HTTPException(status_code=404, detail="application not found")
-    resume_path, resume_filename = row
+    resume_path, first_name, last_name, job_title = row
 
     storage_root = Path(os.environ.get("RESUME_STORAGE_PATH", "/data/resumes")).resolve()
     file_path = Path(resume_path).resolve()
@@ -485,12 +489,17 @@ async def get_application_resume(
         logger.warning("resume file missing or outside storage root for application %s", application_id)
         raise HTTPException(status_code=404, detail="resume file not found")
 
-    safe_name = re.sub(r'[^A-Za-z0-9._ -]', '_', resume_filename or "resume.pdf").strip() or "resume.pdf"
+    # Filename contract (docs/API_CONTRACT.md): "First Last - Job", capped at 100 chars before .pdf.
+    base = f"{first_name or ''} {last_name or ''} - {job_title or ''}"
+    base = re.sub(r'[\x00-\x1f\x7f"\\/]', '_', base).strip()[:100].strip() or "resume"
+    ascii_name = re.sub(r'[^A-Za-z0-9._ -]', '_', base) + ".pdf"
+    utf8_name = quote(base + ".pdf", safe="")
+    disposition = "attachment" if download else "inline"
     return FileResponse(
         str(file_path),
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f'inline; filename="{safe_name}"',
+            "Content-Disposition": f'{disposition}; filename="{ascii_name}"; filename*=UTF-8\'\'{utf8_name}',
             "Cache-Control": "no-store",
             "X-Content-Type-Options": "nosniff",
         },

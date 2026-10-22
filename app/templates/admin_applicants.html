@@ -377,7 +377,7 @@
                     <button type="button" class="btn btn-outline-dark fw-bold" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions">&hellip;</button>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><button type="button" class="dropdown-item disabled" aria-disabled="true" tabindex="-1">Reject</button></li>
-                        <li><button type="button" class="dropdown-item disabled" id="applicant-detail-resume-download" aria-disabled="true" tabindex="-1">Download resume</button></li>
+                        <li><button type="button" class="dropdown-item disabled" id="applicant-detail-resume-download" aria-disabled="true">Download resume</button></li>
                     </ul>
                 </div>
             </div>
@@ -514,7 +514,19 @@
         function setResumeButton(applicationId) {
             applicantDetailResumeId = applicationId || null;
             resumeBtnEl.disabled = !applicantDetailResumeId;
+            const dl = document.getElementById('applicant-detail-resume-download');
+            dl.classList.toggle('disabled', !applicantDetailResumeId);
+            dl.setAttribute('aria-disabled', applicantDetailResumeId ? 'false' : 'true');
         }
+        document.getElementById('applicant-detail-resume-download').addEventListener('click', function () {
+            if (!applicantDetailResumeId) return;
+            const a = document.createElement('a');
+            a.href = '/api/v1/admin/applications/' + encodeURIComponent(applicantDetailResumeId) + '/resume?download=true';
+            a.rel = 'noopener';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        });
         function isResumeViewerOpen() {
             const b = document.getElementById('resumeViewerBackdrop');
             return !!b && b.classList.contains('is-open');
