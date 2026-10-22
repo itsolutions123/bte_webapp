@@ -180,6 +180,48 @@
         </div>
     </div>
 
+    <style>
+        #submissionDetailPanel.offcanvas { --bs-offcanvas-width: min(640px, 100vw); }
+        #submissionDetailPanel .sd-head { padding: 1.1rem 2rem; border-bottom: 1px solid var(--border-light, #f0f1f4); }
+        #submissionDetailPanel .sd-name { font-size: 1.4rem; font-weight: 800; line-height: 1.2; color: #111; }
+        #submissionDetailPanel .sd-sub { font-size: .9rem; color: #6b7280; margin-top: .2rem; }
+        #submissionDetailPanel .sd-body { padding: 1.25rem 2rem; }
+        #submissionDetailPanel .sd-section-title { font-size: .75rem; font-weight: 800; letter-spacing: .08em; color: #374151; text-transform: uppercase; margin: 0 0 .75rem; }
+        #submissionDetailPanel .sd-field { display: flex; gap: 1rem; padding: .45rem 0; }
+        #submissionDetailPanel .sd-field-label { flex: 0 0 7rem; font-size: .85rem; color: #6b7280; font-weight: 600; }
+        #submissionDetailPanel .sd-field-value { min-width: 0; overflow-wrap: anywhere; font-weight: 600; color: #111; }
+        #submissionDetailPanel .sd-divider { border-top: 1px solid var(--border-light, #f0f1f4); margin: 1.25rem 0; }
+        #submissionDetailPanel .sd-answer { padding: .75rem 0; border-bottom: 1px solid var(--border-light, #f0f1f4); }
+        #submissionDetailPanel .sd-answer-q { font-size: .85rem; color: #6b7280; font-weight: 600; }
+        #submissionDetailPanel .sd-answer-a { font-weight: 700; color: #111; margin-top: .2rem; display: flex; justify-content: space-between; gap: 1rem; }
+    </style>
+    <!-- Shell only: obviously-fake placeholder text; wired to GET /api/v1/admin/applications/{id} in the next step -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="submissionDetailPanel" aria-labelledby="sd-name">
+        <div class="sd-head d-flex justify-content-between align-items-start">
+            <div>
+                <div class="sd-name" id="sd-name">Applicant Name</div>
+                <div class="sd-sub" id="sd-sub">Applied for: Job Title</div>
+                <div class="mt-2"><span class="status-pill" id="sd-status">&mdash;</span></div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="sd-body offcanvas-body">
+            <div class="sd-section-title">Applicant details</div>
+            <div class="sd-field"><div class="sd-field-label">Email</div><div class="sd-field-value" id="sd-email">&mdash;</div></div>
+            <div class="sd-field"><div class="sd-field-label">Phone</div><div class="sd-field-value" id="sd-phone">&mdash;</div></div>
+            <div class="sd-field"><div class="sd-field-label">Age</div><div class="sd-field-value" id="sd-age">&mdash;</div></div>
+            <div class="sd-field"><div class="sd-field-label">Gender</div><div class="sd-field-value" id="sd-gender">&mdash;</div></div>
+            <div class="sd-field"><div class="sd-field-label">Address</div><div class="sd-field-value" id="sd-address">&mdash;</div></div>
+            <div class="sd-divider"></div>
+            <div class="sd-section-title">Answers</div>
+            <div id="sd-answers">
+                <div class="sd-answer"><div class="sd-answer-q">Question 1 text</div><div class="sd-answer-a"><span>Answer &mdash;</span><span class="status-pill">&mdash;</span></div></div>
+                <div class="sd-answer"><div class="sd-answer-q">Question 2 text</div><div class="sd-answer-a"><span>Answer &mdash;</span><span class="status-pill">&mdash;</span></div></div>
+                <div class="sd-answer"><div class="sd-answer-q">Question 3 text</div><div class="sd-answer-a"><span>Answer &mdash;</span><span class="status-pill">&mdash;</span></div></div>
+            </div>
+        </div>
+    </div>
+
     {% include '_form_builder.html' %}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/admin-sidebar.js"></script>
@@ -216,6 +258,85 @@
             td.textContent = text;
             tr.appendChild(td);
             return tr;
+        }
+
+        let submissionRequestSeq = 0;
+
+        function setPanelText(id, value) {
+            const el = document.getElementById(id);
+            el.textContent = (value === null || value === undefined || value === '') ? '\u2014' : String(value);
+        }
+
+        function passLabel(v) {
+            if (v === true) return 'Pass';
+            if (v === false) return 'Fail';
+            return '\u2014';
+        }
+
+        function setAnswersMessage(text) {
+            const box = document.getElementById('sd-answers');
+            const div = document.createElement('div');
+            div.className = 'sd-answer sd-answer-q';
+            div.textContent = text;
+            box.replaceChildren(div);
+        }
+
+        function resetSubmissionPanel() {
+            ['sd-name', 'sd-sub', 'sd-status', 'sd-email', 'sd-phone', 'sd-age', 'sd-gender', 'sd-address'].forEach(function (id) {
+                setPanelText(id, null);
+            });
+            setAnswersMessage('Loading...');
+        }
+
+        async function openSubmissionPanel(applicationId) {
+            const seq = ++submissionRequestSeq;
+            resetSubmissionPanel();
+            bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('submissionDetailPanel')).show();
+            try {
+                const res = await fetch('/api/v1/admin/applications/' + encodeURIComponent(applicationId));
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const d = await res.json();
+                if (seq !== submissionRequestSeq) return;
+                const a = d.applicant || {};
+                setPanelText('sd-name', a.name);
+                setPanelText('sd-sub', d.job_title ? 'Applied for: ' + d.job_title : null);
+                setPanelText('sd-status', d.status);
+                setPanelText('sd-email', a.email);
+                setPanelText('sd-phone', a.phone);
+                setPanelText('sd-age', a.age);
+                setPanelText('sd-gender', a.gender);
+                setPanelText('sd-address', a.address);
+                const box = document.getElementById('sd-answers');
+                const answers = d.answers || [];
+                if (answers.length === 0) {
+                    setAnswersMessage('No answers recorded.');
+                    return;
+                }
+                box.replaceChildren();
+                answers.forEach(function (ans) {
+                    const item = document.createElement('div');
+                    item.className = 'sd-answer';
+                    const q = document.createElement('div');
+                    q.className = 'sd-answer-q';
+                    q.textContent = ans.question || '\u2014';
+                    const row = document.createElement('div');
+                    row.className = 'sd-answer-a';
+                    const val = document.createElement('span');
+                    val.textContent = (ans.applicant_answer === null || ans.applicant_answer === undefined || ans.applicant_answer === '') ? '\u2014' : ans.applicant_answer;
+                    const pill = document.createElement('span');
+                    pill.className = 'status-pill';
+                    pill.textContent = passLabel(ans.is_passed);
+                    row.appendChild(val);
+                    row.appendChild(pill);
+                    item.appendChild(q);
+                    item.appendChild(row);
+                    box.appendChild(item);
+                });
+            } catch (err) {
+                if (seq !== submissionRequestSeq) return;
+                console.error('Failed to load submission:', err);
+                setAnswersMessage('Unable to load this submission.');
+            }
         }
 
         async function fetchSubmissions() {
@@ -263,11 +384,26 @@
                     btn.className = 'icon-btn';
                     btn.setAttribute('aria-label', 'View');
                     btn.title = 'View';
-                    btn.disabled = true;
+                    btn.tabIndex = -1;
                     btn.innerHTML = '&#128065;';
                     tdView.appendChild(btn);
                     tr.appendChild(tdView);
 
+                    tr.dataset.applicationId = r.id;
+                    tr.style.cursor = 'pointer';
+                    tr.tabIndex = 0;
+                    tr.setAttribute('role', 'button');
+                    tr.addEventListener('click', function (e) {
+                        if (e.target.closest('input[type="checkbox"]')) return;
+                        openSubmissionPanel(tr.dataset.applicationId);
+                    });
+                    tr.addEventListener('keydown', function (e) {
+                        if (e.target !== tr) return;
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            openSubmissionPanel(tr.dataset.applicationId);
+                        }
+                    });
                     body.appendChild(tr);
                 });
             } catch (err) {
