@@ -188,10 +188,42 @@
         }
 
         var DETAIL_FIELD_IDS = ['d_first', 'd_last', 'd_email', 'd_phone', 'd_address', 'd_gender', 'd_dob', 'd_resume'];
-        var detailErrorNote = document.createElement('p');
-        detailErrorNote.className = 'field-error-note hidden';
-        detailErrorNote.textContent = 'Please fill in all fields before proceeding.';
-        $('view-details').appendChild(detailErrorNote);
+        var DETAIL_MESSAGES = {
+            d_first: 'Enter your first name.',
+            d_last: 'Enter your last name.',
+            d_email: 'Enter your email address.',
+            d_phone: 'Enter your phone number.',
+            d_address: 'Enter your address.',
+            d_gender: 'Select your gender.',
+            d_dob: 'Select your date of birth.',
+            d_resume: 'Upload your resume as a PDF.'
+        };
+        function fieldMessage(id) {
+            var el = $(id);
+            var empty = id === 'd_resume' ? !(el.files && el.files.length) : el.value.trim() === '';
+            if (empty) return DETAIL_MESSAGES[id];
+            if (id === 'd_email') return 'Enter a valid email address, like name@example.com.';
+            if (id === 'd_phone') return 'Phone number must be 7 to 15 digits, numbers only.';
+            if (id === 'd_dob') return 'Date of birth must be in the past.';
+            return DETAIL_MESSAGES[id];
+        }
+        function getFieldNote(id) {
+            var note = document.getElementById(id + '-msg');
+            if (!note) {
+                note = document.createElement('p');
+                note.id = id + '-msg';
+                note.className = 'field-msg hidden';
+                note.setAttribute('role', 'alert');
+                $(id).parentNode.appendChild(note);
+            }
+            return note;
+        }
+        function setFieldError(id, msg) {
+            var note = getFieldNote(id);
+            $(id).classList.toggle('field-invalid', !!msg);
+            if (msg) { note.textContent = msg; note.classList.remove('hidden'); }
+            else { note.textContent = ''; note.classList.add('hidden'); }
+        }
 
         var EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         var PHONE_PATTERN = /^[0-9]{7,15}$/;
@@ -203,15 +235,11 @@
         var DOB_MAX = isoDate(yesterday);
         $('d_dob').max = DOB_MAX;
         DatePicker.attach($('d_dob'), { min: (yesterday.getFullYear() - 100) + '-01-01', max: DOB_MAX });
-        var dobNote = document.createElement('p');
-        dobNote.className = 'field-error-note hidden';
-        dobNote.textContent = 'Date of birth must be in the past.';
-        $('d_dob').parentNode.appendChild(dobNote);
         function dobCheck() {
             var v = $('d_dob').value;
             var tooLate = v !== '' && v > DOB_MAX;
-            $('d_dob').classList.toggle('field-invalid', tooLate);
-            dobNote.classList.toggle('hidden', !tooLate);
+            if (tooLate) setFieldError('d_dob', 'Date of birth must be in the past.');
+            else if (!$('d_dob').classList.contains('field-invalid') || v !== '') setFieldError('d_dob', '');
         }
         ['input', 'change'].forEach(function (ev) { $('d_dob').addEventListener(ev, dobCheck); });
         function fieldHasValue(id) {
@@ -226,18 +254,23 @@
         }
         function validateDetails() {
             var allValid = true;
+            var firstBad = null;
             DETAIL_FIELD_IDS.forEach(function (id) {
                 var ok = fieldHasValue(id);
-                $(id).classList.toggle('field-invalid', !ok);
-                if (!ok) allValid = false;
+                setFieldError(id, ok ? '' : fieldMessage(id));
+                if (!ok) { allValid = false; if (!firstBad) firstBad = id; }
             });
-            detailErrorNote.classList.toggle('hidden', allValid);
+            if (firstBad) {
+                var group = $(firstBad).closest('.form-group') || $(firstBad);
+                group.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (firstBad !== 'd_dob') { try { $(firstBad).focus({ preventScroll: true }); } catch (e) {} }
+            }
             return allValid;
         }
         DETAIL_FIELD_IDS.forEach(function (id) {
             $(id).addEventListener(id === 'd_resume' ? 'change' : 'input', function () {
                 if ($(id).classList.contains('field-invalid') && fieldHasValue(id)) {
-                    $(id).classList.remove('field-invalid');
+                    setFieldError(id, '');
                 }
             });
         });
@@ -318,6 +351,31 @@
             $('btn-submit').parentNode.parentNode.insertBefore(termsNote, $('btn-submit').parentNode);
             $('consent').disabled = true;
         }
+        function showThankYou() {
+            var careersUrl = document.getElementById('leave-link').dataset.careersUrl || '/careers';
+            ['view-details', 'view-questions', 'view-review'].forEach(function (id) { $(id).classList.add('hidden'); });
+            var sec = document.createElement('section');
+            sec.id = 'view-thanks';
+            sec.className = 'thanks';
+            sec.setAttribute('role', 'status');
+            sec.innerHTML =
+                '<div class="thanks-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>' +
+                '<h2 class="thanks-title">Thank you for applying!</h2>' +
+                '<p class="thanks-text">We received your application for <strong class="thanks-job"></strong>. Our team will review it and be in touch.</p>' +
+                '<p class="thanks-redirect">Taking you back to careers in <span id="thanks-count">5</span>s&hellip;</p>' +
+                '<div class="thanks-bar"><span></span></div>' +
+                '<a class="thanks-now" href="#">Go now</a>';
+            sec.querySelector('.thanks-job').textContent = $('job-title').textContent;
+            var go = function () { clearInterval(timer); window.location.href = careersUrl; };
+            sec.querySelector('.thanks-now').addEventListener('click', function (e) { e.preventDefault(); go(); });
+            document.querySelector('.apply-card').appendChild(sec);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            var secs = 5;
+            var timer = setInterval(function () {
+                secs--;
+                if (secs <= 0) { go(); } else { $('thanks-count').textContent = secs; }
+            }, 1000);
+        }
         var SUBMITTING = false;
         function formatAnswers() {
             return QUESTIONS.map(function (q, i) {
@@ -363,7 +421,7 @@
                     if (result.ok) {
                         dirty = false;
                         $('review-nav-row').classList.add('hidden');
-                        $('submit-success').classList.remove('hidden');
+                        showThankYou();
                     } else {
                         $('btn-submit').disabled = false;
                         $('btn-submit').textContent = 'Submit application';

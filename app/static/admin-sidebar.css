@@ -199,3 +199,63 @@ body {
 
 /* confirm button */
 #element-confirm-btn { border-radius: 9px; padding: 9px 26px; font-weight: 500; }
+
+/* ===== Create job modal redesign (2026-10-22) ===== */
+/* open / close motion */
+.modal-backdrop.show { backdrop-filter: blur(2px); }
+#createJobModal.fade .modal-dialog { transform: translateY(18px) scale(.98); opacity: 0; transition: transform .28s cubic-bezier(.2,.8,.2,1), opacity .22s ease; }
+#createJobModal.show .modal-dialog { transform: none; opacity: 1; }
+#createJobModal .modal-content { border: 0; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,.18); }
+#createJobModal .modal-header { border-bottom: 1px solid #e5e7eb; padding: 16px 24px; }
+#createJobModal .modal-title { font-size: 1.1rem; }
+#createJobModal .modal-body { padding: 22px 24px 8px; max-height: calc(100vh - 13rem); overflow-y: auto; overscroll-behavior: contain; scroll-behavior: smooth; scrollbar-width: thin; scrollbar-color: #d4d4d8 transparent; }
+#createJobModal .modal-footer { border-top: 1px solid #e5e7eb; padding: 14px 24px; }
+#createJobModal.show .modal-body > *, #createJobModal.show .modal-body .row > * { animation: fq-in .32s ease both; }
+#createJobModal.show .modal-body > *:nth-child(2) { animation-delay: .03s; }
+#createJobModal.show .modal-body > *:nth-child(4) { animation-delay: .06s; }
+#createJobModal.show .modal-body > *:nth-child(5) { animation-delay: .09s; }
+#createJobModal.show .modal-body > *:nth-child(6) { animation-delay: .12s; }
+#createJobModal.show .modal-body > *:nth-child(7) { animation-delay: .15s; }
+#createJobModal.show .modal-body > *:nth-child(8) { animation-delay: .18s; }
+
+/* labels */
+#createJobModal .form-label { font-size: 11px; font-weight: 600 !important; letter-spacing: .08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }
+
+/* inputs */
+#createJobModal .form-control, #createJobModal .form-select { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 14px; font-size: 14px; box-shadow: none; transition: border-color .15s, box-shadow .15s; }
+#createJobModal .form-control:hover, #createJobModal .form-select:hover { border-color: #d4d4d8; }
+#createJobModal .form-control:focus, #createJobModal .form-select:focus { border-color: #111; box-shadow: 0 0 0 3px rgba(17,17,17,.08); }
+#createJobModal #create-job-title { font-weight: 600; font-size: 15px; }
+
+/* rich text editors */
+#createJobModal .ql-toolbar.ql-snow { border: 1px solid #e5e7eb; border-radius: 10px 10px 0 0; background: #fafafa; padding: 6px 10px; transition: border-color .15s; }
+#createJobModal .ql-container.ql-snow { border: 1px solid #e5e7eb; border-top: 0; border-radius: 0 0 10px 10px; transition: border-color .15s, box-shadow .15s; }
+#createJobModal .ql-container.ql-snow:focus-within { border-color: #111; box-shadow: 0 0 0 3px rgba(17,17,17,.08); }
+#createJobModal .ql-editor { padding: 12px 14px; line-height: 1.55; }
+#createJobModal .ql-editor.ql-blank::before { color: #a1a1aa; font-style: normal; left: 14px; }
+#createJobModal .ql-snow .ql-stroke { stroke: #6b7280; transition: stroke .15s; }
+#createJobModal .ql-snow .ql-fill { fill: #6b7280; }
+#createJobModal .ql-snow.ql-toolbar button:hover .ql-stroke, #createJobModal .ql-snow.ql-toolbar button.ql-active .ql-stroke { stroke: #111; }
+#createJobModal .ql-snow.ql-toolbar button:hover .ql-fill, #createJobModal .ql-snow.ql-toolbar button.ql-active .ql-fill { fill: #111; }
+#createJobModal .ql-snow.ql-toolbar button { border-radius: 6px; transition: background-color .15s; }
+#createJobModal .ql-snow.ql-toolbar button:hover, #createJobModal .ql-snow.ql-toolbar button.ql-active { background: #f4f4f5; }
+
+/* publish dropdown */
+#createJobModal #create-job-publish-btn { border-radius: 999px; padding: 5px 14px; font-size: 12px; transition: background-color .15s, color .15s; }
+#createJobModal #create-job-publish-btn:hover { background: #111; color: #fff; }
+#createJobModal .dropdown-menu { border: 1px solid #e5e7eb; border-radius: 12px; padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,.1); animation: fq-in .15s ease both; }
+#createJobModal .dropdown-item { border-radius: 8px; font-size: 13px; padding: 8px 12px; }
+
+/* confirm: quiet while disabled, black when ready */
+#createJobModal #create-job-confirm-btn { border: 0; border-radius: 9px; padding: 9px 26px; font-weight: 500 !important; transition: background-color .2s, color .2s, transform .1s; }
+#createJobModal #create-job-confirm-btn:disabled { background: #e5e7eb; color: #9ca3af; opacity: 1; }
+#createJobModal #create-job-confirm-btn:not(:disabled):hover { background: #000; }
+#createJobModal #create-job-confirm-btn:not(:disabled):active { transform: scale(.97); }
+
+/* error message */
+#createJobModal #create-job-error { animation: fq-in .2s ease both; }
+@media (max-width: 576px) { #createJobModal .modal-body { padding: 18px 16px 8px; } #createJobModal .modal-header, #createJobModal .modal-footer { padding-left: 16px; padding-right: 16px; } }
+@media (prefers-reduced-motion: reduce) {
+  #createJobModal.fade .modal-dialog { transition: none; transform: none; }
+  #createJobModal.show .modal-body > *, #createJobModal.show .modal-body .row > *, #createJobModal .dropdown-menu, #createJobModal #create-job-error { animation: none; }
+}
