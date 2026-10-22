@@ -883,3 +883,18 @@ DOCS UPDATED NOTE: rule 17.4 satisfied; the contract diff is non-empty.
 - OPEN, needs a decision: route naming (code: `/admin/forms/{form_id}`, `/admin/brands/{brand_id}`, no `/admin/applicants/{UID}`; preamble section 3: `{brand-name}`, `{form-name}`, `{UID}`).
 - NEXT STEPS, in order: (1) step 3: search and date filter on the form page (contract first); (2) decide the `admin_brand_detail.html` commit question; (3) decide the route naming; (4) shared panel width variable; (5) dead CSS cleanup in `admin_applicants.html`; (6) Security: HR auth and resume access control.
 - DOCS UPDATED: `API_CONTRACT.md` (call site, route entry, Last verified) and this file. `SCHEMA.md`, `SECURITY.md`: no change.
+
+## Session Log 2026-10-22 (continued, after 450ae99): Dashboard job filter and Pass Rate highlight
+- HANDOFF SUMMARY: work mode = feature-wiring (contract, backend) plus a UI layout fix. Page: `/admin/home`. The user confirmed both in the browser ("Awesome").
+- DONE, contract first (`API_CONTRACT.md`): dashboard job filter on `GET /api/v1/admin/dashboard/tally` and `/dashboard/summary`. Decided by the user: only jobs with `archived_at IS NULL` and `is_active` true are counted or listed; archived jobs never appear anywhere on the dashboard. Expiry is NOT part of the filter (not decided).
+- DONE, backend (`app/routers/admin.py`): `get_dashboard_summary` joins `status_counts` to `jobs` with the filter; `get_dashboard_tally` filters the job list. Counts still come from `status_counts` (18.3). No schema change; `idx_jobs_archived_at` exists. Applications and counter rows of excluded jobs are kept (not deleted) and still show on `/admin/applicants`.
+- VERIFIED LIVE by curl and in the browser: tally lists Crew, Cook, IT Administrator and Accounting Manager (zero counts); summary `new` is 6 (was 9; CASHIER's 3 are archived).
+- DONE, frontend (`admin.html`): Pass Rate is now the first, larger highlight card (`col-md-6`, `.stat-card-highlight`, 3.5rem value); New Applicants and Endorsed beside it; Pooling, Hired, Failed on row 2. All seven `stat-*` ids kept. Confirmed in the browser.
+- RETRACTED: an earlier suspicion that `status_counts` was stale. The counters match `applications`; a new application arrived between two queries.
+- KNOWN GAP (pre-existing, not from this change): `GET /dashboard/tally?brand_id=not-a-uuid` returns 500 (raw string compared to `Job.brand_id`); should be 422. Needs a contract line first.
+- OPEN: zero-count active jobs (e.g. Accounting Manager) still show in the tally; hiding them needs a decision.
+- NOT TESTED: draft jobs with counter rows, `brand_id` filter with a valid id, narrow-window layout of the new card order.
+- NEXT, not started: redesign the whole `/admin/home` to the user's reference image (large dark Pass Rate card with donut ring, Pipeline flow card, compact tally with "Show N more roles", month pill). Questions to settle first: "Pass rate this month" needs month scoping (`dashboard/summary` ignores `date_from`/`date_to` today); the reference tally shows only New, Passed, Hired while the current one also shows Failed, Pooling, Endorsed; whether the search box and date input do anything today. Shell first (section 8), keeping every existing id.
+- HARDCODES: none new. `admin.py` has trailing whitespace on the blank line after the `brand_id` filter in the tally function (left as is).
+- PROCESS NOTES: `admin_brand_detail.html` is still uncommitted (older Brands changes plus the 640px job panel width); left out again, pending the user's decision. Route naming question (`{id}` in code vs `{name}`/`{UID}` in preamble section 3) is still open.
+- DOCS UPDATED: `API_CONTRACT.md` (filter rule, status, Last verified) and this file. `SCHEMA.md`, `SECURITY.md`: no change.

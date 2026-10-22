@@ -101,6 +101,7 @@
             color: rgba(255,255,255,0.6);
         }
         .stat-value-hired { color: var(--accent-gold); }
+        .stat-card-highlight .stat-value-lg { font-size: 3.5rem; }
         .stat-value-failed { color: var(--accent-black); }
 
         /* Brand matches */
@@ -209,19 +210,19 @@
                     <p>Candidate pipeline across all brands, updated live.</p>
                 </div>
 
-                <!-- Stat Cards Row 1 -->
+                <!-- Stat Cards Row 1: Pass Rate is the highlight card -->
                 <div class="row g-3 stat-grid">
+                    <div class="col-md-6">
+                        <div class="dashboard-card stat-card-pass stat-card-highlight h-100">
+                            <div class="stat-label">Pass Rate</div>
+                            <div class="stat-value-lg" id="stat-passrate">—</div>
+                            <div class="pass-rate-sub" id="stat-passrate-sub">0 / 0</div>
+                        </div>
+                    </div>
                     <div class="col-md-3">
                         <div class="dashboard-card h-100">
                             <div class="stat-label">New Applicants</div>
                             <div class="stat-value" id="stat-new">—</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="dashboard-card stat-card-pass h-100">
-                            <div class="stat-label">Pass Rate</div>
-                            <div class="stat-value-lg" id="stat-passrate">—</div>
-                            <div class="pass-rate-sub" id="stat-passrate-sub">0 / 0</div>
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -230,23 +231,23 @@
                             <div class="stat-value" id="stat-endorsed">—</div>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                </div>
+
+                <!-- Stat Cards Row 2 -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
                         <div class="dashboard-card h-100">
                             <div class="stat-label">Pooling</div>
                             <div class="stat-value" id="stat-pooling">—</div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Stat Cards Row 2 -->
-                <div class="row g-3 mb-4">
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <div class="dashboard-card h-100">
                             <div class="stat-label">Hired</div>
                             <div class="stat-value stat-value-hired" id="stat-hired">—</div>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <div class="dashboard-card h-100">
                             <div class="stat-label">Failed</div>
                             <div class="stat-value stat-value-failed" id="stat-failed">—</div>

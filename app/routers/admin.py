@@ -65,7 +65,13 @@ async def get_dashboard_summary(
     date_to: Optional[str] = Query(None), 
     db: AsyncSession = Depends(get_db)
 ):
-    result = await db.execute(select(StatusCount.status, func.sum(StatusCount.count)).group_by(StatusCount.status))
+    # Dashboard job filter (docs/API_CONTRACT.md): only non-archived, published jobs are counted.
+    result = await db.execute(
+        select(StatusCount.status, func.sum(StatusCount.count))
+        .join(Job, Job.id == StatusCount.job_id)
+        .where(Job.archived_at.is_(None), Job.is_active.is_(True))
+        .group_by(StatusCount.status)
+    )
     rows = result.all()
     
     totals = OverallTotals()
@@ -90,6 +96,8 @@ async def get_dashboard_tally(brand_id: Optional[str] = Query(None), db: AsyncSe
     query = select(Job.id, Job.title, StatusCount.status, StatusCount.count).outerjoin(
         StatusCount, Job.id == StatusCount.job_id
     )
+    # Dashboard job filter (docs/API_CONTRACT.md): only non-archived, published jobs get a row.
+    query = query.where(Job.archived_at.is_(None), Job.is_active.is_(True))
     if brand_id:
         query = query.where(Job.brand_id == brand_id)
         
