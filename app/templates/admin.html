@@ -8,36 +8,65 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link href="/static/admin-sidebar.css" rel="stylesheet">
     <style>
+        /* Page-scoped tokens (candidates to move into admin-sidebar.css) */
+        :root {
+            --on-dark: #ffffff;
+            --on-dark-muted: rgba(255, 255, 255, 0.6);
+            --on-dark-soft: rgba(255, 255, 255, 0.08);
+            --ring-track: rgba(255, 255, 255, 0.12);
+            --radius-lg: 24px;
+        }
 
-        /* Top Bar Styling */
+        /* Top bar */
         .top-bar {
             padding: 1.5rem 0;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 1rem;
         }
-        .search-box, .date-box {
+        .search-box, .date-pill, .btn-profile {
             background-color: var(--bg-card);
             border: 1px solid var(--border-light);
             box-shadow: var(--soft-shadow);
             color: var(--text-main);
-            padding: 0.6rem 1.2rem;
             border-radius: 12px;
             font-family: inherit;
         }
-        .search-box:focus, .date-box:focus {
-            outline: none;
-            border-color: var(--accent-gold);
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.55rem 1rem;
+            width: 250px;
+            color: var(--text-muted);
+        }
+        .search-box input {
+            border: 0;
+            outline: 0;
+            background: transparent;
+            width: 100%;
+            font-family: inherit;
+            font-size: 0.85rem;
+            color: var(--text-main);
+        }
+        .date-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.55rem 1rem;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+        .search-box:has(input:disabled), .date-pill:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
         }
         .btn-profile {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border-light);
-            box-shadow: var(--soft-shadow);
-            color: var(--text-main);
             font-weight: 700;
-            padding: 0.6rem 1.5rem;
-            border-radius: 12px;
+            font-size: 0.8rem;
+            padding: 0.55rem 1.5rem;
             cursor: pointer;
             transition: all 0.2s ease;
         }
@@ -50,7 +79,7 @@
         .page-heading { margin-bottom: 1.5rem; }
         .page-heading h1 {
             font-weight: 800;
-            font-size: 1.9rem;
+            font-size: 2rem;
             color: var(--accent-black);
             margin-bottom: 0.25rem;
         }
@@ -60,130 +89,237 @@
             margin-bottom: 0;
         }
 
-        /* Card Styling */
+        /* Cards */
         .dashboard-card {
             background-color: var(--bg-card);
             border: 1px solid var(--border-light);
-            border-radius: 20px;
+            border-radius: var(--radius-lg);
             box-shadow: var(--soft-shadow);
             padding: 1.5rem;
         }
         .stat-label {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             text-transform: uppercase;
             color: var(--text-muted);
             font-weight: 800;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.6px;
             margin-bottom: 0.5rem;
         }
         .stat-value {
-            font-size: 1.75rem;
+            font-size: 1.5rem;
             font-weight: 800;
             color: var(--accent-black);
         }
 
-        /* Stat grid */
-        .stat-grid { margin-bottom: 1rem; }
-        .stat-card-pass {
+        /* Hero: pass rate */
+        .hero-card {
             background-color: var(--accent-black);
-            border-color: var(--accent-black);
+            border-radius: var(--radius-lg);
+            padding: 2.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.5rem;
+            color: var(--on-dark);
         }
-        .stat-card-pass .stat-label { color: rgba(255,255,255,0.6); }
-        .stat-value-lg {
-            font-size: 2.25rem;
+        .hero-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
             font-weight: 800;
             color: var(--accent-gold);
-            line-height: 1.1;
+            margin-bottom: 1rem;
         }
-        .pass-rate-sub {
+        .hero-value {
+            font-size: 4.5rem;
+            font-weight: 800;
+            line-height: 1;
+            color: var(--on-dark);
+        }
+        .hero-sub {
             font-size: 0.85rem;
             font-weight: 600;
-            color: rgba(255,255,255,0.6);
+            color: var(--on-dark-muted);
+            margin-top: 0.9rem;
         }
-        .stat-value-hired { color: var(--accent-gold); }
-        .stat-card-highlight .stat-value-lg { font-size: 3.5rem; }
-        .stat-value-failed { color: var(--accent-black); }
+        .hero-pill {
+            display: inline-block;
+            margin-top: 1.25rem;
+            padding: 0.3rem 0.8rem;
+            border-radius: 999px;
+            background-color: var(--on-dark-soft);
+            color: var(--on-dark-muted);
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+        .pass-ring {
+            --pct: 0;
+            position: relative;
+            flex-shrink: 0;
+            width: 96px;
+            height: 96px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .pass-ring::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: conic-gradient(var(--accent-gold) calc(var(--pct) * 1%), var(--ring-track) 0);
+            -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 10px), #000 calc(100% - 9px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 10px), #000 calc(100% - 9px));
+        }
+        .pass-ring-text {
+            position: relative;
+            font-weight: 800;
+            font-size: 1rem;
+            color: var(--on-dark);
+        }
+
+        /* Pipeline flow */
+        .flow-list {
+            list-style: none;
+            margin: 0.5rem 0 0;
+            padding: 0;
+        }
+        .flow-item {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 0;
+        }
+        .flow-item:not(:last-child)::before {
+            content: "";
+            position: absolute;
+            left: 4px;
+            top: calc(50% + 5px);
+            height: calc(100% - 10px);
+            width: 2px;
+            background-color: var(--border-light);
+        }
+        .flow-dot {
+            position: relative;
+            z-index: 1;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--text-muted);
+            opacity: 0.4;
+            flex-shrink: 0;
+        }
+        .flow-new .flow-dot { background-color: var(--accent-black); opacity: 1; }
+        .flow-hired .flow-dot { background-color: var(--accent-gold); opacity: 1; }
+        .flow-name { flex: 1; font-weight: 600; color: var(--text-muted); }
+        .flow-new .flow-name { color: var(--text-main); font-weight: 700; }
+        .flow-count { font-weight: 800; color: var(--text-muted); }
+        .flow-new .flow-count { color: var(--accent-black); font-size: 1.05rem; }
+        .flow-failed {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.75rem;
+            padding-top: 0.9rem;
+            border-top: 1px solid var(--border-light);
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
 
         /* Brand matches */
-        .brand-card .stat-label {
-            font-size: 0.65rem;
-            margin-bottom: 0.25rem;
-        }
+        .brand-card .stat-label { font-size: 0.65rem; margin-bottom: 0.25rem; }
         .brand-card .brand-name {
             color: var(--text-main);
             font-size: 0.95rem;
             font-weight: 700;
         }
-        .brand-card .stat-value {
-            font-size: 1.5rem;
-            color: var(--accent-gold);
-        }
+        .brand-card .stat-value { font-size: 1.5rem; color: var(--accent-gold); }
 
-        /* Empty-state dashed banner */
+        /* Empty-state banner */
         .empty-banner {
-            border: 2px dashed var(--border-light);
-            border-radius: 16px;
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
             background-color: var(--bg-main);
             color: var(--text-muted);
-            font-weight: 700;
-            padding: 1rem 1.25rem;
+            font-weight: 600;
+            font-size: 0.8rem;
+            padding: 0.85rem 1.1rem;
             display: flex;
             align-items: center;
             gap: 0.6rem;
-            margin-bottom: 2rem;
+            margin: 1rem 0 1.5rem;
         }
         .empty-banner .icon {
-            width: 20px;
-            height: 20px;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
             border: 1px solid var(--text-muted);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.75rem;
+            font-size: 0.65rem;
+            font-weight: 800;
             flex-shrink: 0;
         }
 
-        /* Live tally card header */
-        .tally-card h5 {
-            font-weight: 800;
-            margin-bottom: 0.1rem;
-        }
+        /* Live tally */
+        .tally-card h5 { font-weight: 800; margin-bottom: 0.1rem; }
         .tally-card .tally-subtitle {
             color: var(--text-muted);
             font-weight: 600;
-            font-size: 0.85rem;
-        }
-
-        /* Table Styling */
-        .table {
-            color: var(--text-main);
-            margin-bottom: 0;
-        }
-        .table th {
-            border-bottom: 2px solid var(--border-light);
-            color: var(--text-muted);
-            font-weight: 800;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            padding: 1rem 0.5rem;
-        }
-        .table td {
-            border-bottom: 1px solid var(--border-light);
-            background-color: transparent;
-            vertical-align: middle;
-            font-weight: 700;
-            padding: 1rem 0.5rem;
+            font-size: 0.8rem;
         }
         .badge-auto {
             background-color: var(--bg-main);
             border: 1px solid var(--border-light);
             color: var(--text-muted);
             font-weight: 700;
-            padding: 0.4rem 0.8rem;
-            border-radius: 12px;
+            padding: 0.35rem 0.8rem;
+            border-radius: 999px;
             font-size: 0.7rem;
         }
+        .tally-table { color: var(--text-main); margin-bottom: 0; }
+        .tally-table th {
+            border-bottom: 1px solid var(--border-light);
+            color: var(--text-muted);
+            font-weight: 800;
+            font-size: 0.65rem;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            padding: 0.85rem 0.5rem;
+            text-align: right;
+        }
+        .tally-table td {
+            border-bottom: 1px solid var(--border-light);
+            background-color: transparent;
+            vertical-align: middle;
+            font-weight: 700;
+            padding: 0.95rem 0.5rem;
+            text-align: right;
+        }
+        .tally-table th:first-child, .tally-table td:first-child { text-align: left; }
+        .tally-table tbody tr:last-child td { border-bottom: 0; }
+        .tally-table .is-zero { color: var(--text-muted); font-weight: 600; }
+        .tally-table:not(.show-all-stages) .col-extra { display: none; }
+        .tally-empty { text-align: center !important; color: var(--text-muted); padding: 1.5rem 0 !important; }
+        .tally-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 0.75rem;
+        }
+        .link-btn {
+            background: none;
+            border: 0;
+            padding: 0;
+            font-family: inherit;
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: var(--text-main);
+            cursor: pointer;
+        }
+        .link-btn:hover { color: var(--accent-gold); }
     </style>
 </head>
 <body>
@@ -195,11 +331,17 @@
 
             <!-- Main Content -->
             <main class="col-md-10 px-4 pb-5">
-                <!-- Top Nav -->
+                <!-- Top Nav (search and date are visual-only until their wiring steps) -->
                 <div class="top-bar">
-                    <div class="d-flex gap-3">
-                        <input type="text" class="search-box" placeholder="Search..." style="width: 250px;">
-                        <input type="date" class="date-box">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <label class="search-box" title="Not wired yet">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+                            <input type="search" placeholder="Search candidates..." disabled>
+                        </label>
+                        <button type="button" class="date-pill" disabled title="Not wired yet">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>
+                            <span>Date range</span>
+                        </button>
                     </div>
                     <button class="btn-profile">PROFILE</button>
                 </div>
@@ -210,61 +352,60 @@
                     <p>Candidate pipeline across all brands, updated live.</p>
                 </div>
 
-                <!-- Stat Cards Row 1: Pass Rate is the highlight card -->
-                <div class="row g-3 stat-grid">
-                    <div class="col-md-6">
-                        <div class="dashboard-card stat-card-pass stat-card-highlight h-100">
-                            <div class="stat-label">Pass Rate</div>
-                            <div class="stat-value-lg" id="stat-passrate">—</div>
-                            <div class="pass-rate-sub" id="stat-passrate-sub">0 / 0</div>
+                <!-- Hero + Pipeline flow -->
+                <div class="row g-3">
+                    <div class="col-lg-7">
+                        <div class="hero-card h-100">
+                            <div>
+                                <div class="hero-label">Pass rate</div>
+                                <div class="hero-value" id="stat-passrate">—</div>
+                                <div class="hero-sub" id="stat-passrate-sub">0 of 0 assessed candidates passed</div>
+                                <span class="hero-pill">All time</span>
+                            </div>
+                            <div class="pass-ring" aria-hidden="true">
+                                <span class="pass-ring-text" id="stat-passrate-ring">—</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="dashboard-card h-100">
-                            <div class="stat-label">New Applicants</div>
-                            <div class="stat-value" id="stat-new">—</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="dashboard-card h-100">
-                            <div class="stat-label">Endorsed</div>
-                            <div class="stat-value" id="stat-endorsed">—</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Stat Cards Row 2 -->
-                <div class="row g-3 mb-4">
-                    <div class="col-md-4">
-                        <div class="dashboard-card h-100">
-                            <div class="stat-label">Pooling</div>
-                            <div class="stat-value" id="stat-pooling">—</div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="dashboard-card h-100">
-                            <div class="stat-label">Hired</div>
-                            <div class="stat-value stat-value-hired" id="stat-hired">—</div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="dashboard-card h-100">
-                            <div class="stat-label">Failed</div>
-                            <div class="stat-value stat-value-failed" id="stat-failed">—</div>
+                    <div class="col-lg-5">
+                        <div class="dashboard-card flow-card h-100">
+                            <div class="stat-label">Pipeline flow</div>
+                            <ul class="flow-list">
+                                <li class="flow-item flow-new">
+                                    <span class="flow-dot"></span><span class="flow-name">New applicants</span>
+                                    <span class="flow-count" id="stat-new">—</span>
+                                </li>
+                                <li class="flow-item">
+                                    <span class="flow-dot"></span><span class="flow-name">Pooling</span>
+                                    <span class="flow-count" id="stat-pooling">—</span>
+                                </li>
+                                <li class="flow-item">
+                                    <span class="flow-dot"></span><span class="flow-name">Endorsed</span>
+                                    <span class="flow-count" id="stat-endorsed">—</span>
+                                </li>
+                                <li class="flow-item flow-hired">
+                                    <span class="flow-dot"></span><span class="flow-name">Hired</span>
+                                    <span class="flow-count" id="stat-hired">—</span>
+                                </li>
+                            </ul>
+                            <div class="flow-failed">
+                                <span>Failed</span>
+                                <span id="stat-failed">—</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Brand matches: either cards or empty banner -->
-                <div id="brand-summary-cards" class="row mb-2"></div>
+                <div id="brand-summary-cards" class="row mt-3"></div>
                 <div id="no-brand-banner" class="empty-banner" style="display:none;">
-                    <span class="icon">!</span>
+                    <span class="icon">i</span>
                     <span>No brand data yet — results will populate once a brand reports activity.</span>
                 </div>
 
                 <!-- Live Tally Table -->
-                <div class="dashboard-card tally-card">
-                    <div class="d-flex justify-content-between align-items-center mb-3 px-2">
+                <div class="dashboard-card tally-card mt-3">
+                    <div class="d-flex justify-content-between align-items-start mb-3 px-2">
                         <div>
                             <h5 class="m-0">Live status tally</h5>
                             <div class="tally-subtitle">Candidates by job title and stage</div>
@@ -272,23 +413,27 @@
                         <span class="badge-auto">Auto-updating</span>
                     </div>
                     <div class="table-responsive px-2">
-                        <table class="table table-borderless table-hover">
+                        <table class="table table-borderless tally-table" id="tally-table">
                             <thead>
                                 <tr>
                                     <th>Job Title</th>
                                     <th>New</th>
                                     <th>Passed</th>
-                                    <th>Failed</th>
-                                    <th>Pooling</th>
-                                    <th>Endorsed</th>
                                     <th>Hired</th>
+                                    <th class="col-extra">Failed</th>
+                                    <th class="col-extra">Pooling</th>
+                                    <th class="col-extra">Endorsed</th>
                                 </tr>
                             </thead>
                             <tbody id="tally-body">
                                 <!-- Populated by JS -->
-                                <tr><td colspan="7" class="text-center text-muted fw-bold py-4">Loading pipeline...</td></tr>
+                                <tr><td colspan="7" class="tally-empty">Loading pipeline...</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                    <div class="tally-footer px-2">
+                        <button type="button" class="link-btn" id="tally-more" hidden></button>
+                        <button type="button" class="link-btn" id="tally-stages-toggle" aria-expanded="false">Show all stages</button>
                     </div>
                 </div>
             </main>
@@ -299,6 +444,62 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/admin-sidebar.js"></script>
     <script>
+        const POLL_MS = 10000;
+        const COLLAPSED_ROLES = 3;
+        let rolesExpanded = false;
+        let lastTally = [];
+
+        function esc(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => (
+                {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]
+            ));
+        }
+
+        function cell(n, extraClass) {
+            const v = n || 0;
+            const cls = [extraClass, v === 0 ? 'is-zero' : ''].filter(Boolean).join(' ');
+            return `<td class="${cls}">${v}</td>`;
+        }
+
+        function renderTally() {
+            const body = document.getElementById('tally-body');
+            const moreBtn = document.getElementById('tally-more');
+            if (!lastTally.length) {
+                body.innerHTML = '<tr><td colspan="7" class="tally-empty">No active jobs yet.</td></tr>';
+                moreBtn.hidden = true;
+                return;
+            }
+            body.innerHTML = lastTally.map((t, i) => {
+                const c = t.counts || {};
+                const hide = (!rolesExpanded && i >= COLLAPSED_ROLES) ? ' hidden' : '';
+                return `
+                    <tr${hide}>
+                        <td>${esc(t.job_title)}</td>
+                        ${cell(c.NEW)}
+                        ${cell(c.PASSED)}
+                        ${cell(c.HIRED)}
+                        ${cell(c.FAILED, 'col-extra')}
+                        ${cell(c.POOLING, 'col-extra')}
+                        ${cell(c.ENDORSED, 'col-extra')}
+                    </tr>`;
+            }).join('');
+            const extra = lastTally.length - COLLAPSED_ROLES;
+            moreBtn.hidden = extra <= 0;
+            moreBtn.textContent = rolesExpanded ? 'Show fewer roles' : `Show ${extra} more ${extra === 1 ? 'role' : 'roles'}`;
+        }
+
+        document.getElementById('tally-more').addEventListener('click', () => {
+            rolesExpanded = !rolesExpanded;
+            renderTally();
+        });
+
+        document.getElementById('tally-stages-toggle').addEventListener('click', (e) => {
+            const table = document.getElementById('tally-table');
+            const on = table.classList.toggle('show-all-stages');
+            e.currentTarget.textContent = on ? 'Hide extra stages' : 'Show all stages';
+            e.currentTarget.setAttribute('aria-expanded', on ? 'true' : 'false');
+        });
+
         async function fetchDashboardData() {
             try {
                 // Fetch summary
@@ -313,7 +514,7 @@
 
                     document.getElementById('stat-new').textContent = stats.new || 0;
                     document.getElementById('stat-passrate').textContent = passRate + '%';
-                    document.getElementById('stat-passrate-sub').textContent = `${passed}/${total}`;
+                    document.getElementById('stat-passrate-sub').textContent = `${passed} of ${total} assessed candidates passed`;
                     document.getElementById('stat-endorsed').textContent = stats.endorsed || 0;
                     document.getElementById('stat-pooling').textContent = stats.pooling || 0;
                     document.getElementById('stat-hired').textContent = stats.hired || 0;
@@ -327,7 +528,7 @@
                             <div class="col-md-4 mb-3">
                                 <div class="dashboard-card brand-card h-100 d-flex flex-row justify-content-between align-items-center mb-0">
                                     <div>
-                                        <div class="brand-name">${b.name}</div>
+                                        <div class="brand-name">${esc(b.name)}</div>
                                         <div class="stat-label mt-1">Top Matches</div>
                                     </div>
                                     <div class="stat-value">${b.matches || 0}</div>
@@ -344,17 +545,8 @@
                 const tallyRes = await fetch('/api/v1/admin/dashboard/tally');
                 if (tallyRes.ok) {
                     const tallyData = await tallyRes.json();
-                    document.getElementById('tally-body').innerHTML = tallyData.data.map(t => `
-                        <tr>
-                            <td class="fw-bold">${t.job_title}</td>
-                            <td style="color: var(--text-muted);">${t.counts.NEW || 0}</td>
-                            <td style="color: var(--accent-gold);">${t.counts.PASSED || 0}</td>
-                            <td style="color: var(--accent-black);">${t.counts.FAILED || 0}</td>
-                            <td style="color: var(--text-muted);">${t.counts.POOLING || 0}</td>
-                            <td style="color: var(--accent-black);">${t.counts.ENDORSED || 0}</td>
-                            <td style="color: var(--accent-gold);">${t.counts.HIRED || 0}</td>
-                        </tr>
-                    `).join('');
+                    lastTally = tallyData.data || [];
+                    renderTally();
                 }
             } catch (err) {
                 console.error("Failed to load dashboard data:", err);
@@ -362,7 +554,7 @@
         }
 
         fetchDashboardData();
-        setInterval(fetchDashboardData, 10000);
+        setInterval(fetchDashboardData, POLL_MS);
 
     </script>
 
