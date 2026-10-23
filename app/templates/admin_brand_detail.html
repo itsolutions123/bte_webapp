@@ -60,6 +60,37 @@
             padding: 1.25rem 1.5rem;
             margin-bottom: 1rem;
         }
+        .bp-page { width: 100%; }
+        .bp-title { font-size: 1.75rem; font-weight: 800; color: var(--text-main); }
+        .bp-sub { color: var(--text-muted); font-size: 0.85rem; font-weight: 600; margin-top: 0.15rem; }
+        .bp-toolbar { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin: 1.25rem 0 0.75rem; }
+        .bp-toolbar .search-box { width: 260px; flex: none; }
+        .bp-tabs { display: flex; gap: 0.25rem; flex: 1; flex-wrap: wrap; }
+        .bp-tab { border: 0; background: transparent; color: var(--text-muted); font-weight: 700; font-size: 0.85rem; padding: 0.4rem 0.8rem; border-radius: 8px; cursor: default; }
+        .bp-tab.is-active { background: #eceff2; color: var(--text-main); }
+        .bp-tab-count { color: var(--accent-gold); font-weight: 700; margin-left: 0.2rem; }
+        .bp-row { display: flex; align-items: center; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid var(--border-light); cursor: pointer; }
+        .bp-row:hover .bp-row-title { text-decoration: underline; }
+        .bp-row-main { flex: 1; min-width: 0; }
+        .bp-row-title { font-weight: 800; font-size: 1rem; color: var(--text-main); }
+        .bp-row-sub { color: var(--text-muted); font-size: 0.78rem; font-weight: 600; margin-top: 0.1rem; }
+        .bp-timeline { display: flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; font-weight: 700; color: var(--text-muted); }
+        .bp-node { display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap; }
+        .bp-dot { width: 9px; height: 9px; border-radius: 50%; border: 2px solid #c8ccd2; background: transparent; }
+        .bp-node.is-done { color: var(--text-main); }
+        .bp-node.is-done .bp-dot { background: #111111; border-color: #111111; }
+        .bp-node.is-gold { color: #8a6d12; }
+        .bp-node.is-gold .bp-dot { background: var(--accent-gold); border-color: var(--accent-gold); }
+        .bp-line { width: 48px; height: 2px; background: #d5d9de; }
+        .bp-line.is-done { background: #111111; }
+        .bp-kebab { border: 0; background: transparent; font-size: 1.2rem; line-height: 1; padding: 0.2rem 0.55rem; border-radius: 8px; color: var(--text-main); }
+        .bp-kebab:hover { background: #eceff2; }
+        .bp-status { display: inline-flex; align-items: center; gap: .45rem; font-size: .85rem; font-weight: 700; color: var(--text-muted); white-space: nowrap; }
+        .bp-status-dot { width: 10px; height: 10px; border-radius: 50%; background: #c8ccd2; }
+        .bp-status.is-draft { color: #8a6d12; }
+        .bp-status.is-draft .bp-status-dot { background: #f5b800; }
+        .bp-status.is-published { color: #146c3a; }
+        .bp-status.is-published .bp-status-dot { background: #22a559; }
         .job-card-title {
             font-weight: 800;
             font-size: 1.05rem;
@@ -77,24 +108,23 @@
         <div class="row g-0">
             {% include '_sidebar.html' %}
             <main class="col-md-10 px-4 pt-4 pb-5">
-                <div class="brand-card">
-                    <!-- SHELL (section 8): placeholder content only, nothing here is wired to data yet -->
-                    <div class="d-flex justify-content-between align-items-start gap-3">
-                        <div class="brand-title" id="brand-title">BRAND NAME</div>
-                        <button type="button" class="btn btn-sm btn-dark fw-bold" id="create-job-btn" data-bs-toggle="modal" data-bs-target="#createJobModal">+ Create Job</button>
+                <div class="bp-page">
+                    <!-- SHELL (section 8): subtitle, tab counts and the Expires node are placeholders; title, search and job rows are wired -->
+                    <div class="bp-title" id="brand-title">BRAND NAME</div>
+                    <div class="bp-sub" id="brand-subtitle">&mdash; active jobs &middot; Applicants fill in &mdash;</div>
+
+                    <div class="bp-toolbar">
+                        <input type="text" class="search-box" id="job-search" placeholder="Search jobs" autocomplete="off">
+                        <div class="bp-tabs">
+                            <button type="button" class="bp-tab is-active" aria-disabled="true" tabindex="-1" title="Not wired yet">Active <span class="bp-tab-count">&mdash;</span></button>
+                            <button type="button" class="bp-tab" aria-disabled="true" tabindex="-1" title="Not wired yet">Draft <span class="bp-tab-count">&mdash;</span></button>
+                            <button type="button" class="bp-tab" aria-disabled="true" tabindex="-1" title="Not wired yet">Expired <span class="bp-tab-count">&mdash;</span></button>
+                            <button type="button" class="bp-tab" aria-disabled="true" tabindex="-1" title="Not wired yet">Filters</button>
+                        </div>
+                        <button type="button" class="btn btn-dark fw-bold" id="create-job-btn" data-bs-toggle="modal" data-bs-target="#createJobModal">Create job</button>
                     </div>
 
-                    <div class="mt-3">
-                        <input type="text" class="search-box" id="job-search" placeholder="Search..." autocomplete="off">
-                    </div>
-
-                    <div class="filter-row">
-                        <span class="fw-bold">+ Add filter</span>
-                        <span class="filter-slot">&mdash;</span>
-                        <span class="filter-slot">&mdash;</span>
-                        <span class="filter-slot">&mdash;</span>
-                        <span class="filter-slot">&mdash;</span>
-                    </div>
+                    <!-- filter row removed: replaced by the (inert) Filters tab in the toolbar -->
 
                     <div id="job-list"></div>
                     <div class="text-muted d-none" id="job-list-empty">No jobs yet</div>
@@ -178,6 +208,20 @@
         #jobDetailModal .modal-body { padding: 1.25rem 1.5rem; }
         #jobDetailModal .modal-footer { border-top: 1px solid #f0f1f4; padding: .85rem 1.5rem; }
         #jobDetailModal .jd-title { font-weight: 700; color: #1f2328; }
+        #jobDetailModal.offcanvas { --bs-offcanvas-width: min(640px, 100vw); }
+        #jobDetailModal .jd-head { padding: 1.1rem 1.5rem; border-bottom: 1px solid #f0f1f4; }
+        #jobDetailModal .jd-crumb { font-size: .8rem; color: #6b7280; font-weight: 700; margin-bottom: .2rem; }
+        #jobDetailModal .jd-label { font-size: .75rem; font-weight: 800; letter-spacing: .08em; color: #374151; margin-bottom: .6rem; }
+        #jobDetailModal .jd-title { font-size: 1.6rem; font-weight: 800; line-height: 1.2; letter-spacing: .2px; color: #111111; font-family: inherit; }
+        #jobDetailModal .jd-body { padding: 1.25rem 1.5rem; }
+        #jobDetailModal .jd-status { margin: .5rem 0 1rem; }
+        #jobDetailModal .jd-row { display: grid; grid-template-columns: 130px 1fr; gap: .5rem 1rem; align-items: baseline; margin-bottom: .75rem; }
+        #jobDetailModal .jd-key { color: #6b7280; font-size: .88rem; font-weight: 700; font-family: inherit; }
+        #jobDetailModal .jd-val { min-width: 0; font-size: .95rem; font-weight: 600; color: #111111; }
+        #jobDetailModal .jd-hr { border: 0; border-top: 1px solid #f0f1f4; margin: 1.25rem 0; opacity: 1; }
+        #jobDetailModal .jd-pod { background: none; border: 0; border-radius: 0; padding: 0; margin: 0 0 .25rem; }
+        #jobDetailModal .jd-val select.jd-input:disabled { -webkit-appearance: none; appearance: none; background: transparent; border-color: transparent; padding-left: 0; color: #1f2328; opacity: 1; cursor: default; }
+        #jobDetailModal .jd-foot { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .85rem 1.5rem; border-top: 1px solid #f0f1f4; background: #ffffff; }
         .jd-btn {
             border: 1px solid #e6e8ec; border-radius: 10px; padding: .4rem .9rem; font-weight: 600; font-size: .85rem;
             background: #ffffff; color: #374151; box-shadow: 0 1px 2px rgba(17,24,39,.05);
@@ -230,68 +274,111 @@
             font-size: .78rem; font-weight: 700; color: #7a6212; background: #fbf5df;
         }
     </style>
-    <div class="modal fade" id="jobDetailModal" tabindex="-1" aria-labelledby="jobDetailModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title jd-title" id="jobDetailModalLabel">Job Title</h5>
-                    <div class="d-flex gap-2 ms-auto me-3">
-                        <div class="dropdown d-none" data-jd-edit>
-                            <button type="button" class="jd-btn dropdown-toggle" id="job-edit-publish-btn" data-bs-toggle="dropdown" aria-expanded="false">Save as draft</button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><button type="button" class="dropdown-item" data-edit-publish-state="publish">Publish</button></li>
-                                <li><button type="button" class="dropdown-item" data-edit-publish-state="draft">Save as draft</button></li>
-                            </ul>
-                        </div>
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="jobDetailModal" aria-labelledby="jobDetailModalLabel">
+        <!-- SHELL (section 8): breadcrumb, Next, status timeline, expiry chips and More are placeholders; everything else keeps its existing wiring -->
+        <div class="jd-head">
+            <div class="d-flex align-items-start justify-content-between gap-3">
+                <div>
+                    <div class="jd-crumb" id="job-detail-crumb">Job &mdash; of &mdash;</div>
+                    <div class="d-flex align-items-center gap-2">
+                        <h5 class="jd-title m-0" id="jobDetailModalLabel">Job Title</h5>
                         <span class="jd-chip d-none" id="job-detail-archived-badge">Archived</span>
-                        <button type="button" class="jd-btn" id="job-detail-edit-btn">Edit</button>
-                        <button type="button" class="jd-btn jd-btn-gold" id="job-detail-renew-btn">Renew</button>
-                        <button type="button" class="jd-btn" id="job-detail-archive-btn">Archive</button>
                     </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <div class="mb-3">
+                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                    <button type="button" class="jd-btn" id="job-detail-next-btn" disabled title="Not wired yet">Next: &mdash; &rsaquo;</button>
+                    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                </div>
+            </div>
+        </div>
+        <div class="offcanvas-body jd-body">
+            <div class="jd-label">Listing status</div>
+            <div class="bp-status jd-status" id="job-detail-status"><span class="bp-status-dot"></span><span id="job-detail-status-label">&mdash;</span></div>
+            <div class="jd-row">
+                <div class="jd-key">Expires</div>
+                <div class="jd-val">
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="jd-btn" disabled title="Not wired yet">Never</button>
+                        <button type="button" class="jd-btn" disabled title="Not wired yet">14 days</button>
+                        <button type="button" class="jd-btn" disabled title="Not wired yet">30 days</button>
+                        <button type="button" class="jd-btn" disabled title="Not wired yet">Pick date&hellip;</button>
+                    </div>
+                    <div class="d-flex align-items-center flex-wrap gap-2 mt-2">
                         <span class="jd-chip">Expires: <span id="job-detail-expiry">&mdash;</span></span>
+                        <input type="datetime-local" class="jd-input" id="job-detail-expiry-input">
+                        <button type="button" class="jd-btn jd-btn-gold" id="job-detail-set-duration-btn">Set duration</button>
                     </div>
-                    <div class="mb-4">
-                        <div class="d-flex align-items-center gap-2">
-                            <input type="datetime-local" class="jd-input" id="job-detail-expiry-input">
-                            <button type="button" class="jd-btn jd-btn-gold" id="job-detail-set-duration-btn">Set duration</button>
-                            <select class="jd-input ms-auto" id="job-detail-form-select" aria-label="Form" disabled>
-                                <option value="">Form: &mdash;</option>
-                            </select>
-                        </div>
-                        <div class="text-danger small text-end mt-1 d-none" id="job-detail-form-error" role="alert"></div>
-                    </div>
-                    <div class="jd-label">Title</div>
+                </div>
+            </div>
+            <hr class="jd-hr">
+            <div class="jd-label">Details</div>
+            <div class="jd-row">
+                <div class="jd-key">Title</div>
+                <div class="jd-val">
                     <div class="jd-pod fw-bold" id="job-detail-title" data-jd-view>Job Title</div>
-                    <input type="text" class="form-control mb-3 d-none" id="job-edit-title" data-jd-edit placeholder="Job Title">
-                    <div class="jd-label">Location</div>
+                    <input type="text" class="form-control d-none" id="job-edit-title" data-jd-edit placeholder="Job Title">
+                </div>
+            </div>
+            <div class="jd-row">
+                <div class="jd-key">Location</div>
+                <div class="jd-val">
                     <div class="jd-pod" id="job-detail-location" data-jd-view>&mdash;</div>
-                    <input type="text" class="form-control mb-3 d-none" id="job-edit-location" data-jd-edit maxlength="150" placeholder="Location">
-                    <div class="jd-label">Pay information</div>
-                    <div class="jd-pod" id="job-detail-pay" data-jd-view>&mdash;</div>
-                    <input type="text" class="form-control mb-3 d-none" id="job-edit-pay" data-jd-edit maxlength="150" placeholder="Pay information">
-                    <div class="jd-label">Type of job</div>
+                    <input type="text" class="form-control d-none" id="job-edit-location" data-jd-edit maxlength="150" placeholder="Location">
+                </div>
+            </div>
+            <div class="jd-row">
+                <div class="jd-key">Type</div>
+                <div class="jd-val">
                     <div class="jd-pod" id="job-detail-type" data-jd-view>&mdash;</div>
-                    <select class="form-select mb-3 d-none" id="job-edit-type" data-jd-edit>
+                    <select class="form-select d-none" id="job-edit-type" data-jd-edit>
                         <option value="">Not set</option>
                         <option value="Full-time">Full-time</option>
                         <option value="Part-time">Part-time</option>
                         <option value="Onsite">Onsite</option>
                     </select>
-                    <div class="jd-label">Description</div>
-                    <div class="jd-pod" id="job-detail-description" data-jd-view>Description</div>
-                    <div class="mb-3 d-none" data-jd-edit><div id="job-edit-description"></div></div>
-                    <div class="jd-label">Requirements</div>
-                    <div class="jd-pod mb-0" id="job-detail-requirements" data-jd-view>Requirements</div>
-                    <div class="d-none" data-jd-edit><div id="job-edit-requirements"></div></div>
                 </div>
-                <div class="modal-footer">
-                    <div class="text-danger small d-none me-auto" id="job-edit-error"></div>
-                    <button type="button" class="jd-btn jd-btn-dark px-4" id="job-detail-save-btn" disabled>Save</button>
+            </div>
+            <div class="jd-row">
+                <div class="jd-key">Pay</div>
+                <div class="jd-val">
+                    <div class="jd-pod" id="job-detail-pay" data-jd-view>&mdash;</div>
+                    <input type="text" class="form-control d-none" id="job-edit-pay" data-jd-edit maxlength="150" placeholder="Pay information">
                 </div>
+            </div>
+            <div class="jd-row">
+                <div class="jd-key">Application form</div>
+                <div class="jd-val">
+                    <select class="jd-input" id="job-detail-form-select" aria-label="Form" disabled>
+                        <option value="">Form: &mdash;</option>
+                    </select>
+                    <div class="text-danger small mt-1 d-none" id="job-detail-form-error" role="alert"></div>
+                </div>
+            </div>
+            <hr class="jd-hr">
+            <div class="jd-label">Description</div>
+            <div class="jd-pod" id="job-detail-description" data-jd-view>Description</div>
+            <div class="d-none" data-jd-edit><div id="job-edit-description"></div></div>
+            <div class="jd-label mt-4">Requirements</div>
+            <div class="jd-pod" id="job-detail-requirements" data-jd-view>Requirements</div>
+            <div class="d-none" data-jd-edit><div id="job-edit-requirements"></div></div>
+        </div>
+        <div class="jd-foot">
+            <div class="text-danger small d-none w-100" id="job-edit-error"></div>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="jd-btn" disabled title="Not wired yet">More &#9662;</button>
+                <button type="button" class="jd-btn jd-btn-gold" id="job-detail-renew-btn">Renew</button>
+                <button type="button" class="jd-btn" id="job-detail-archive-btn">Archive</button>
+            </div>
+            <div class="d-flex align-items-center gap-2 ms-auto">
+                <div class="dropup d-none" data-jd-edit>
+                    <button type="button" class="jd-btn dropdown-toggle" id="job-edit-publish-btn" data-bs-toggle="dropdown" aria-expanded="false">Save as draft</button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><button type="button" class="dropdown-item" data-edit-publish-state="publish">Publish</button></li>
+                        <li><button type="button" class="dropdown-item" data-edit-publish-state="draft">Save as draft</button></li>
+                    </ul>
+                </div>
+                <button type="button" class="jd-btn" id="job-detail-edit-btn">Edit details</button>
+                <button type="button" class="jd-btn jd-btn-dark px-4" id="job-detail-save-btn" disabled>Save</button>
             </div>
         </div>
     </div>
@@ -367,29 +454,50 @@
                 listEl.replaceChildren();
                 (data.data || []).forEach(function (job) {
                     const card = document.createElement('div');
-                    card.className = 'job-card';
+                    card.className = 'bp-row';
+                    const isPub = !!job.is_active;
+                    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    let pubText = 'Published';
+                    if (isPub && job.created_at) {
+                        const dp = job.created_at.slice(0, 10).split('-');
+                        pubText = 'Published ' + parseInt(dp[2], 10) + ' ' + MONTHS[parseInt(dp[1], 10) - 1];
+                    }
+                    const main = document.createElement('div');
+                    main.className = 'bp-row-main';
                     const title = document.createElement('div');
-                    title.className = 'job-card-title';
+                    title.className = 'bp-row-title';
                     title.textContent = job.title;
-                    const meta = document.createElement('div');
-                    meta.className = 'job-card-meta';
-                    meta.textContent = (job.is_active ? 'Published' : 'Draft') + (job.created_at ? ' - ' + job.created_at.slice(0, 10) : '');
-                    const expiry = document.createElement('div');
-                    expiry.className = 'job-card-meta job-card-expiry';
-                    expiry.textContent = 'Expires: \u2014';
                     const formLabel = document.createElement('div');
-                    formLabel.className = 'job-card-form';
+                    formLabel.className = 'bp-row-sub';
                     formLabel.textContent = 'Form: ' + (job.form_name || '\u2014');
-                    card.appendChild(formLabel);
+                    main.appendChild(title);
+                    main.appendChild(formLabel);
+                    const timeline = document.createElement('div');
+                    timeline.className = 'bp-status ' + (isPub ? 'is-published' : 'is-draft');
+                    const sDot = document.createElement('span');
+                    sDot.className = 'bp-status-dot';
+                    const sLbl = document.createElement('span');
+                    sLbl.textContent = isPub ? 'Published' : 'Draft';
+                    timeline.appendChild(sDot);
+                    timeline.appendChild(sLbl);
+                    const menu = document.createElement('div');
+                    menu.className = 'bp-menu dropdown';
+                    menu.innerHTML = '<button type="button" class="bp-kebab" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Job actions">&#8942;</button>'
+                        + '<ul class="dropdown-menu dropdown-menu-end">'
+                        + '<li><button type="button" class="dropdown-item" disabled>Edit</button></li>'
+                        + '<li><button type="button" class="dropdown-item" disabled>Renew</button></li>'
+                        + '<li><button type="button" class="dropdown-item" disabled>Archive</button></li>'
+                        + '</ul>';
                     card.style.cursor = 'pointer';
-                    card.addEventListener('click', function () {
+                    card.addEventListener('click', function (ev) {
+                        if (ev.target.closest('.bp-menu')) return;
                         const detailEl = document.getElementById('jobDetailModal');
                         detailEl.dataset.jobId = job.id;
                         document.getElementById('jobDetailModalLabel').textContent = job.title;
                         document.getElementById('job-detail-title').textContent = job.title;
                         document.getElementById('job-detail-description').textContent = 'Loading...';
                         document.getElementById('job-detail-requirements').textContent = 'Loading...';
-                        bootstrap.Modal.getOrCreateInstance(detailEl).show();
+                        bootstrap.Offcanvas.getOrCreateInstance(detailEl).show();
                         fetch('/api/v1/admin/brands/' + encodeURIComponent(brandId) + '/jobs/' + encodeURIComponent(job.id))
                             .then(function (res) { return res.ok ? res.json() : Promise.reject(res.status); })
                             .then(function (d) {
@@ -454,9 +562,9 @@
                                 document.getElementById('job-detail-requirements').textContent = '\u2014';
                             });
                     });
-                    card.appendChild(title);
-                    card.appendChild(meta);
-                    card.appendChild(expiry);
+                    card.appendChild(main);
+                    card.appendChild(timeline);
+                    card.appendChild(menu);
                     listEl.appendChild(card);
                 });
                 if (!data.total) (q ? noMatchEl : emptyEl).classList.remove('d-none');
@@ -513,6 +621,15 @@
             const descEditor = new Quill('#job-edit-description', Object.assign({ placeholder: 'Description' }, JOB_RTE_OPTIONS));
             const reqEditor = new Quill('#job-edit-requirements', Object.assign({ placeholder: 'Requirements' }, JOB_RTE_OPTIONS));
             const dash = '\u2014';
+            const statusEl = modalEl.querySelector('.jd-status');
+            const statusLabel = document.getElementById('job-detail-status-label');
+            // Listing status: Draft (yellow) or Published (green), from the loaded job's is_active.
+            const renderStatus = function (d) {
+                statusEl.classList.remove('is-draft', 'is-published');
+                if (!d) { statusLabel.textContent = dash; return; }
+                statusEl.classList.add(d.is_active ? 'is-published' : 'is-draft');
+                statusLabel.textContent = d.is_active ? 'Published' : 'Draft';
+            };
             let loaded = null;
             let editing = false;
             let isActive = false;
@@ -531,7 +648,7 @@
                 editing = on;
                 viewEls.forEach(function (el) { el.classList.toggle('d-none', on); });
                 editEls.forEach(function (el) { el.classList.toggle('d-none', !on); });
-                editBtn.textContent = on ? 'Cancel' : 'Edit';
+                editBtn.textContent = on ? 'Cancel' : 'Edit details';
                 modalEl.dataset.editing = on ? '1' : '0';
                 document.getElementById('job-detail-form-select').disabled = !on;
                 saveBtn.disabled = !on;
@@ -541,13 +658,14 @@
             modalEl.querySelectorAll('[data-edit-publish-state]').forEach(function (item) {
                 item.addEventListener('click', function () { setPublishState(item.getAttribute('data-edit-publish-state')); });
             });
-            modalEl.addEventListener('show.bs.modal', function () {
+            modalEl.addEventListener('show.bs.offcanvas', function () {
                 loaded = null;
                 setEditing(false);
                 ['job-detail-location', 'job-detail-pay', 'job-detail-type'].forEach(function (id) {
                     document.getElementById(id).textContent = dash;
                 });
                 archivedBadge.classList.add('d-none');
+                renderStatus(null);
                 (function () {
                     const formSel = document.getElementById('job-detail-form-select');
                     formSel.onchange = null;
@@ -561,6 +679,7 @@
             });
             modalEl.addEventListener('jobdetail:loaded', function (e) {
                 loaded = e.detail;
+                renderStatus(loaded);
                 document.getElementById('job-detail-location').textContent = loaded.location || dash;
                 document.getElementById('job-detail-pay').textContent = loaded.pay_information || dash;
                 document.getElementById('job-detail-type').textContent = loaded.job_type || dash;
@@ -609,6 +728,7 @@
                     if (res.ok) {
                         const d = await res.json();
                         loaded = d;
+                        renderStatus(d);
                         document.getElementById('jobDetailModalLabel').textContent = d.title;
                         document.getElementById('job-detail-title').textContent = d.title;
                         document.getElementById('job-detail-location').textContent = d.location || dash;
@@ -664,7 +784,7 @@
                     const res = await fetch('/api/v1/admin/brands/' + encodeURIComponent(brandId) + '/jobs/' + encodeURIComponent(jobId) + '/archive', { method: 'POST' });
                     if (res.ok) {
                         bootstrap.Modal.getOrCreateInstance(confirmEl).hide();
-                        bootstrap.Modal.getOrCreateInstance(detailEl).hide();
+                        bootstrap.Offcanvas.getOrCreateInstance(detailEl).hide();
                         loadJobs();
                         return;
                     }

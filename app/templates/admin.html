@@ -508,7 +508,7 @@
                     const summaryData = await summaryRes.json();
                     const stats = summaryData.overall_totals || {};
 
-                    const passed = stats.passed || 0;
+                    const passed = stats.hired || 0;  // Pass Rate reflects HIRED (decided 2026-10-23, user), not the PASSED status (unused in this UI)
                     const total = stats.total_processed || 0;
                     const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
 

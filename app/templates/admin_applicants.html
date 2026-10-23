@@ -343,40 +343,50 @@
                 </div>
                 <button type="button" class="detail-close" id="applicant-detail-close" aria-label="Close">&times;</button>
             </div>
-            <!-- SHELL ONLY, NOT WIRED (section 8): stage labels follow the 2026-10-21 reference mockup, not the
-                 live status model (NEW/PASSED/FAILED/POOLING/ENDORSED/HIRED). HANDOFF -> Structure needed before
-                 this reflects a real applications.status or drives a transition -- no PATCH endpoint exists yet
-                 either (AdminStatusPatchRequest is defined but unused). "New" is marked current only because it
-                 matches the one real status every unscored application starts in; the other three dots are
-                 decorative placeholders, not a claim about this applicant's real stage. -->
-            <div class="detail-stepper" aria-hidden="true">
-                <div class="detail-step is-current">
+            <!-- WIRED 2026-10-23 (docs/API_CONTRACT.md: PATCH /api/v1/admin/applications/{application_id}/status):
+                 stepper reflects the real applications.status (NEW/POOLING/ENDORSED/HIRED). FAILED is not a
+                 stepper node -- shown as a separate pill below the stepper, matching the dashboard's Pipeline
+                 flow card where Failed sits outside the flow list. -->
+            <div class="detail-stepper" aria-hidden="true" id="applicant-detail-stepper">
+                <div class="detail-step" data-status="NEW">
                     <span class="detail-step-line"></span>
                     <span class="detail-step-dot"></span>
                     <span class="detail-step-label">New</span>
                 </div>
-                <div class="detail-step">
+                <div class="detail-step" data-status="POOLING">
                     <span class="detail-step-line"></span>
                     <span class="detail-step-dot"></span>
-                    <span class="detail-step-label">In review</span>
+                    <span class="detail-step-label">Pooling</span>
                 </div>
-                <div class="detail-step">
+                <div class="detail-step" data-status="ENDORSED">
                     <span class="detail-step-line"></span>
                     <span class="detail-step-dot"></span>
-                    <span class="detail-step-label">Interview</span>
+                    <span class="detail-step-label">Endorsed</span>
                 </div>
-                <div class="detail-step">
+                <div class="detail-step" data-status="HIRED">
                     <span class="detail-step-line"></span>
                     <span class="detail-step-dot"></span>
                     <span class="detail-step-label">Hired</span>
                 </div>
             </div>
+            <span class="applicant-status d-none" id="applicant-detail-failed-pill" style="color:#b42318;background-color:rgba(180,35,24,.12);margin-top:0.6rem;display:inline-block;">Failed</span>
             <div class="detail-actions">
-                <button type="button" class="btn btn-dark fw-bold" disabled>Move to In review</button>
+                <div class="dropdown flex-grow-1">
+                    <button type="button" class="btn btn-dark fw-bold dropdown-toggle w-100" id="applicant-detail-status-btn" data-bs-toggle="dropdown" aria-expanded="false" disabled>
+                        Status: <span id="applicant-detail-status-label">&mdash;</span>
+                    </button>
+                    <ul class="dropdown-menu" id="applicant-detail-status-menu">
+                        <li><button type="button" class="dropdown-item" data-status="NEW">New</button></li>
+                        <li><button type="button" class="dropdown-item" data-status="POOLING">Pooling</button></li>
+                        <li><button type="button" class="dropdown-item" data-status="ENDORSED">Endorsed</button></li>
+                        <li><button type="button" class="dropdown-item" data-status="HIRED">Hired</button></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><button type="button" class="dropdown-item text-danger" data-status="FAILED">Failed</button></li>
+                    </ul>
+                </div>
                 <div class="dropdown">
                     <button type="button" class="btn btn-outline-dark fw-bold" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions">&hellip;</button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><button type="button" class="dropdown-item disabled" aria-disabled="true" tabindex="-1">Reject</button></li>
                         <li><button type="button" class="dropdown-item disabled" id="applicant-detail-resume-download" aria-disabled="true">Download resume</button></li>
                     </ul>
                 </div>
@@ -468,6 +478,7 @@
                     card.type = 'button';
                     card.className = 'applicant-card';
                     card.dataset.id = a.id;
+                    card.dataset.status = a.status;
                     card.addEventListener('click', function () { openApplicantDetail(a.id); });
                     let applied = '\u2014';
                     if (a.created_at && MONTHS[parseInt(a.created_at.slice(5, 7), 10) - 1]) {
@@ -630,10 +641,78 @@
             if (detailModalEl.classList.contains('is-open')) closeApplicantDetail();
         });
 
+        const STATUS_LABELS = { NEW: 'New', POOLING: 'Pooling', ENDORSED: 'Endorsed', HIRED: 'Hired', FAILED: 'Failed' };
+        const statusBtnEl = document.getElementById('applicant-detail-status-btn');
+        const statusLabelEl = document.getElementById('applicant-detail-status-label');
+        const statusMenuEl = document.getElementById('applicant-detail-status-menu');
+        const failedPillEl = document.getElementById('applicant-detail-failed-pill');
+        const stepperEl = document.getElementById('applicant-detail-stepper');
+
+        function resetDetailStatusUI() {
+            stepperEl.querySelectorAll('.detail-step').forEach(function (stepEl) { stepEl.classList.remove('is-current'); });
+            failedPillEl.classList.add('d-none');
+            statusBtnEl.disabled = true;
+            statusLabelEl.textContent = '\u2014';
+            statusMenuEl.querySelectorAll('.dropdown-item').forEach(function (item) { item.classList.remove('active'); });
+        }
+
+        function renderDetailStatus(status) {
+            stepperEl.querySelectorAll('.detail-step').forEach(function (stepEl) {
+                stepEl.classList.toggle('is-current', stepEl.dataset.status === status);
+            });
+            failedPillEl.classList.toggle('d-none', status !== 'FAILED');
+            statusBtnEl.disabled = false;
+            statusLabelEl.textContent = STATUS_LABELS[status] || status;
+            statusMenuEl.querySelectorAll('.dropdown-item').forEach(function (item) {
+                item.classList.toggle('active', item.dataset.status === status);
+            });
+        }
+
+        function updateApplicantRowStatus(applicationId, status) {
+            const card = document.querySelector('#applicants-rows .applicant-card[data-id="' + applicationId + '"]');
+            if (!card) return;
+            card.dataset.status = status;
+            const badge = card.querySelector('.applicant-status');
+            if (badge) badge.textContent = STATUS_LABELS[status] || status;
+        }
+
+        async function patchApplicantStatus(applicationId, newStatus) {
+            const res = await fetch('/api/v1/admin/applications/' + encodeURIComponent(applicationId) + '/status', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        }
+
+        async function handleStatusChange(newStatus) {
+            if (!applicantDetailCurrentId) return;
+            const id = applicantDetailCurrentId;
+            statusBtnEl.disabled = true;
+            try {
+                await patchApplicantStatus(id, newStatus);
+                updateApplicantRowStatus(id, newStatus);
+                if (id !== applicantDetailCurrentId) return;
+                renderDetailStatus(newStatus);
+            } catch (err) {
+                console.error('Status update failed:', err);
+                alert('Could not update status. Please try again.');
+                if (id === applicantDetailCurrentId) loadApplicantDetail(id);
+            }
+        }
+
+        statusMenuEl.addEventListener('click', function (event) {
+            const item = event.target.closest('[data-status]');
+            if (!item) return;
+            handleStatusChange(item.dataset.status);
+        });
+
         async function loadApplicantDetail(applicationId) {
             const requestNo = ++applicantDetailRequest;
             setDetailHeader({ name: 'Loading...' });
             setResumeButton(null);
+            resetDetailStatusUI();
             if (!applicationId) {
                 setDetailHeader({ name: 'Could not load applicant.' });
                 return;
@@ -653,6 +732,7 @@
                     job: d.job_title
                 });
                 setResumeButton(applicationId);
+                renderDetailStatus(d.status);
             } catch (err) {
                 console.error('Applicant detail load failed:', err);
                 if (requestNo !== applicantDetailRequest) return;

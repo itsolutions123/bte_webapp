@@ -28,6 +28,7 @@ from app.schemas import (
     QuestionCreateRequest, QuestionResponse, QuestionUpdateRequest,
     JobSummaryItem, FormDetailResponse,
     AdminApplicationListItem, AdminApplicationListResponse,
+    AdminStatusPatchRequest,
     AdminApplicantDetail, AdminAnswerDetail, AdminApplicationDetailResponse,
 )
 
@@ -486,6 +487,68 @@ async def get_application_detail(
         status=application.status,
         answers=answers,
     )
+
+
+APPLICATION_STATUS_VALUES = ("NEW", "POOLING", "ENDORSED", "HIRED", "FAILED")
+
+
+@router.patch("/applications/{application_id}/status")
+async def update_application_status(
+    application_id: uuid.UUID,
+    payload: AdminStatusPatchRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    # docs/API_CONTRACT.md: manual status override, status_counts adjusted as an
+    # increment/decrement pair in the same transaction (Rule 18.3: counter, never a recount).
+    new_status = payload.status
+    if new_status not in APPLICATION_STATUS_VALUES:
+        raise HTTPException(
+            status_code=422,
+            detail="status must be one of: " + ", ".join(APPLICATION_STATUS_VALUES),
+        )
+
+    application = await db.get(Application, application_id)
+    if application is None:
+        raise HTTPException(status_code=404, detail="application not found")
+
+    old_status = application.status
+
+    if old_status == new_status:
+        return {"message": "Status updated", "new_status": new_status}
+
+    try:
+        application.status = new_status
+        application.is_manual_override = True
+        application.overridden_at = datetime.now(timezone.utc)
+
+        if old_status:
+            old_count = await db.scalar(
+                select(StatusCount)
+                .where(StatusCount.job_id == application.job_id, StatusCount.status == old_status)
+                .with_for_update()
+            )
+            if old_count and old_count.count > 0:
+                old_count.count -= 1
+
+        new_count = await db.scalar(
+            select(StatusCount)
+            .where(StatusCount.job_id == application.job_id, StatusCount.status == new_status)
+            .with_for_update()
+        )
+        if new_count:
+            new_count.count += 1
+        else:
+            db.add(StatusCount(job_id=application.job_id, status=new_status, count=1))
+
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        logging.getLogger(__name__).error(
+            "Status update failed for application %s", application_id
+        )
+        raise HTTPException(status_code=500, detail="Database transaction failed")
+
+    return {"message": "Status updated", "new_status": new_status}
 
 
 @router.get("/applications/{application_id}/resume")
