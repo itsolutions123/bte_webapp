@@ -146,6 +146,7 @@ class User(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utc_now)
     last_login_at = Column(DateTime(timezone=True), nullable=True)
+    full_name = Column(String(100), nullable=True)
 
     sessions = relationship("Session", back_populates="user")
 

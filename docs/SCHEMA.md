@@ -145,3 +145,23 @@ Scoring rules (enforced by the API, recorded in API_CONTRACT.md):
 - `idx_answer_points_question_id` ON answer_points (question_id)
 - `uq_answer_points_q_answer_job` UNIQUE ON answer_points (question_id, answer_value, job_id) - PROPOSED 2026-10-15 (migration 010)
 - `idx_answers_application_id` ON answers (application_id)
+
+## 6. Authentication
+Columns below are verified against `app/models.py` (lines 140-165) on 2026-10-30; tables created by migrations 014 and 015. This section was missing from SCHEMA.md until now (the 2026-10-30 handover said it had been added with commit 8bc32cb, but that commit did not touch this file).
+
+**users**
+- `id` UUID, primary key
+- `email` string, NOT NULL, unique (`idx_users_email`)
+- `password_hash` string, NOT NULL (bcrypt via passlib, never returned by any endpoint)
+- `role` string, NOT NULL; free text in the DB (no CHECK constraint), validated at the API layer as SUPERADMIN, MANAGER or RECRUITER
+- `is_active` boolean, NOT NULL, default true
+- `created_at` timestamptz
+- `last_login_at` timestamptz, nullable
+- `full_name` string, nullable, trimmed, max 100 characters. APPLIED and VERIFIED LIVE 2026-10-30 (migration 016: `character varying(100)`, nullable; the users table had 1 row, 0 names), and added to the `User` model in `app/models.py`. Shown on the profile card; null means the card shows no name. Existing SUPERADMIN row to be filled with one confirmed UPDATE after the migration.
+
+**sessions**
+- `id` string, primary key (the session token, `secrets.token_urlsafe(32)`)
+- `user_id` UUID, NOT NULL, FK to `users.id`
+- `created_at` timestamptz
+- `expires_at` timestamptz, NOT NULL (fixed 8-hour hard cap from login, never extended)
+- `last_active_at` timestamptz (for the planned 10-minute idle timeout, not enforced yet)

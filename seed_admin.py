@@ -20,6 +20,11 @@ async def main():
     if not email or "@" not in email:
         sys.exit("Not a valid-looking email. Aborting.")
 
+    full_name = input("Full name (max 100 characters, blank for none): ").strip()
+    if len(full_name) > 100:
+        sys.exit("Full name must be 100 characters or fewer. Aborting.")
+    full_name = full_name or None
+
     role = input(f"Role ({'/'.join(sorted(VALID_ROLES))}): ").strip().upper()
     if role not in VALID_ROLES:
         sys.exit(f"Role must be one of {sorted(VALID_ROLES)}. Aborting.")
@@ -38,7 +43,7 @@ async def main():
         if existing is not None:
             sys.exit(f"A user with email {email} already exists. Aborting (this script only creates new users).")
 
-        db.add(User(email=email, password_hash=password_hash, role=role))
+        db.add(User(email=email, password_hash=password_hash, role=role, full_name=full_name))
         await db.commit()
 
     print(f"Created {role} user: {email}")

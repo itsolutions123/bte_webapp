@@ -9,7 +9,7 @@ from passlib.context import CryptContext
 
 from app.database import get_db
 from app.models import User, Session as SessionModel
-from app.schemas import LoginRequest, LoginResponse
+from app.schemas import LoginRequest, LoginResponse, MeResponse
 
 router = APIRouter()
 
@@ -91,3 +91,30 @@ async def login(
     )
 
     return LoginResponse(role=user.role)
+
+
+async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)) -> User:
+    """Reusable current-user check: session_id cookie -> sessions row -> users row.
+    Enforces the 8h hard cap (expires_at) and is_active only. The 10-minute idle timeout
+    and last_active_at updates are NOT done here (separate /admin/* auth dependency step)."""
+    not_authenticated = HTTPException(status_code=401, detail="Not authenticated.")
+
+    session_id = request.cookies.get(SESSION_COOKIE_NAME)
+    if not session_id:
+        raise not_authenticated
+
+    session_row = (await db.execute(select(SessionModel).where(SessionModel.id == session_id))).scalar_one_or_none()
+    if session_row is None or session_row.expires_at <= datetime.now(timezone.utc):
+        raise not_authenticated
+
+    user = (await db.execute(select(User).where(User.id == session_row.user_id))).scalar_one_or_none()
+    if user is None or not user.is_active:
+        raise not_authenticated
+
+    return user
+
+
+@router.get("/me", response_model=MeResponse)
+async def me(response: Response, user: User = Depends(get_current_user)):
+    response.headers["Cache-Control"] = "no-store"
+    return MeResponse(full_name=user.full_name, email=user.email, role=user.role)

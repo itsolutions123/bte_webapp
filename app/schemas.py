@@ -270,3 +270,8 @@ class LoginRequest(BaseModel):
 
 class LoginResponse(BaseModel):
     role: str
+
+class MeResponse(BaseModel):
+    full_name: Optional[str] = None
+    email: str
+    role: str

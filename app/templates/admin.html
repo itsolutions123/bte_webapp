@@ -75,6 +75,69 @@
             color: var(--accent-gold);
         }
 
+        /* Profile card (SHELL: placeholder content, not wired) */
+        .profile-wrap { position: relative; }
+        .profile-card {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            width: 440px;
+            max-width: 90vw;
+            z-index: 1050;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            box-shadow: var(--soft-shadow);
+            padding: 1.5rem;
+        }
+        .profile-card-main { display: flex; align-items: center; gap: 1.25rem; }
+        .profile-avatar {
+            flex: 0 0 72px;
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            border: 2px solid var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.4rem;
+            color: var(--text-main);
+        }
+        .profile-info { min-width: 0; }
+        .profile-name {
+            font-weight: 800;
+            font-size: 1.15rem;
+            text-transform: uppercase;
+            color: var(--text-main);
+            overflow-wrap: anywhere;
+        }
+        .profile-email {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            overflow-wrap: anywhere;
+        }
+        .profile-role {
+            font-weight: 700;
+            font-size: 0.75rem;
+            letter-spacing: 0.04em;
+            color: var(--text-muted, #6b7280);
+        }
+        .profile-card-footer { display: flex; justify-content: flex-end; margin-top: 1.25rem; }
+        .profile-logout {
+            background-color: var(--bg-card);
+            border: 2px solid var(--text-main);
+            color: var(--text-main);
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            padding: 0.55rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .profile-logout:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
+
         /* Page heading */
         .page-heading { margin-bottom: 1.5rem; }
         .page-heading h1 {
@@ -343,7 +406,22 @@
                             <span>Date range</span>
                         </button>
                     </div>
-                    <button class="btn-profile">PROFILE</button>
+                    <div class="profile-wrap">
+                        <button type="button" class="btn-profile" id="profile-btn" aria-haspopup="true" aria-expanded="false" aria-controls="profile-card">PROFILE</button>
+                        <div class="profile-card d-none" id="profile-card" role="dialog" aria-label="Profile">
+                            <div class="profile-card-main">
+                                <div class="profile-avatar" id="profile-initials">FN</div>
+                                <div class="profile-info">
+                                    <div class="profile-name" id="profile-name">Full Name</div>
+                                    <div class="profile-email" id="profile-email">email@placeholder</div>
+                                    <div class="profile-role" id="profile-role">ROLE</div>
+                                </div>
+                            </div>
+                            <div class="profile-card-footer">
+                                <button type="button" class="profile-logout" id="profile-logout" title="Not wired yet">LOG OUT</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Page Heading -->
@@ -558,5 +636,73 @@
 
     </script>
 
+<script>
+        (function () {
+            const btn = document.getElementById('profile-btn');
+            const card = document.getElementById('profile-card');
+            if (!btn || !card) return;
+
+            const elInitials = document.getElementById('profile-initials');
+            const elName = document.getElementById('profile-name');
+            const elEmail = document.getElementById('profile-email');
+            const elRole = document.getElementById('profile-role');
+            let profileLoaded = false;
+            let profileLoading = false;
+
+            function initialsFor(fullName, email) {
+                const words = (fullName || '').trim().split(/ +/).filter(Boolean);
+                if (words.length >= 2) return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+                if (words.length === 1) return words[0][0].toUpperCase();
+                return ((email || '?')[0]).toUpperCase();
+            }
+
+            async function loadProfile() {
+                if (profileLoading) return;
+                profileLoading = true;
+                elInitials.textContent = '…';
+                elName.textContent = '…';
+                elName.classList.remove('d-none');
+                elEmail.textContent = '…';
+                elRole.textContent = '…';
+                try {
+                    const res = await fetch('/api/v1/admin/me', { headers: { 'Accept': 'application/json' } });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const me = await res.json();
+                    elInitials.textContent = initialsFor(me.full_name, me.email);
+                    if (me.full_name) {
+                        elName.textContent = me.full_name;
+                    } else {
+                        elName.classList.add('d-none');
+                    }
+                    elEmail.textContent = me.email;
+                    elRole.textContent = me.role;
+                    profileLoaded = true;
+                } catch (err) {
+                    elInitials.textContent = '!';
+                    elName.textContent = 'Could not load profile';
+                    elName.classList.remove('d-none');
+                    elEmail.textContent = 'Try again, or sign in again.';
+                    elRole.textContent = '';
+                } finally {
+                    profileLoading = false;
+                }
+            }
+            function setOpen(open) {
+                card.classList.toggle('d-none', !open);
+                btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                if (open && !profileLoaded) loadProfile();
+            }
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                setOpen(card.classList.contains('d-none'));
+            });
+            document.addEventListener('click', function (e) {
+                if (!card.contains(e.target)) setOpen(false);
+            });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') setOpen(false);
+            });
+        })();
+    </script>
 </body>
 </html>
