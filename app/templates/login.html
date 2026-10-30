@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTE Careers - Admin Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="/static/admin-sidebar.css" rel="stylesheet">
+    <style>
+        /* Login page (SHELL: form is static, no submit wiring yet) */
+        body.login-body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .login-card {
+            width: 100%;
+            max-width: 380px;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            box-shadow: var(--soft-shadow);
+            padding: 2.5rem 2rem;
+        }
+        .login-brand {
+            text-align: center;
+            margin-bottom: 1.75rem;
+        }
+        .login-brand .brand-title {
+            font-weight: 800;
+            font-size: 1.3rem;
+            color: var(--text-main);
+        }
+        .login-brand .brand-sub {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+        .login-card label {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-main);
+        }
+        .login-submit-btn {
+            background-color: var(--accent-gold);
+            border: none;
+            color: var(--accent-black);
+            font-weight: 700;
+        }
+        .login-submit-btn:hover {
+            background-color: var(--accent-gold);
+            opacity: 0.9;
+            color: var(--accent-black);
+        }
+    </style>
+</head>
+<body class="login-body">
+    <div class="login-card">
+        <div class="login-brand">
+            <div class="brand-title">BTE Careers</div>
+            <div class="brand-sub">Admin sign in</div>
+        </div>
+
+        <!-- Error placeholder (SHELL: hidden, no wiring yet) -->
+        <div class="alert alert-danger py-2 px-3 d-none" id="login-error" role="alert">
+            Placeholder error message
+        </div>
+
+        <form id="login-form">
+            <div class="mb-3">
+                <label for="login-email" class="form-label">Email</label>
+                <input type="email" class="form-control" id="login-email" name="email" placeholder="name@bigtimeempire.com" autocomplete="username">
+            </div>
+            <div class="mb-4">
+                <label for="login-password" class="form-label">Password</label>
+                <input type="password" class="form-control" id="login-password" name="password" placeholder="••••••••" autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn login-submit-btn w-100 py-2">Sign In</button>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const form = document.getElementById('login-form');
+        const errorBox = document.getElementById('login-error');
+        const submitBtn = form.querySelector('button[type="submit"]');
+
+        function showError(message) {
+            errorBox.textContent = message;
+            errorBox.classList.remove('d-none');
+        }
+
+        function hideError() {
+            errorBox.classList.add('d-none');
+        }
+
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            hideError();
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Signing in...';
+
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const res = await fetch('/api/v1/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password }),
+                });
+
+                if (res.ok) {
+                    window.location.href = '/admin/home';
+                    return;
+                }
+
+                if (res.status === 429) {
+                    showError('Too many login attempts. Please wait a moment and try again.');
+                } else if (res.status === 401) {
+                    showError('Invalid email or password.');
+                } else if (res.status === 422) {
+                    showError('Please enter a valid email and password.');
+                } else {
+                    showError('Something went wrong. Please try again.');
+                }
+            } catch (err) {
+                showError('Could not reach the server. Please check your connection.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Sign In';
+            }
+        });
+    </script>
+</body>
+</html>

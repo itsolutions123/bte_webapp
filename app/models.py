@@ -136,3 +136,30 @@ class StatusCount(Base):
     job_id = Column(UUID(as_uuid=True), ForeignKey("jobs.id"), primary_key=True)
     status = Column(String, primary_key=True)
     count = Column(Integer, default=0, nullable=False)
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email = Column(String, nullable=False)
+    password_hash = Column(String, nullable=False)
+    role = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
+
+    sessions = relationship("Session", back_populates="user")
+
+    __table_args__ = (
+        Index('idx_users_email', 'email', unique=True),
+    )
+
+class Session(Base):
+    __tablename__ = "sessions"
+    id = Column(String, primary_key=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    last_active_at = Column(DateTime(timezone=True), default=utc_now)
+
+    user = relationship("User", back_populates="sessions")
+

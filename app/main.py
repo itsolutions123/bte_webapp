@@ -18,6 +18,8 @@ from app.routers import public
 app.include_router(public.router, prefix="/api/v1/public", tags=["Public"])
 from app.routers import admin
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
+from app.routers import auth
+app.include_router(auth.router, prefix="/api/v1/admin", tags=["Auth"])
 
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
@@ -45,6 +47,11 @@ async def serve_apply_page(request: Request, job_id: str = ""):
 @app.get("/careers", include_in_schema=False)
 async def serve_careers_board(request: Request):
     return templates.TemplateResponse(request=request, name="careers.html")
+
+@app.get("/login", include_in_schema=False)
+async def serve_login_page(request: Request):
+    # Shell only (section 8): form is static, no auth check or submit wiring yet.
+    return templates.TemplateResponse(request=request, name="login.html")
 
 @app.get("/admin/home", include_in_schema=False)
 async def serve_admin_dashboard(request: Request):

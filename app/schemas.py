@@ -262,3 +262,11 @@ class FormDetailResponse(BaseModel):
     name: str
     jobs: List[JobSummaryItem] = []
     questions: List[QuestionResponse] = []
+
+# --- Auth Schemas ---
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class LoginResponse(BaseModel):
+    role: str

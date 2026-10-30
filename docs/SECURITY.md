@@ -8,9 +8,10 @@
 - **File Permissions:** Created files must have `0600` permissions. The directory must be `0700` (owned by the app's user).
 
 ## 2. Authentication & Admin Access
-- **Mechanism:** HttpOnly, Secure, SameSite=Lax session cookies for the Admin panel. No raw JWTs in `localStorage`.
+- **Mechanism:** HttpOnly, SameSite=Lax session cookies for the Admin panel. No raw JWTs in `localStorage`. **Secure flag dropped for now (DECIDED 2026-10-30, user):** the app is LAN-only HTTP with no TLS per the scope lock; a Secure cookie is never sent by the browser over plain HTTP, which would make login appear to succeed (200 OK) while the session never actually persists. Re-add Secure the moment TLS/a real domain is added — a deliberate, temporary exception, not a relaxation of the original policy.
 - **Credentials:** Passwords hashed using bcrypt (via `passlib`).
-- **Rate Limiting (Admin):** Max 5 failed login attempts per minute per IP to prevent brute force.
+- **Rate Limiting (Admin):** Max 5 failed login attempts per minute per IP to prevent brute force. In-memory sliding window, same pattern as the public apply endpoint's `RATE_LIMIT_CACHE`; counts failed attempts only (a correct login does not count against it).
+- **Session timing (DECIDED 2026-10-30, user):** a session has a fixed 8-hour hard cap from login (`sessions.expires_at`, never extended) and a separate 10-minute idle timeout tracked via `sessions.last_active_at`, updated on every authenticated request. A session is valid only while both hold. The idle-timeout check itself is enforced by the `/admin/*` auth dependency, not yet built (see Status gap below).
 
 ## 3. Public API Hardening (`POST /apply`)
 - **Rate Limiting:** Max 3 submissions per IP per hour to prevent spam. (Implementation: lightweight in-memory sliding window or LRU cache to avoid adding Redis infrastructure).
