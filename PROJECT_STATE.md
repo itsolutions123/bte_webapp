@@ -973,7 +973,7 @@ DOCS UPDATED NOTE: rule 17.4 satisfied; the contract diff is non-empty.
 - NEXT STEPS, in order: (1) wire Remember me (email only); (2) the `/admin/*` auth dependency with the 10-minute idle timeout and `last_active_at`; (3) decide on a shared PROFILE partial; (4) session cleanup job; (5) per-role permissions, once scoped.
 - DOCS UPDATED: `API_CONTRACT.md` (logout entry IMPLEMENTED, call site WIRED, Last verified), `SECURITY.md` (logout line), this file. `SCHEMA.md`: no change.
 
-## Session Log 2026-10-30 (continued): Remember me wiring (login page, email only)
+## Session Log 2026-10-30 (continued): Remember me wiring (login page, email only) (commit 2656630)
 - HANDOFF SUMMARY: work mode = feature-wiring step (section 8). Page: `/login`. Confirmed in the browser by the user: the email is saved and the password is not.
 - DECIDED earlier (user, Security option A, SECURITY.md): email only in `localStorage`, password never stored by our code.
 - DONE, frontend: `REMEMBER_EMAIL_KEY` constant, `loadRememberedEmail` and `saveRememberedEmail` in `app/templates/login.html`; load on page start, save or clear only after a successful login (before the redirect). Backup `~/login.html.bak-20261030`. Backend: no change, no endpoint change.
