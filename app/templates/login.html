@@ -147,6 +147,33 @@
             passwordToggle.querySelector('.icon-eye-off').classList.toggle('d-none', !show);
         });
 
+        // Remember me (SECURITY.md, decided 2026-10-30): email only, never the password.
+        const REMEMBER_EMAIL_KEY = 'bte_remember_email';
+        const rememberBox = document.getElementById('login-remember');
+        const emailInput = document.getElementById('login-email');
+
+        function loadRememberedEmail() {
+            try {
+                const saved = localStorage.getItem(REMEMBER_EMAIL_KEY);
+                if (saved) {
+                    emailInput.value = saved;
+                    rememberBox.checked = true;
+                }
+            } catch (err) { /* storage blocked: login still works, nothing is pre-filled */ }
+        }
+
+        function saveRememberedEmail(email) {
+            try {
+                if (rememberBox.checked) {
+                    localStorage.setItem(REMEMBER_EMAIL_KEY, email);
+                } else {
+                    localStorage.removeItem(REMEMBER_EMAIL_KEY);
+                }
+            } catch (err) { /* storage blocked: ignore */ }
+        }
+
+        loadRememberedEmail();
+
         function showError(message) {
             errorBox.textContent = message;
             errorBox.classList.remove('d-none');
@@ -173,6 +200,7 @@
                 });
 
                 if (res.ok) {
+                    saveRememberedEmail(email);
                     window.location.href = '/admin/home';
                     return;
                 }

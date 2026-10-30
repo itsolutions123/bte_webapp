@@ -959,7 +959,7 @@ DOCS UPDATED NOTE: rule 17.4 satisfied; the contract diff is non-empty.
 - NEXT STEPS, in order: (1) logout endpoint (contract first: delete the `sessions` row, clear the cookie) and wire LOG OUT, redirecting to `/login`; (2) wire Remember me (email only, localStorage); (3) the `/admin/*` auth dependency (reuse `get_current_user`, add the 10-minute idle timeout and `last_active_at` updates) applied to every admin page route and endpoint; (4) decide whether the PROFILE button moves into a shared partial; (5) session cleanup job; (6) per-role permissions, once scoped.
 - DOCS UPDATED: `SCHEMA.md` (section 6, `users.full_name` applied), `API_CONTRACT.md` (`GET /api/v1/admin/me` IMPLEMENTED and VERIFIED LIVE, card call site wired, Last verified), `SECURITY.md` (current-user check note), this file.
 
-## Session Log 2026-10-30 (continued): LOG OUT wiring, POST /api/v1/admin/logout
+## Session Log 2026-10-30 (continued): LOG OUT wiring, POST /api/v1/admin/logout (commit 22a5735)
 - HANDOFF SUMMARY: work mode = feature-wiring step (section 8). Page: the profile card on `/admin/home`. LOG OUT confirmed working in the browser by the user.
 - DECIDED (user): contract approved before any code: `POST /api/v1/admin/logout`, no auth dependency, deletes only the current `sessions` row, always 204, always clears the `session_id` cookie with login's attributes.
 - DONE, docs: contract recorded first (`API_CONTRACT.md`), then updated to IMPLEMENTED; `SECURITY.md` logout line added.
@@ -972,3 +972,13 @@ DOCS UPDATED NOTE: rule 17.4 satisfied; the contract diff is non-empty.
 - KNOWN GAPS: (1) `/admin/*` pages and `/api/v1/admin/*` endpoints still have NO auth enforcement; (2) logout ends only the current session, not the user's other sessions (by design); (3) the PROFILE button exists only on `/admin/home`; (4) `API_CONTRACT.md` line 2 has stale "(pending)" markers and unclosed "(" inherited from earlier history entries (cleanup undecided); (5) `admin_applicants.html` (modified) and `package-lock.json` (untracked) are undecided and left out of commits.
 - NEXT STEPS, in order: (1) wire Remember me (email only); (2) the `/admin/*` auth dependency with the 10-minute idle timeout and `last_active_at`; (3) decide on a shared PROFILE partial; (4) session cleanup job; (5) per-role permissions, once scoped.
 - DOCS UPDATED: `API_CONTRACT.md` (logout entry IMPLEMENTED, call site WIRED, Last verified), `SECURITY.md` (logout line), this file. `SCHEMA.md`: no change.
+
+## Session Log 2026-10-30 (continued): Remember me wiring (login page, email only)
+- HANDOFF SUMMARY: work mode = feature-wiring step (section 8). Page: `/login`. Confirmed in the browser by the user: the email is saved and the password is not.
+- DECIDED earlier (user, Security option A, SECURITY.md): email only in `localStorage`, password never stored by our code.
+- DONE, frontend: `REMEMBER_EMAIL_KEY` constant, `loadRememberedEmail` and `saveRememberedEmail` in `app/templates/login.html`; load on page start, save or clear only after a successful login (before the redirect). Backup `~/login.html.bak-20261030`. Backend: no change, no endpoint change.
+- NOT tested: unticking clears the saved email, a wrong password saves nothing, blocked storage.
+- HARDCODES: key `bte_remember_email`; `/api/v1/admin/login` and `/admin/home` inline in the login script.
+- KNOWN GAPS: `/admin/*` pages and endpoints still have NO auth enforcement; logout row deletion and `/me` 401 after logout untested; `API_CONTRACT.md` line 2 has stale "(pending)" markers and unclosed "(" (cleanup undecided); `admin_applicants.html` (modified) and `package-lock.json` (untracked) undecided and left out of commits.
+- NEXT STEPS, in order: (1) the `/admin/*` auth dependency with the 10-minute idle timeout and `last_active_at`; (2) decide on a shared PROFILE partial; (3) session cleanup job; (4) per-role permissions, once scoped.
+- DOCS UPDATED: `SECURITY.md` (Remember me Status), `API_CONTRACT.md` (Last verified), this file. `SCHEMA.md`: no change.
