@@ -943,7 +943,7 @@ DOCS UPDATED NOTE: rule 17.4 satisfied; the contract diff is non-empty.
 - NEXT STEPS, in order: (1) wire Remember me (email only): save on successful login when checked, clear when unchecked, pre-fill on load, in its own step; (2) build the `/admin/*` auth dependency and apply it to every admin page route and `/api/v1/admin/*` endpoint (contract first); (3) logout endpoint; (4) session cleanup job; (5) per-role permissions once the user scopes them.
 - DOCS UPDATED: `SECURITY.md` (Remember me decision), `API_CONTRACT.md` (login Status corrected to VERIFIED LIVE, call-site note, Last verified), this file. `SCHEMA.md`: no change.
 
-## Session Log 2026-10-30 (continued): admin profile card, GET /api/v1/admin/me, users.full_name
+## Session Log 2026-10-30 (continued): admin profile card, GET /api/v1/admin/me, users.full_name (commit 2a9f45b)
 - HANDOFF SUMMARY: work mode = shell, then schema, then feature-wiring, one feature at a time (section 8). Page: the PROFILE button on `/admin/home`. Confirmed by the user in the browser ("Awesome").
 - DECIDED (user): profile card per the user's wireframe (initials circle, full name, email, role, LOG OUT button), opened as a card under the PROFILE button; Structure option B: nullable `users.full_name`; the `GET /api/v1/admin/me` contract was approved before any code.
 - DONE, shell: card in `app/templates/admin.html` (CSS, markup, script) that opens on a PROFILE click and closes on a second click, an outside click or Esc; backups `~/admin.html.bak-20261030` and `~/admin.html.bak2-20261030`.
