@@ -958,3 +958,17 @@ DOCS UPDATED NOTE: rule 17.4 satisfied; the contract diff is non-empty.
 - OPEN, needs the user: `app/templates/admin_applicants.html` (modified) and `package-lock.json` (untracked) were not touched by this work and are left out of the commit.
 - NEXT STEPS, in order: (1) logout endpoint (contract first: delete the `sessions` row, clear the cookie) and wire LOG OUT, redirecting to `/login`; (2) wire Remember me (email only, localStorage); (3) the `/admin/*` auth dependency (reuse `get_current_user`, add the 10-minute idle timeout and `last_active_at` updates) applied to every admin page route and endpoint; (4) decide whether the PROFILE button moves into a shared partial; (5) session cleanup job; (6) per-role permissions, once scoped.
 - DOCS UPDATED: `SCHEMA.md` (section 6, `users.full_name` applied), `API_CONTRACT.md` (`GET /api/v1/admin/me` IMPLEMENTED and VERIFIED LIVE, card call site wired, Last verified), `SECURITY.md` (current-user check note), this file.
+
+## Session Log 2026-10-30 (continued): LOG OUT wiring, POST /api/v1/admin/logout
+- HANDOFF SUMMARY: work mode = feature-wiring step (section 8). Page: the profile card on `/admin/home`. LOG OUT confirmed working in the browser by the user.
+- DECIDED (user): contract approved before any code: `POST /api/v1/admin/logout`, no auth dependency, deletes only the current `sessions` row, always 204, always clears the `session_id` cookie with login's attributes.
+- DONE, docs: contract recorded first (`API_CONTRACT.md`), then updated to IMPLEMENTED; `SECURITY.md` logout line added.
+- DONE, backend: `logout` route and the `delete` import in `app/routers/auth.py`. Backup `~/auth.py.bak2-20261030`.
+- DONE, frontend: `logOut` handler, error line and disabled-button CSS in `app/templates/admin.html`; `title="Not wired yet"` removed from the button. Backup `~/admin.html.bak3-20261030`.
+- VERIFIED: curl with no cookie and with a bogus cookie both return 204, `Cache-Control: no-store` and a `Set-Cookie` clearing `session_id`; the LOG OUT button works in the browser (lands on `/login`).
+- NOT tested: that the `sessions` row is deleted (DB check), that `GET /api/v1/admin/me` returns 401 after logout, that signing in again shows the right card, the button's error path.
+- FOUND: Remember me does not save the email on the login page. Expected: it is still a checkbox shell, wiring is the next feature step (email only, localStorage, per SECURITY.md).
+- HARDCODES: error color `#b42318`, the strings "Could not log out. Try again." and `/login` are inline in `admin.html`. `admin.html` lines 402 and 406 still carry "Not wired yet" (search box, date pill: separate shell items).
+- KNOWN GAPS: (1) `/admin/*` pages and `/api/v1/admin/*` endpoints still have NO auth enforcement; (2) logout ends only the current session, not the user's other sessions (by design); (3) the PROFILE button exists only on `/admin/home`; (4) `API_CONTRACT.md` line 2 has stale "(pending)" markers and unclosed "(" inherited from earlier history entries (cleanup undecided); (5) `admin_applicants.html` (modified) and `package-lock.json` (untracked) are undecided and left out of commits.
+- NEXT STEPS, in order: (1) wire Remember me (email only); (2) the `/admin/*` auth dependency with the 10-minute idle timeout and `last_active_at`; (3) decide on a shared PROFILE partial; (4) session cleanup job; (5) per-role permissions, once scoped.
+- DOCS UPDATED: `API_CONTRACT.md` (logout entry IMPLEMENTED, call site WIRED, Last verified), `SECURITY.md` (logout line), this file. `SCHEMA.md`: no change.

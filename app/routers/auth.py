@@ -4,7 +4,7 @@ from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from passlib.context import CryptContext
 
 from app.database import get_db
@@ -118,3 +118,24 @@ async def get_current_user(request: Request, db: AsyncSession = Depends(get_db))
 async def me(response: Response, user: User = Depends(get_current_user)):
     response.headers["Cache-Control"] = "no-store"
     return MeResponse(full_name=user.full_name, email=user.email, role=user.role)
+
+
+@router.post("/logout", status_code=204, response_class=Response)
+async def logout(request: Request, db: AsyncSession = Depends(get_db)):
+    """Ends the current session only. No auth dependency on purpose: an expired or unknown
+    session can still log out. Always 204 and always clears the cookie (API_CONTRACT.md)."""
+    session_id = request.cookies.get(SESSION_COOKIE_NAME)
+    if session_id:
+        await db.execute(delete(SessionModel).where(SessionModel.id == session_id))
+        await db.commit()
+
+    response = Response(status_code=204)
+    response.headers["Cache-Control"] = "no-store"
+    response.delete_cookie(
+        key=SESSION_COOKIE_NAME,
+        path="/",
+        httponly=True,
+        secure=False,  # same as login: LAN HTTP, no TLS (SECURITY.md section 2)
+        samesite="lax",
+    )
+    return response

@@ -137,6 +137,8 @@
             transition: all 0.2s ease;
         }
         .profile-logout:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
+        .profile-logout:disabled { opacity: 0.6; cursor: default; }
+        .profile-logout-error { margin-top: 1rem; font-size: 0.8rem; color: #b42318; text-align: right; }
 
         /* Page heading */
         .page-heading { margin-bottom: 1.5rem; }
@@ -417,8 +419,9 @@
                                     <div class="profile-role" id="profile-role">ROLE</div>
                                 </div>
                             </div>
+                            <div class="profile-logout-error d-none" id="profile-logout-error" role="alert"></div>
                             <div class="profile-card-footer">
-                                <button type="button" class="profile-logout" id="profile-logout" title="Not wired yet">LOG OUT</button>
+                                <button type="button" class="profile-logout" id="profile-logout">LOG OUT</button>
                             </div>
                         </div>
                     </div>
@@ -687,6 +690,29 @@
                     profileLoading = false;
                 }
             }
+            const btnLogout = document.getElementById('profile-logout');
+            const elLogoutError = document.getElementById('profile-logout-error');
+            let loggingOut = false;
+
+            async function logOut() {
+                if (loggingOut) return;
+                loggingOut = true;
+                btnLogout.disabled = true;
+                elLogoutError.classList.add('d-none');
+                try {
+                    const res = await fetch('/api/v1/admin/logout', { method: 'POST' });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    profileLoaded = false;
+                    location.replace('/login');
+                } catch (err) {
+                    elLogoutError.textContent = 'Could not log out. Try again.';
+                    elLogoutError.classList.remove('d-none');
+                    btnLogout.disabled = false;
+                    loggingOut = false;
+                }
+            }
+            if (btnLogout) btnLogout.addEventListener('click', logOut);
+
             function setOpen(open) {
                 card.classList.toggle('d-none', !open);
                 btn.setAttribute('aria-expanded', open ? 'true' : 'false');
