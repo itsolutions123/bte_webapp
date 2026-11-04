@@ -13,7 +13,7 @@
 
 **`business_units`** (migration 017 applied to the live DB and verified 2026-11-04 (`\d business_units`); model `BusinessUnit` in `app/models.py`; Franchise and In-house were created in a browser test; Head Office was inserted as a one-time data change on 2026-11-04 with the user's explicit OK (verified by query: exactly three rows, Franchise, Head Office, In-house, none archived; the 9 brands still NULL); `POST /api/v1/admin/business-units` exists but the UI no longer calls it)
 - `id` (UUID, Primary Key)
-- `slug` (String, Unique, Indexed) - generated server-side from `name`, never changes on rename (same rule as `brands`).
+- `slug` (String, Unique, Indexed) - generated server-side from `name`, never changes on rename (no rename endpoint exists for business units; brand slugs do regenerate on rename).
 - `name` (String, Not Null) - exactly three rows (decided 2026-11-04, approved design): "Franchise", "In-house", "Head Office". Head Office was inserted as a one-time data change on 2026-11-04 after the user confirmed, no schema change.
 - `archived_at` (Timestamp with time zone, Nullable, Indexed `idx_business_units_archived_at`) - NULL = active. Archiving a business unit is NOT designed yet (no endpoint, no cascade rule).
 - Relationship: one business unit has many brands (`brands.business_unit_id`); a brand has many jobs. The Brands sidebar section was removed on 2026-11-04 after all brands were assigned to units; OPERATIONS is the only brand list.
