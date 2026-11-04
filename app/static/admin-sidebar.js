@@ -64,6 +64,7 @@
         const menu = document.createElement('div');
         menu.className = 'form-menu';
         menu.hidden = true;
+        menu.appendChild(menuItem('rename', 'Rename brand'));
         menu.appendChild(menuItem('delete', 'Delete brand'));
         row.append(a, btn, menu);
         return row;
@@ -105,15 +106,12 @@
     }
 
     function render(data) {
-        const brandBox = document.getElementById('brand-list');
         const formBox = document.getElementById('form-list');
         const unitBox = document.getElementById('business-unit-list');
         if (unitBox) {
             unitBox.textContent = '';
             (data.business_units || []).forEach(function (u) { unitBox.appendChild(unitSection(u)); });
         }
-        brandBox.textContent = '';
-        (data.brands || []).forEach(function (b) { brandBox.appendChild(brandRow(b)); });
         formBox.textContent = '';
         if (data.forms && data.forms.length > 0) {
             data.forms.forEach(function (f) { formBox.appendChild(formRow(f)); });
@@ -368,6 +366,95 @@
             if (e.key === 'Enter') {
                 e.preventDefault();
                 saveBusinessUnit();
+            }
+        });
+    }
+
+    // Rename brand: the pencil item in a brand's 3-dot menu opens a small modal; Save calls PATCH /api/v1/admin/brands/{id}
+    const renameBrandModalEl = document.getElementById('renameBrandModal');
+    if (renameBrandModalEl) {
+        const renameBrandInput = document.getElementById('rename-brand-input');
+        const renameBrandError = document.getElementById('rename-brand-error');
+        const renameBrandSaveBtn = document.getElementById('rename-brand-save-btn');
+        let renameBrandId = null;
+        let renameBrandOriginal = '';
+
+        const showRenameBrandError = function (msg) {
+            renameBrandError.textContent = msg;
+            renameBrandError.classList.remove('d-none');
+        };
+
+        document.addEventListener('click', function (e) {
+            const item = e.target.closest('.form-menu-item[data-action="rename"]');
+            if (!item) return;
+            const row = item.closest('.brand-row');
+            if (!row) return;
+            renameBrandId = row.dataset.brandId;
+            renameBrandOriginal = row.querySelector('a').textContent;
+            renameBrandInput.value = renameBrandOriginal;
+            renameBrandError.classList.add('d-none');
+            bootstrap.Modal.getOrCreateInstance(renameBrandModalEl).show();
+        });
+
+        renameBrandModalEl.addEventListener('shown.bs.modal', function () {
+            renameBrandInput.focus();
+            renameBrandInput.select();
+        });
+
+        renameBrandInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                renameBrandSaveBtn.click();
+            }
+        });
+
+        renameBrandSaveBtn.addEventListener('click', async function () {
+            const name = renameBrandInput.value.trim();
+            renameBrandError.classList.add('d-none');
+            if (!name) {
+                showRenameBrandError('Brand name is required.');
+                return;
+            }
+            if (name === renameBrandOriginal) {
+                bootstrap.Modal.getInstance(renameBrandModalEl).hide();
+                return;
+            }
+            renameBrandSaveBtn.disabled = true;
+            try {
+                const res = await fetch('/api/v1/admin/brands/' + encodeURIComponent(renameBrandId), {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name })
+                });
+                if (res.status === 200) {
+                    const data = await res.json();
+                    bootstrap.Modal.getInstance(renameBrandModalEl).hide();
+                    document.dispatchEvent(new CustomEvent('brand:renamed', { detail: { id: data.id, name: data.name } }));
+                    const toastEl = document.getElementById('form-created-toast');
+                    if (toastEl) {
+                        document.getElementById('form-created-toast-body').textContent = 'Brand renamed to "' + data.name + '".';
+                        new bootstrap.Toast(toastEl).show();
+                    }
+                    refreshSidebar();
+                } else if (res.status === 409) {
+                    const body = await res.json().catch(function () { return {}; });
+                    if (String(body.detail || '').toLowerCase().indexOf('archived') !== -1) {
+                        showRenameBrandError('This brand is archived and cannot be renamed.');
+                    } else {
+                        showRenameBrandError('A brand with that name already exists.');
+                    }
+                } else if (res.status === 404) {
+                    showRenameBrandError('This brand no longer exists.');
+                    refreshSidebar();
+                } else if (res.status === 422) {
+                    showRenameBrandError('Please enter a valid brand name.');
+                } else {
+                    showRenameBrandError('Could not rename the brand. Please try again.');
+                }
+            } catch (err) {
+                showRenameBrandError('Could not reach the server.');
+            } finally {
+                renameBrandSaveBtn.disabled = false;
             }
         });
     }

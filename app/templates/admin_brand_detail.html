@@ -427,6 +427,14 @@
         }
         fetchBrandName();
 
+        // The sidebar rename announces brand:renamed; update the heading and tab title when it is this page's brand.
+        document.addEventListener('brand:renamed', function (e) {
+            const openId = window.location.pathname.split('/').filter(Boolean).pop();
+            if (!e.detail || e.detail.id !== openId) return;
+            document.getElementById('brand-title').textContent = e.detail.name;
+            document.title = 'BTE Careers - ' + e.detail.name;
+        });
+
         // Job cards: rendered from GET /api/v1/admin/brands/{brand_id}/jobs (first page only, API default limit), optional q from the search box
         let loadJobsSeq = 0;
         async function loadJobs() {

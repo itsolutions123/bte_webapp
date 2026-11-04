@@ -20,7 +20,7 @@ from app.schemas import (
     SidebarMetadataResponse, SidebarBrandItem, SidebarFormItem, SidebarFormItem, SidebarBusinessUnitItem,
     AdminSummaryResponse, OverallTotals,
     AdminTallyResponse, AdminTallyItem, JobCounts,
-    BrandCreateRequest, BrandResponse,
+    BrandCreateRequest, BrandRenameRequest, BrandResponse,
     BusinessUnitCreateRequest, BusinessUnitResponse,
     JobCreateRequest, JobUpdateRequest, JobResponse, BrandJobItem, BrandJobsResponse,
     FormCreateRequest, FormResponse, FormArchiveResponse,
@@ -438,6 +438,39 @@ async def delete_brand(brand_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 
     await db.delete(brand)
     await db.commit()
+
+
+@router.patch("/brands/{brand_id}", response_model=BrandResponse)
+async def rename_brand(brand_id: uuid.UUID, payload: BrandRenameRequest, db: AsyncSession = Depends(get_db)):
+    # docs/API_CONTRACT.md, PATCH /api/v1/admin/brands/{brand_id}. Check order: 422, 404, 409 archived, 409 clash.
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="name must not be empty")
+    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    if not slug:
+        raise HTTPException(status_code=422, detail="name must contain at least one letter or number")
+
+    brand = await db.get(Brand, brand_id)
+    if brand is None:
+        raise HTTPException(status_code=404, detail="brand not found")
+    if brand.archived_at is not None:
+        raise HTTPException(status_code=409, detail="brand is archived and read-only")
+
+    clash = await db.execute(
+        select(Brand.id).where(
+            (func.lower(Brand.name) == name.lower()) | (Brand.slug == slug),
+            Brand.id != brand.id,
+        ).limit(1)
+    )
+    if clash.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=409, detail="a brand with this name already exists")
+
+    brand.name = name
+    brand.slug = slug
+    await db.commit()
+    await db.refresh(brand)
+
+    return BrandResponse(id=brand.id, name=brand.name, slug=brand.slug)
 
 
 @router.get("/applications", response_model=AdminApplicationListResponse)

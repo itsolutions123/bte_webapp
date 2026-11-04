@@ -130,6 +130,9 @@ class BrandResponse(BaseModel):
     name: str
     slug: str
 
+class BrandRenameRequest(BaseModel):
+    name: str
+
 class BusinessUnitCreateRequest(BaseModel):
     name: str
 

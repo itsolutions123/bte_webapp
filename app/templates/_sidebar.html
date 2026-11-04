@@ -17,17 +17,6 @@
         <span class="px-3 text-muted small fw-bold">Loading...</span>
     </div>
 
-    {# Brands section. Set show_brands_section to false to hide it. It stays in the page because admin-sidebar.js render() fills #brand-list. #}
-    {% set show_brands_section = true %}
-    <div{% if not show_brands_section %} class="d-none"{% endif %}>
-        <div class="nav-section">
-            BRANDS <span role="button" data-bs-toggle="modal" data-bs-target="#addBrandModal" aria-label="Add brand">+</span>
-        </div>
-        <div class="nav flex-column" id="brand-list">
-            <span class="px-3 text-muted small fw-bold">Loading...</span>
-        </div>
-    </div>
-
     <div class="nav-section">
         FORMS <span role="button" data-bs-toggle="modal" data-bs-target="#formBuilderModal" aria-label="Add form">+</span>
     </div>
@@ -40,7 +29,7 @@
     </div>
 </nav>
 
-{# Archive brand modal: Confirm calls POST /api/v1/admin/brands/{brand_id}/archive (handler in admin-sidebar.js). #}
+{# Delete brand modal (ids still say archive): Confirm calls DELETE /api/v1/admin/brands/{brand_id} (handler in admin-sidebar.js). #}
 <div class="modal fade" id="archiveBrandModal" tabindex="-1" aria-labelledby="archiveBrandModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-sm">
         <div class="modal-content" style="border-radius: 12px;">
@@ -84,6 +73,26 @@
     </div>
 </div>
 {% endif %}
+
+{# Rename brand modal: Save calls PATCH /api/v1/admin/brands/{brand_id} (handler in admin-sidebar.js). #}
+<div class="modal fade" id="renameBrandModal" tabindex="-1" aria-labelledby="renameBrandModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content" style="border-radius: 12px;">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title fw-bold" id="renameBrandModalLabel">Rename brand</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="rename-brand-input" class="form-control" placeholder="Brand name" aria-label="Brand name">
+                <div class="text-danger small mt-2 d-none" id="rename-brand-error"></div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-dark btn-sm" id="rename-brand-save-btn">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 {# Add brand modal: Save calls POST /api/v1/admin/brands (handler in admin-sidebar.js). #}
 <div class="modal fade" id="addBrandModal" tabindex="-1" aria-labelledby="addBrandModalLabel" aria-hidden="true">
