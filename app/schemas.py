@@ -123,8 +123,17 @@ class FormListResponse(BaseModel):
 
 class BrandCreateRequest(BaseModel):
     name: str
+    business_unit_id: UUID4
 
 class BrandResponse(BaseModel):
+    id: UUID4
+    name: str
+    slug: str
+
+class BusinessUnitCreateRequest(BaseModel):
+    name: str
+
+class BusinessUnitResponse(BaseModel):
     id: UUID4
     name: str
     slug: str
@@ -194,9 +203,16 @@ class SidebarFormItem(BaseModel):
     slug: str
     slug: str
 
+class SidebarBusinessUnitItem(BaseModel):
+    id: UUID4
+    name: str
+    slug: str
+    brands: List[SidebarBrandItem] = []
+
 class SidebarMetadataResponse(BaseModel):
     brands: List[SidebarBrandItem]
     forms: List[SidebarFormItem]
+    business_units: List[SidebarBusinessUnitItem] = []
 
 class OverallTotals(BaseModel):
     new: int = 0

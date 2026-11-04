@@ -58,6 +58,9 @@ body {
     display: flex;
     justify-content: space-between;
 }
+.business-unit-add {
+    font-size: 0.75rem;
+}
 .sidebar a {
     color: var(--text-main);
     text-decoration: none;

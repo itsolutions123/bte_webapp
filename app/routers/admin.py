@@ -15,12 +15,13 @@ from app.database import get_db
 from app.timeutil import to_app_tz, APP_TIMEZONE
 from app.html_clean import clean_rich_text
 from app.models import Application, Applicant
-from app.models import Brand, Job, StatusCount, Parameter, Parameter, Form, JobQuestion, Answer, Answer
+from app.models import Brand, BusinessUnit, Job, StatusCount, Parameter, Parameter, Form, JobQuestion, Answer, Answer
 from app.schemas import (
-    SidebarMetadataResponse, SidebarBrandItem, SidebarFormItem, SidebarFormItem,
+    SidebarMetadataResponse, SidebarBrandItem, SidebarFormItem, SidebarFormItem, SidebarBusinessUnitItem,
     AdminSummaryResponse, OverallTotals,
     AdminTallyResponse, AdminTallyItem, JobCounts,
     BrandCreateRequest, BrandResponse,
+    BusinessUnitCreateRequest, BusinessUnitResponse,
     JobCreateRequest, JobUpdateRequest, JobResponse, BrandJobItem, BrandJobsResponse,
     FormCreateRequest, FormResponse, FormArchiveResponse,
     BrandArchiveResponse,
@@ -58,7 +59,29 @@ async def get_sidebar_metadata(db: AsyncSession = Depends(get_db)):
     forms = form_result.scalars().all()
     form_items = [SidebarFormItem(id=f.id, name=f.name, slug=f.slug) for f in forms]
 
-    return SidebarMetadataResponse(brands=brand_items, forms=form_items)
+    unit_result = await db.execute(
+        select(BusinessUnit)
+        .where(BusinessUnit.archived_at.is_(None))
+        .order_by(func.lower(BusinessUnit.name), BusinessUnit.name)
+    )
+    units = unit_result.scalars().all()
+
+    unit_brand_result = await db.execute(
+        select(Brand)
+        .where(Brand.archived_at.is_(None), Brand.business_unit_id.is_not(None))
+        .order_by(func.lower(Brand.name), Brand.name)
+    )
+    brands_by_unit = {}
+    for b in unit_brand_result.scalars().all():
+        brands_by_unit.setdefault(b.business_unit_id, []).append(
+            SidebarBrandItem(id=b.id, name=b.name, slug=b.slug)
+        )
+    unit_items = [
+        SidebarBusinessUnitItem(id=u.id, name=u.name, slug=u.slug, brands=brands_by_unit.get(u.id, []))
+        for u in units
+    ]
+
+    return SidebarMetadataResponse(brands=brand_items, forms=form_items, business_units=unit_items)
 
 @router.get("/dashboard/summary", response_model=AdminSummaryResponse)
 async def get_dashboard_summary(
@@ -135,18 +158,47 @@ async def create_brand(payload: BrandCreateRequest, db: AsyncSession = Depends(g
     if not slug:
         raise HTTPException(status_code=422, detail="name must contain at least one letter or number")
 
+    unit = await db.execute(select(BusinessUnit.id).where(BusinessUnit.id == payload.business_unit_id))
+    if unit.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="business unit not found")
+
     existing = await db.execute(
         select(Brand).where((func.lower(Brand.name) == name.lower()) | (Brand.slug == slug)).limit(1)
     )
     if existing.scalars().first():
         raise HTTPException(status_code=409, detail="a brand with this name already exists")
 
-    brand = Brand(name=name, slug=slug)
+    brand = Brand(name=name, slug=slug, business_unit_id=payload.business_unit_id)
     db.add(brand)
     await db.commit()
     await db.refresh(brand)
 
     return BrandResponse(id=brand.id, name=brand.name, slug=brand.slug)
+
+
+@router.post("/business-units", response_model=BusinessUnitResponse, status_code=status.HTTP_201_CREATED)
+async def create_business_unit(payload: BusinessUnitCreateRequest, db: AsyncSession = Depends(get_db)):
+    # Mirrors create_brand (docs/API_CONTRACT.md, POST /api/v1/admin/business-units).
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="name must not be empty")
+
+    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    if not slug:
+        raise HTTPException(status_code=422, detail="name must contain at least one letter or number")
+
+    existing = await db.execute(
+        select(BusinessUnit).where((func.lower(BusinessUnit.name) == name.lower()) | (BusinessUnit.slug == slug)).limit(1)
+    )
+    if existing.scalars().first():
+        raise HTTPException(status_code=409, detail="a business unit with this name already exists")
+
+    business_unit = BusinessUnit(name=name, slug=slug)
+    db.add(business_unit)
+    await db.commit()
+    await db.refresh(business_unit)
+
+    return BusinessUnitResponse(id=business_unit.id, name=business_unit.name, slug=business_unit.slug)
 
 JOB_TYPES = ("Full-time", "Part-time", "Onsite")  # contract: "Job details fields"
 JOB_DETAIL_MAX_LENGTH = 150
@@ -371,6 +423,22 @@ async def archive_brand(brand_id: uuid.UUID, db: AsyncSession = Depends(get_db))
         archived_at=to_app_tz(brand.archived_at),
         jobs_archived=jobs_archived,
     )
+
+@router.delete("/brands/{brand_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_brand(brand_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    # docs/API_CONTRACT.md, DELETE /api/v1/admin/brands/{brand_id}. Check order: 422 (FastAPI), 404, 409, delete.
+    brand = await db.get(Brand, brand_id)
+    if brand is None:
+        raise HTTPException(status_code=404, detail="brand not found")
+
+    # Any job counts, archived or not (decided 2026-11-04, option A).
+    job_count = await db.scalar(select(func.count(Job.id)).where(Job.brand_id == brand.id))
+    if job_count:
+        raise HTTPException(status_code=409, detail="brand has jobs and cannot be deleted")
+
+    await db.delete(brand)
+    await db.commit()
+
 
 @router.get("/applications", response_model=AdminApplicationListResponse)
 async def list_applications(

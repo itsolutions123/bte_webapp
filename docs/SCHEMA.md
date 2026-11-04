@@ -7,6 +7,15 @@
 - `slug` (String, Unique, Indexed) - e.g., "sapporo", "tsg"
 - `name` (String) - e.g., "TSG", "PR", "SAPPORO"
 - `archived_at` (Timestamp with time zone, Nullable, Indexed `idx_brands_archived_at`) - NULL = active; set = archived (migration 013, applied 2026-10-21). Archiving a brand cascades in one transaction: every non-archived job of that brand gets the same archive action (unlike forms, which block with 409 while jobs still use them). Archived brands are hidden from the sidebar metadata. No unarchive endpoint exists for brands or forms.
+- `business_unit_id` (UUID, Foreign Key -> business_units.id, Nullable, Indexed `idx_brands_business_unit_id`) - DECIDED 2026-11-04 (user chose option B); migration 017 applied to the live DB and verified 2026-11-04 (`\d brands` shows the column, FK and index; all 9 existing brands are NULL); `Brand.business_unit_id` added to `app/models.py` (no index declared in the model, the migration owns it). The business unit this brand belongs to. NULL = not assigned yet, so every existing brand keeps working. Jobs stay under brands (`jobs.brand_id` is unchanged).
+
+**`business_units`** (migration 017 applied to the live DB and verified 2026-11-04 (`\d business_units`); model `BusinessUnit` in `app/models.py`; Franchise and In-house were created in a browser test; Head Office was inserted as a one-time data change on 2026-11-04 with the user's explicit OK (verified by query: exactly three rows, Franchise, Head Office, In-house, none archived; the 9 brands still NULL); `POST /api/v1/admin/business-units` exists but the UI no longer calls it)
+- `id` (UUID, Primary Key)
+- `slug` (String, Unique, Indexed) - generated server-side from `name`, never changes on rename (same rule as `brands`).
+- `name` (String, Not Null) - exactly three rows (decided 2026-11-04, approved design): "Franchise", "In-house", "Head Office". Head Office was inserted as a one-time data change on 2026-11-04 after the user confirmed, no schema change.
+- `archived_at` (Timestamp with time zone, Nullable, Indexed `idx_business_units_archived_at`) - NULL = active. Archiving a business unit is NOT designed yet (no endpoint, no cascade rule).
+- Relationship: one business unit has many brands (`brands.business_unit_id`); a brand has many jobs. The Brands sidebar section stays visible until the user assigns the 9 existing brands to units, then it is hidden in the admin UI, but the `brands` table, endpoints and code stay, so it can be restored.
+- Not in this table yet: logo (needs Security's file-storage rules first).
 
 **`jobs`**
 - `id` (UUID, Primary Key)
@@ -142,6 +151,9 @@ Scoring rules (enforced by the API, recorded in API_CONTRACT.md):
 - `idx_jobs_title_trgm` ON jobs USING gin (title gin_trgm_ops) - typo-tolerant title search for GET /api/v1/admin/brands/{brand_id}/jobs `q` (migration 007, applied 2026-10-14; also installs extension `pg_trgm` 1.6)
 - `idx_forms_archived_at` ON forms (archived_at)
 - `idx_brands_archived_at` ON brands (archived_at) - brand archive filter (migration 013, applied 2026-10-21)
+- `idx_brands_business_unit_id` ON brands (business_unit_id) - brands of one business unit (migration 017, applied 2026-11-04)
+- `idx_business_units_archived_at` ON business_units (archived_at) - business unit archive filter (migration 017, applied 2026-11-04)
+- `ix_business_units_slug` UNIQUE ON business_units (slug) - slug uniqueness (migration 017, applied 2026-11-04)
 - `idx_answer_points_question_id` ON answer_points (question_id)
 - `uq_answer_points_q_answer_job` UNIQUE ON answer_points (question_id, answer_value, job_id) - PROPOSED 2026-10-15 (migration 010)
 - `idx_answers_application_id` ON answers (application_id)

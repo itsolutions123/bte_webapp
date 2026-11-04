@@ -2,6 +2,7 @@
 // Requires: bootstrap bundle loaded first; _sidebar.html and _form_builder.html included in the page.
 (function () {
     const ICONS = {
+        delete: '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/></svg>',
         rename: '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg>',
         archive: '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M0 2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 1 12.5V5a1 1 0 0 1-1-1V2zm2 3v7.5A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5V5H2zm13-3H1v2h14V2zM5 7.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/></svg>'
     };
@@ -63,21 +64,54 @@
         const menu = document.createElement('div');
         menu.className = 'form-menu';
         menu.hidden = true;
-        menu.appendChild(menuItem('archive', 'Archive brand'));
+        menu.appendChild(menuItem('delete', 'Delete brand'));
         row.append(a, btn, menu);
         return row;
     }
 
     function emptyNote(text) {
         const s = document.createElement('span');
-        s.className = 'px-3 text-muted small fw-bold';
+        s.className = 'px-3 text-muted fw-bold';
         s.textContent = text;
         return s;
+    }
+
+    function unitSection(u) {
+        const wrap = document.createElement('div');
+        wrap.className = 'business-unit';
+        wrap.dataset.businessUnitId = u.id;
+        const head = document.createElement('div');
+        head.className = 'd-flex justify-content-between align-items-center ps-3 pe-0 mt-2 fw-bold';
+        const title = document.createElement('span');
+        title.textContent = u.name; // textContent: names are never parsed as HTML
+        const plus = document.createElement('span');
+        plus.setAttribute('role', 'button');
+        plus.dataset.bsToggle = 'modal';
+        plus.dataset.bsTarget = '#addBrandModal';
+        plus.dataset.businessUnitId = u.id;
+        plus.className = 'business-unit-add';
+        plus.setAttribute('aria-label', 'Add brand to ' + u.name);
+        plus.textContent = '+';
+        head.append(title, plus);
+        const list = document.createElement('div');
+        list.className = 'nav flex-column ps-3';
+        if (u.brands && u.brands.length > 0) {
+            u.brands.forEach(function (b) { list.appendChild(brandRow(b)); });
+        } else {
+            list.appendChild(emptyNote('No brands yet'));
+        }
+        wrap.append(head, list);
+        return wrap;
     }
 
     function render(data) {
         const brandBox = document.getElementById('brand-list');
         const formBox = document.getElementById('form-list');
+        const unitBox = document.getElementById('business-unit-list');
+        if (unitBox) {
+            unitBox.textContent = '';
+            (data.business_units || []).forEach(function (u) { unitBox.appendChild(unitSection(u)); });
+        }
         brandBox.textContent = '';
         (data.brands || []).forEach(function (b) { brandBox.appendChild(brandRow(b)); });
         formBox.textContent = '';
@@ -210,7 +244,11 @@
             addBrandError.classList.remove('d-none');
         };
 
-        addBrandModalEl.addEventListener('show.bs.modal', function () {
+        let addBrandUnitId = null;
+        addBrandModalEl.addEventListener('show.bs.modal', function (e) {
+            // The unit "+" button that opened the modal carries data-business-unit-id (set when the real list renders).
+            const trigger = e.relatedTarget;
+            addBrandUnitId = (trigger && trigger.dataset && trigger.dataset.businessUnitId) || null;
             addBrandInput.value = '';
             addBrandError.classList.add('d-none');
         });
@@ -225,12 +263,16 @@
                 showAddBrandError('Please enter a brand name.');
                 return;
             }
+            if (!addBrandUnitId) {
+                showAddBrandError('Open this from a business unit\'s + button.');
+                return;
+            }
             addBrandSaveBtn.disabled = true;
             try {
                 const res = await fetch('/api/v1/admin/brands', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: name })
+                    body: JSON.stringify({ name: name, business_unit_id: addBrandUnitId })
                 });
                 if (res.status === 201) {
                     const data = await res.json();
@@ -243,6 +285,8 @@
                     refreshSidebar();
                 } else if (res.status === 409) {
                     showAddBrandError('A brand with that name already exists.');
+                } else if (res.status === 404) {
+                    showAddBrandError('That business unit no longer exists. Reload the page.');
                 } else if (res.status === 422) {
                     showAddBrandError('Please enter a valid brand name.');
                 } else {
@@ -263,7 +307,72 @@
         });
     }
 
-    // Archive brand: the Archive button in a brand's 3-dot menu opens a confirm modal; Confirm calls the archive endpoint (cascades to the brand's active jobs)
+    // Add business unit: the OPERATIONS "+" in the sidebar opens a modal; Save calls POST /api/v1/admin/business-units
+    const addBusinessUnitModalEl = document.getElementById('addBusinessUnitModal');
+    if (addBusinessUnitModalEl) {
+        const addBusinessUnitInput = document.getElementById('add-business-unit-name');
+        const addBusinessUnitError = document.getElementById('add-business-unit-error');
+        const addBusinessUnitSaveBtn = document.getElementById('add-business-unit-save-btn');
+
+        const showAddBusinessUnitError = function (msg) {
+            addBusinessUnitError.textContent = msg;
+            addBusinessUnitError.classList.remove('d-none');
+        };
+
+        addBusinessUnitModalEl.addEventListener('show.bs.modal', function () {
+            addBusinessUnitInput.value = '';
+            addBusinessUnitError.classList.add('d-none');
+        });
+        addBusinessUnitModalEl.addEventListener('shown.bs.modal', function () {
+            addBusinessUnitInput.focus();
+        });
+
+        const saveBusinessUnit = async function () {
+            addBusinessUnitError.classList.add('d-none');
+            const name = addBusinessUnitInput.value.trim();
+            if (!name) {
+                showAddBusinessUnitError('Please enter a business unit name.');
+                return;
+            }
+            addBusinessUnitSaveBtn.disabled = true;
+            try {
+                const res = await fetch('/api/v1/admin/business-units', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name })
+                });
+                if (res.status === 201) {
+                    const data = await res.json();
+                    bootstrap.Modal.getInstance(addBusinessUnitModalEl).hide();
+                    const toastEl = document.getElementById('form-created-toast');
+                    if (toastEl) {
+                        document.getElementById('form-created-toast-body').textContent = 'Business unit "' + data.name + '" added.';
+                        new bootstrap.Toast(toastEl).show();
+                    }
+                    refreshSidebar();
+                } else if (res.status === 409) {
+                    showAddBusinessUnitError('A business unit with that name already exists.');
+                } else if (res.status === 422) {
+                    showAddBusinessUnitError('Please enter a valid business unit name.');
+                } else {
+                    showAddBusinessUnitError('Could not add the business unit. Please try again.');
+                }
+            } catch (err) {
+                showAddBusinessUnitError('Could not reach the server.');
+            } finally {
+                addBusinessUnitSaveBtn.disabled = false;
+            }
+        };
+        addBusinessUnitSaveBtn.addEventListener('click', saveBusinessUnit);
+        addBusinessUnitInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveBusinessUnit();
+            }
+        });
+    }
+
+    // Delete brand: the Delete brand item in a brand's 3-dot menu opens a confirm modal; Confirm calls DELETE /api/v1/admin/brands/{id} (409 when the brand has jobs)
     const archiveBrandModalEl = document.getElementById('archiveBrandModal');
     if (archiveBrandModalEl) {
         const archiveBrandNameEl = document.getElementById('archive-brand-name');
@@ -277,7 +386,7 @@
         };
 
         document.addEventListener('click', function (e) {
-            const item = e.target.closest('.form-menu-item[data-action="archive"]');
+            const item = e.target.closest('.form-menu-item[data-action="delete"]');
             if (!item) return;
             const row = item.closest('.brand-row');
             if (!row) return;
@@ -291,29 +400,26 @@
             archiveBrandError.classList.add('d-none');
             archiveBrandConfirmBtn.disabled = true;
             try {
-                const res = await fetch('/api/v1/admin/brands/' + encodeURIComponent(archiveBrandId) + '/archive', {
-                    method: 'POST'
+                const deletedName = archiveBrandNameEl.textContent;
+                const res = await fetch('/api/v1/admin/brands/' + encodeURIComponent(archiveBrandId), {
+                    method: 'DELETE'
                 });
-                if (res.status === 200) {
-                    const data = await res.json();
+                if (res.status === 204) {
                     bootstrap.Modal.getInstance(archiveBrandModalEl).hide();
                     const toastEl = document.getElementById('form-created-toast');
                     if (toastEl) {
-                        const n = data.jobs_archived;
-                        const jobsLabel = (n === 1) ? '1 job' : n + ' job(s)';
-                        document.getElementById('form-created-toast-body').textContent = 'Brand "' + data.name + '" archived \u2014 ' + jobsLabel + ' archived with it.';
+                        document.getElementById('form-created-toast-body').textContent = 'Brand "' + deletedName + '" deleted.';
                         new bootstrap.Toast(toastEl).show();
                     }
                     refreshSidebar();
                     document.dispatchEvent(new CustomEvent('brands:changed'));
                 } else if (res.status === 409) {
-                    showArchiveBrandError('This brand is already archived.');
-                    refreshSidebar();
+                    showArchiveBrandError('This brand has jobs and cannot be deleted.');
                 } else if (res.status === 404) {
                     showArchiveBrandError('This brand no longer exists.');
                     refreshSidebar();
                 } else {
-                    showArchiveBrandError('Could not archive the brand. Please try again.');
+                    showArchiveBrandError('Could not delete the brand. Please try again.');
                 }
             } catch (err) {
                 showArchiveBrandError('Could not reach the server.');
