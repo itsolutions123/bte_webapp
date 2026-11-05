@@ -18,14 +18,21 @@
         .users-search { flex: 1; border-radius: 12px; font-size: 0.9rem; }
         .users-add-btn { border-radius: 12px; font-weight: 700; background-color: var(--accent-black); color: #fff; }
         .users-table { font-size: 0.9rem; table-layout: fixed; width: 100%; min-width: 900px; font-variant-numeric: tabular-nums; }
-        .users-table th, .users-table td { padding: 0.75rem 0.75rem; vertical-align: middle; white-space: nowrap; }
+        .users-table th, .users-table td { padding: 0.9rem 0.75rem; vertical-align: middle; white-space: nowrap; }
+        .users-table tbody tr:hover > * { --bs-table-bg-state: #f8f9fa; }
+        .users-table td.users-muted { color: var(--text-muted); }
+        .users-card { background-color: #fff; border: 1px solid var(--border-light); border-radius: 16px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); }
+        .users-card .users-table { margin-bottom: 0; }
+        .users-menu-btn { border: 0; background: transparent; color: var(--text-muted); font-size: 1.1rem; line-height: 1; padding: 0.25rem 0.6rem; border-radius: 8px; }
+        .users-menu-btn:hover { background-color: #f8f9fa; color: var(--accent-black); }
+        .users-table .dropdown-menu { font-size: 0.85rem; border-radius: 12px; }
         .users-table th:nth-child(-n+2), .users-table td:nth-child(-n+2) { overflow: hidden; text-overflow: ellipsis; }
         .users-table th:nth-child(1), .users-table th:nth-child(2) { width: 15%; }
-        .users-table th:nth-child(3) { width: 16%; }
-        .users-table th:nth-child(4), .users-table th:nth-child(5) { width: 15%; }
-        .users-table th:nth-child(6) { width: 14%; }
+        .users-table th:nth-child(3) { width: 17%; }
+        .users-table th:nth-child(4), .users-table th:nth-child(5) { width: 14%; }
+        .users-table th:nth-child(6) { width: 15%; }
         .users-table th:nth-child(7) { width: 10%; }
-        .users-table th { font-size: 0.8rem; color: var(--text-muted); font-weight: 700; }
+        .users-table thead th { font-size: 0.75rem; color: var(--text-muted); font-weight: 700; background-color: #fafafa; border-bottom: 1px solid var(--border-light); }
         .users-shell-note { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem; }
         .users-pager { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.75rem; }
         .users-pager .btn { border-radius: 12px; font-weight: 700; }
@@ -55,7 +62,7 @@
                     <button type="button" class="btn users-add-btn" disabled>Add users</button>
                 </div>
 
-                <div class="table-responsive">
+                <div class="table-responsive users-card">
                     <table class="table users-table align-middle">
                         <thead>
                             <tr>
@@ -102,6 +109,8 @@
         let searchTimer = null;
         const SEARCH_DELAY_MS = 300;
         const PAGE_SIZE = 25;
+        // SHELL (2026-11-05): cosmetic only. The real enforcement is the 403 on the future reset-password endpoint.
+        const IS_SUPERADMIN = {% if request is defined and request.state.user is defined and request.state.user.role == 'SUPERADMIN' %}true{% else %}false{% endif %};
         let currentPage = 1;
         let totalPages = 1;
         const prevBtn = document.getElementById('users-prev');
@@ -163,22 +172,62 @@
                     tr.dataset.id = u.id;
                     addCell(tr, textOrDash(u.first_name));
                     addCell(tr, textOrDash(u.last_name));
-                    addCell(tr, roleLabel(u.role));
-                    addCell(tr, formatDate(u.last_login_at));
-                    addCell(tr, formatDate(u.created_at));
-                    addCell(tr, textOrDash(u.added_by_name));
+                    const roleTd = addCell(tr, roleLabel(u.role));
+                    if (tab !== 'archived' && (u.role === 'MANAGER' || u.role === 'RECRUITER')) {
+                        const sel = document.createElement('select');
+                        sel.className = 'form-select form-select-sm w-auto';
+                        sel.disabled = true;
+                        sel.title = 'Not wired yet';
+                        sel.setAttribute('aria-label', 'Role');
+                        [['MANAGER', 'Manager'], ['RECRUITER', 'Recruiter']].forEach(function (o) {
+                            const opt = document.createElement('option');
+                            opt.value = o[0];
+                            opt.textContent = o[1];
+                            sel.appendChild(opt);
+                        });
+                        sel.value = u.role;
+                        roleTd.textContent = '';
+                        roleTd.appendChild(sel);
+                    }
+                    addCell(tr, formatDate(u.last_login_at)).classList.add('users-muted');
+                    addCell(tr, formatDate(u.created_at)).classList.add('users-muted');
+                    addCell(tr, textOrDash(u.added_by_name)).classList.add('users-muted');
                     const actions = document.createElement('td');
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className = 'btn btn-outline-dark btn-sm fw-bold';
-                    btn.disabled = true;
-                    btn.title = 'Not wired yet';
-                    btn.textContent = 'Archive';
-                    actions.appendChild(btn);
+                    if (tab === 'archived') {
+                        actions.textContent = '\u2014';
+                    } else {
+                        const dd = document.createElement('div');
+                        dd.className = 'dropdown';
+                        const toggle = document.createElement('button');
+                        toggle.type = 'button';
+                        toggle.className = 'users-menu-btn';
+                        toggle.setAttribute('data-bs-toggle', 'dropdown');
+                        toggle.setAttribute('aria-expanded', 'false');
+                        toggle.setAttribute('aria-label', 'Row actions');
+                        toggle.innerHTML = '&#8942;';
+                        const menu = document.createElement('ul');
+                        menu.className = 'dropdown-menu dropdown-menu-end';
+                        const addItem = function (label) {
+                            const li = document.createElement('li');
+                            const item = document.createElement('button');
+                            item.type = 'button';
+                            item.className = 'dropdown-item';
+                            item.disabled = true;
+                            item.title = 'Not wired yet';
+                            item.textContent = label;
+                            li.appendChild(item);
+                            menu.appendChild(li);
+                        };
+                        if (IS_SUPERADMIN) addItem('Reset password');
+                        addItem('Archive');
+                        dd.append(toggle, menu);
+                        actions.appendChild(dd);
+                        new bootstrap.Dropdown(toggle, { popperConfig: { strategy: 'fixed' } });
+                    }
                     tr.appendChild(actions);
                     rows.appendChild(tr);
                 });
-                note.textContent = 'Showing ' + body.data.length + ' of ' + body.total + ' ' + TABS[tab].noun + (q ? ' matching "' + q + '"' : '') + '. Add users and Archive are not wired yet.';
+                note.textContent = 'Showing ' + body.data.length + ' of ' + body.total + ' ' + TABS[tab].noun + (q ? ' matching "' + q + '"' : '') + '. Add users, Role, Reset password and Archive are not wired yet.';
                 totalPages = Math.max(1, Math.ceil(body.total / body.limit));
                 updatePager();
             } catch (err) {
