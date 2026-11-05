@@ -43,7 +43,8 @@ class Job(Base):
     location = Column(String, nullable=True)
     pay_information = Column(String, nullable=True)
     job_type = Column(String, nullable=True)
-    
+    assignee_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+
     brand = relationship("Brand", back_populates="jobs")
     questions = relationship("JobQuestion", back_populates="job")
     applications = relationship("Application", back_populates="job")
@@ -155,6 +156,11 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), default=utc_now)
     last_login_at = Column(DateTime(timezone=True), nullable=True)
     full_name = Column(String(100), nullable=True)
+    first_name = Column(String(100), nullable=True)
+    last_name = Column(String(100), nullable=True)
+    archived_at = Column(DateTime(timezone=True), nullable=True)
+    added_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    must_change_password = Column(Boolean, default=False, nullable=False)
 
     sessions = relationship("Session", back_populates="user")
 
