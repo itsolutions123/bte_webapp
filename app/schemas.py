@@ -311,3 +311,22 @@ class UserCreateResponse(BaseModel):
     email: str
     role: str
     temporary_password: str
+
+
+class UserListItem(BaseModel):
+    id: UUID4
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: str
+    role: str
+    last_login_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    added_by_name: Optional[str] = None
+    archived_at: Optional[datetime] = None
+
+
+class UserListResponse(BaseModel):
+    data: List[UserListItem]
+    total: int
+    page: int
+    limit: int
