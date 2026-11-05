@@ -294,3 +294,20 @@ class MeResponse(BaseModel):
     full_name: Optional[str] = None
     email: str
     role: str
+
+
+# email is a plain str here: the endpoint trims and lower-cases it before validating (EmailStr would reject padding first).
+class UserCreateRequest(BaseModel):
+    first_name: str
+    last_name: str
+    email: str
+    role: str
+
+
+class UserCreateResponse(BaseModel):
+    id: UUID4
+    first_name: str
+    last_name: str
+    email: str
+    role: str
+    temporary_password: str

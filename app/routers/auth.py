@@ -114,6 +114,16 @@ async def get_current_user(request: Request, db: AsyncSession = Depends(get_db))
     return user
 
 
+def require_roles(*allowed_roles):
+    """Role check for endpoints: reuses get_current_user's user (FastAPI caches the dependency per request,
+    so there is no second lookup). Wrong role gets 403 {"detail": "Forbidden."}."""
+    async def checker(user: User = Depends(get_current_user)) -> User:
+        if user.role not in allowed_roles:
+            raise HTTPException(status_code=403, detail="Forbidden.")
+        return user
+    return checker
+
+
 @router.get("/me", response_model=MeResponse)
 async def me(response: Response, user: User = Depends(get_current_user)):
     response.headers["Cache-Control"] = "no-store"

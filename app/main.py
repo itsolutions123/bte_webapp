@@ -22,6 +22,8 @@ from fastapi import Depends
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"], dependencies=[Depends(get_current_user)])
 from app.routers import auth
 app.include_router(auth.router, prefix="/api/v1/admin", tags=["Auth"])
+from app.routers import users
+app.include_router(users.router, prefix="/api/v1/admin", tags=["Users"], dependencies=[Depends(get_current_user)])
 
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
