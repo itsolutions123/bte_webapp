@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link href="/static/admin-sidebar.css" rel="stylesheet">
     <style>
-        /* Users Directory SHELL (v4 section 8, 2026-11-05): table rows load from GET /api/v1/admin/users (default Users tab); tabs, search, paging, Add users and Archive are still placeholders. */
+        /* Users Directory (updated 2026-11-06): table rows load from GET /api/v1/admin/users; tabs, search and paging wired. Add users wired to POST /api/v1/admin/users. Role change, Reset password and Archive are still placeholders. */
         .users-header-sub { font-size: 0.9rem; color: var(--text-muted); }
         .users-tabs { display: flex; gap: 1.5rem; border-bottom: 1px solid var(--border-light); margin-bottom: 1rem; }
         .users-tab { font-weight: 700; font-size: 0.95rem; color: var(--text-main); padding-bottom: 0.6rem; border-bottom: 2px solid transparent; margin-bottom: -1px; }
@@ -59,7 +59,7 @@
 
                 <div class="users-toolbar">
                     <input type="search" class="form-control users-search" id="users-search" name="q" maxlength="100" autocomplete="off" placeholder="Search users" aria-label="Search users">
-                    <button type="button" class="btn users-add-btn" disabled>Add users</button>
+                    <button type="button" class="btn users-add-btn" id="users-add-btn" data-bs-toggle="modal" data-bs-target="#addUserModal">Add users</button>
                 </div>
 
                 <div class="table-responsive users-card">
@@ -89,6 +89,54 @@
     </div>
 
     {% include '_form_builder.html' %}
+
+    <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="addUserModalLabel">Add users</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="add-user-form-view">
+                        <label for="add-user-first-name" class="form-label fw-bold">First name</label>
+                        <input type="text" class="form-control mb-3" id="add-user-first-name" maxlength="100" placeholder="First name">
+
+                        <label for="add-user-last-name" class="form-label fw-bold">Last name</label>
+                        <input type="text" class="form-control mb-3" id="add-user-last-name" maxlength="100" placeholder="Last name">
+
+                        <label for="add-user-email" class="form-label fw-bold">Email</label>
+                        <input type="email" class="form-control mb-3" id="add-user-email" maxlength="254" placeholder="Email">
+
+                        <label for="add-user-role" class="form-label fw-bold">Role</label>
+                        <select class="form-select mb-3" id="add-user-role">
+                            <option value="MANAGER">Manager</option>
+                            <option value="RECRUITER">Recruiter</option>
+                        </select>
+
+                        <div class="text-danger small mt-2 d-none" id="add-user-error"></div>
+                    </div>
+                    <div id="add-user-success-view" class="d-none">
+                        <p class="mb-2">User created. Share this temporary password now — it will not be shown again.</p>
+                        <div class="input-group mb-2">
+                            <input type="text" class="form-control" id="add-user-temp-password" readonly>
+                            <button type="button" class="btn btn-outline-dark" id="add-user-copy-btn">Copy</button>
+                        </div>
+                        <div class="text-success small d-none" id="add-user-copied">Copied.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div id="add-user-form-footer">
+                        <button type="button" class="btn btn-outline-dark fw-bold" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-dark fw-bold" id="add-user-confirm-btn">Confirm</button>
+                    </div>
+                    <div id="add-user-success-footer" class="d-none">
+                        <button type="button" class="btn btn-dark fw-bold" data-bs-dismiss="modal">Done</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/admin-sidebar.js"></script>
@@ -271,6 +319,114 @@
                 loadUsers(currentTab);
             }, SEARCH_DELAY_MS);
         });
+
+        // Add users modal (wired 2026-11-06 to POST /api/v1/admin/users)
+        const addUserModalEl = document.getElementById('addUserModal');
+        const addUserFirst = document.getElementById('add-user-first-name');
+        const addUserLast = document.getElementById('add-user-last-name');
+        const addUserEmail = document.getElementById('add-user-email');
+        const addUserRole = document.getElementById('add-user-role');
+        const addUserError = document.getElementById('add-user-error');
+        const addUserConfirmBtn = document.getElementById('add-user-confirm-btn');
+        const addUserFormView = document.getElementById('add-user-form-view');
+        const addUserSuccessView = document.getElementById('add-user-success-view');
+        const addUserFormFooter = document.getElementById('add-user-form-footer');
+        const addUserSuccessFooter = document.getElementById('add-user-success-footer');
+        const addUserTempPassword = document.getElementById('add-user-temp-password');
+        const addUserCopyBtn = document.getElementById('add-user-copy-btn');
+        const addUserCopied = document.getElementById('add-user-copied');
+        const showAddUserError = function (text) {
+            addUserError.textContent = text;
+            addUserError.classList.remove('d-none');
+        };
+        const resetAddUserModal = function () {
+            addUserFirst.value = '';
+            addUserLast.value = '';
+            addUserEmail.value = '';
+            addUserRole.value = 'MANAGER';
+            addUserError.textContent = '';
+            addUserError.classList.add('d-none');
+            [addUserFirst, addUserLast, addUserEmail, addUserRole].forEach(function (el) { el.disabled = false; });
+            addUserConfirmBtn.disabled = false;
+            addUserFormView.classList.remove('d-none');
+            addUserSuccessView.classList.add('d-none');
+            addUserFormFooter.classList.remove('d-none');
+            addUserSuccessFooter.classList.add('d-none');
+            addUserTempPassword.value = '';
+            addUserCopied.classList.add('d-none');
+        };
+        addUserConfirmBtn.addEventListener('click', async function () {
+            addUserError.textContent = '';
+            addUserError.classList.add('d-none');
+            const first_name = addUserFirst.value.trim();
+            const last_name = addUserLast.value.trim();
+            const email = addUserEmail.value.trim();
+            const role = addUserRole.value;
+            if (!first_name || !last_name || !email) {
+                showAddUserError('First name, last name and email are required.');
+                return;
+            }
+            if (first_name.length > 100 || last_name.length > 100) {
+                showAddUserError('First name and last name must be at most 100 characters.');
+                return;
+            }
+            if (email.length > 254) {
+                showAddUserError('Email must be at most 254 characters.');
+                return;
+            }
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                showAddUserError('Email is not valid.');
+                return;
+            }
+            addUserConfirmBtn.disabled = true;
+            try {
+                const res = await fetch('/api/v1/admin/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ first_name: first_name, last_name: last_name, email: email, role: role })
+                });
+                const body = await res.json().catch(function () { return {}; });
+                if (!res.ok) {
+                    showAddUserError(body.detail || ('HTTP ' + res.status));
+                    addUserConfirmBtn.disabled = false;
+                    return;
+                }
+                addUserTempPassword.value = body.temporary_password;
+                [addUserFirst, addUserLast, addUserEmail, addUserRole].forEach(function (el) { el.disabled = true; });
+                addUserFormView.classList.add('d-none');
+                addUserSuccessView.classList.remove('d-none');
+                addUserFormFooter.classList.add('d-none');
+                addUserSuccessFooter.classList.remove('d-none');
+            } catch (err) {
+                showAddUserError('Could not reach the server. Please try again.');
+                addUserConfirmBtn.disabled = false;
+            }
+        });
+        addUserCopyBtn.addEventListener('click', async function () {
+            addUserTempPassword.select();
+            addUserTempPassword.setSelectionRange(0, addUserTempPassword.value.length);
+            let copied = false;
+            try {
+                await navigator.clipboard.writeText(addUserTempPassword.value);
+                copied = true;
+            } catch (err) {
+                // Clipboard API requires a secure context; this app runs on plain HTTP (scope lock, no TLS).
+                try {
+                    copied = document.execCommand('copy');
+                } catch (err2) {
+                    copied = false;
+                }
+            }
+            if (copied) {
+                addUserCopied.classList.remove('d-none');
+            }
+        });
+        addUserModalEl.addEventListener('hidden.bs.modal', function () {
+            const wasSuccess = !addUserSuccessView.classList.contains('d-none');
+            resetAddUserModal();
+            if (wasSuccess) loadUsers(currentTab);
+        });
+
         loadUsers(currentTab);
     })();
     </script>
