@@ -99,6 +99,11 @@ async def serve_admin_brand_detail(request: Request, brand_id: str):
     # Shell only (section 8): brand_id is accepted but not used to fetch data yet.
     return templates.TemplateResponse(request=request, name="admin_brand_detail.html", headers=NO_STORE)
 
+@app.get("/admin/users", include_in_schema=False, dependencies=[Depends(require_page_session)])
+async def serve_admin_users(request: Request):
+    # Shell only (section 8): no data is fetched yet. The SUPERADMIN-only check comes in a later step.
+    return templates.TemplateResponse(request=request, name="admin_users.html", headers=NO_STORE)
+
 @app.get("/admin", include_in_schema=False, dependencies=[Depends(require_page_session)])
 @app.get("/admin/{rest:path}", include_in_schema=False, dependencies=[Depends(require_page_session)])
 async def admin_unknown_path(request: Request, rest: str = ""):

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTE Careers - Users</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="/static/admin-sidebar.css" rel="stylesheet">
+    <style>
+        /* Users Directory SHELL (v4 section 8, 2026-11-05): placeholder content only, no data is fetched. Wired step by step: list, Add users, Archive. */
+        .users-header-sub { font-size: 0.9rem; color: var(--text-muted); }
+        .users-tabs { display: flex; gap: 1.5rem; border-bottom: 1px solid var(--border-light); margin-bottom: 1rem; }
+        .users-tab { font-weight: 700; font-size: 0.95rem; color: var(--text-main); padding-bottom: 0.6rem; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+        .users-tab.active { border-bottom-color: var(--text-main); }
+        .users-toolbar { display: flex; gap: 0.75rem; margin-bottom: 1rem; }
+        .users-search { flex: 1; border-radius: 12px; font-size: 0.9rem; }
+        .users-add-btn { border-radius: 12px; font-weight: 700; background-color: var(--accent-black); color: #fff; }
+        .users-table { font-size: 0.9rem; table-layout: fixed; width: 100%; min-width: 900px; font-variant-numeric: tabular-nums; }
+        .users-table th, .users-table td { padding: 0.75rem 0.75rem; vertical-align: middle; white-space: nowrap; }
+        .users-table th:nth-child(-n+2), .users-table td:nth-child(-n+2) { overflow: hidden; text-overflow: ellipsis; }
+        .users-table th:nth-child(1), .users-table th:nth-child(2) { width: 15%; }
+        .users-table th:nth-child(3) { width: 16%; }
+        .users-table th:nth-child(4), .users-table th:nth-child(5) { width: 15%; }
+        .users-table th:nth-child(6) { width: 14%; }
+        .users-table th:nth-child(7) { width: 10%; }
+        .users-table th { font-size: 0.8rem; color: var(--text-muted); font-weight: 700; }
+        .users-shell-note { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem; }
+    </style>
+</head>
+<body>
+    {% set active_page = 'users' %}
+    <div class="container-fluid p-0">
+        <div class="row g-0">
+            {% include '_sidebar.html' %}
+
+            <main class="col-md-10 px-4 pb-5">
+                <div class="mt-4 mb-4">
+                    <h4 class="fw-bold mb-0">Users Directory</h4>
+                    <div class="users-header-sub">Bigtime Empire Corporation</div>
+                </div>
+
+                <div class="users-tabs">
+                    <span class="users-tab active">Users</span>
+                    <span class="users-tab">Admins</span>
+                    <span class="users-tab">Archived</span>
+                </div>
+
+                <div class="users-toolbar">
+                    <input type="search" class="form-control users-search" placeholder="Search users" disabled aria-label="Search users">
+                    <button type="button" class="btn users-add-btn" disabled>Add users</button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table users-table align-middle">
+                        <thead>
+                            <tr>
+                                <th>First name</th>
+                                <th>Last name</th>
+                                <th>Role</th>
+                                <th>Last login</th>
+                                <th>Date added</th>
+                                <th>Added by</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-rows">
+                            <tr>
+                                <td>First name</td>
+                                <td>Last name</td>
+                                <td><select class="form-select form-select-sm" style="max-width: 150px;" disabled aria-label="Role"><option selected>Role</option><option>Manager</option><option>Recruiter</option></select></td>
+                                <td>&mdash;</td>
+                                <td>&mdash;</td>
+                                <td>&mdash;</td>
+                                <td><button type="button" class="btn btn-outline-dark btn-sm fw-bold" disabled>Archive</button></td>
+                            </tr>
+                            <tr>
+                                <td>First name</td>
+                                <td>Last name</td>
+                                <td><select class="form-select form-select-sm" style="max-width: 150px;" disabled aria-label="Role"><option selected>Role</option><option>Manager</option><option>Recruiter</option></select></td>
+                                <td>&mdash;</td>
+                                <td>&mdash;</td>
+                                <td>&mdash;</td>
+                                <td><button type="button" class="btn btn-outline-dark btn-sm fw-bold" disabled>Archive</button></td>
+                            </tr>
+                            <tr>
+                                <td>First name</td>
+                                <td>Last name</td>
+                                <td><select class="form-select form-select-sm" style="max-width: 150px;" disabled aria-label="Role"><option selected>Role</option><option>Manager</option><option>Recruiter</option></select></td>
+                                <td>&mdash;</td>
+                                <td>&mdash;</td>
+                                <td>&mdash;</td>
+                                <td><button type="button" class="btn btn-outline-dark btn-sm fw-bold" disabled>Archive</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="users-shell-note">Placeholder content. No data is loaded yet.</div>
+            </main>
+        </div>
+    </div>
+
+    {% include '_form_builder.html' %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/admin-sidebar.js"></script>
+</body>
+</html>
