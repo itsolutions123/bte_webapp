@@ -1074,7 +1074,7 @@ DOCS UPDATED NOTE: rule 17.4 satisfied; the contract diff is non-empty.
 - HARDCODES: the fake placeholder rows in `admin_users.html` are an active shell step (section 8) and go when the list is wired. The role list still exists only in `seed_admin.py`.
 - DOCS UPDATED: `API_CONTRACT.md` (`GET /admin/users` status line, sidebar line, Last verified), this file. `SCHEMA.md` needs none. Uncommitted on purpose: `app/templates/admin_applicants.html`, `package-lock.json`.
 
-## Session Log 2026-11-05 (part 4): /admin/users role check, shared role constant, sidebar Users link per role (commit pending)
+## Session Log 2026-11-05 (part 4): /admin/users role check, shared role constant, sidebar Users link per role (commit f75210f)
 - HANDOFF SUMMARY: work mode = documentation, then feature-wiring (backend and frontend). Page: `/admin/users`, Users page Step 1(a). The role constant and the first role check are in. The list, Add users and Archive are still NOT built. The Users page shell still holds no data.
 - DECIDED (user, 2026-11-05): the Users sidebar item is shown to SUPERADMIN and MANAGER and hidden from RECRUITER; a RECRUITER who opens `/admin/users` directly gets an error; rendering is server-side (option A). The error shape 403 `{"detail": "Forbidden."}` is my assumption from the earlier handover; the user did not object.
 - DONE, docs first (commit ed427c3): `API_CONTRACT.md` records the role rule for `GET /admin/users` and the server-side sidebar decision, and the three migration 018 dependency lines now read APPLIED and VERIFIED LIVE.
