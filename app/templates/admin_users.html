@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link href="/static/admin-sidebar.css" rel="stylesheet">
     <style>
-        /* Users Directory SHELL (v4 section 8, 2026-11-05): placeholder content only, no data is fetched. Wired step by step: list, Add users, Archive. */
+        /* Users Directory SHELL (v4 section 8, 2026-11-05): table rows load from GET /api/v1/admin/users (default Users tab); tabs, search, paging, Add users and Archive are still placeholders. */
         .users-header-sub { font-size: 0.9rem; color: var(--text-muted); }
         .users-tabs { display: flex; gap: 1.5rem; border-bottom: 1px solid var(--border-light); margin-bottom: 1rem; }
         .users-tab { font-weight: 700; font-size: 0.95rem; color: var(--text-main); padding-bottom: 0.6rem; border-bottom: 2px solid transparent; margin-bottom: -1px; }
@@ -64,38 +64,10 @@
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="users-rows">
-                            <tr>
-                                <td>First name</td>
-                                <td>Last name</td>
-                                <td><select class="form-select form-select-sm" style="max-width: 150px;" disabled aria-label="Role"><option selected>Role</option><option>Manager</option><option>Recruiter</option></select></td>
-                                <td>&mdash;</td>
-                                <td>&mdash;</td>
-                                <td>&mdash;</td>
-                                <td><button type="button" class="btn btn-outline-dark btn-sm fw-bold" disabled>Archive</button></td>
-                            </tr>
-                            <tr>
-                                <td>First name</td>
-                                <td>Last name</td>
-                                <td><select class="form-select form-select-sm" style="max-width: 150px;" disabled aria-label="Role"><option selected>Role</option><option>Manager</option><option>Recruiter</option></select></td>
-                                <td>&mdash;</td>
-                                <td>&mdash;</td>
-                                <td>&mdash;</td>
-                                <td><button type="button" class="btn btn-outline-dark btn-sm fw-bold" disabled>Archive</button></td>
-                            </tr>
-                            <tr>
-                                <td>First name</td>
-                                <td>Last name</td>
-                                <td><select class="form-select form-select-sm" style="max-width: 150px;" disabled aria-label="Role"><option selected>Role</option><option>Manager</option><option>Recruiter</option></select></td>
-                                <td>&mdash;</td>
-                                <td>&mdash;</td>
-                                <td>&mdash;</td>
-                                <td><button type="button" class="btn btn-outline-dark btn-sm fw-bold" disabled>Archive</button></td>
-                            </tr>
-                        </tbody>
+                        <tbody id="users-rows"></tbody>
                     </table>
                 </div>
-                <div class="users-shell-note">Placeholder content. No data is loaded yet.</div>
+                <div class="users-shell-note" id="users-note">Loading...</div>
             </main>
         </div>
     </div>
@@ -104,5 +76,81 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/admin-sidebar.js"></script>
+
+    <script>
+    (function () {
+        const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const rows = document.getElementById('users-rows');
+        const note = document.getElementById('users-note');
+        const formatDate = function (iso) {
+            if (!iso) return '\u2014';
+            const month = MONTHS[parseInt(iso.slice(5, 7), 10) - 1];
+            if (!month) return '\u2014';
+            return month + ' ' + parseInt(iso.slice(8, 10), 10) + ', ' + iso.slice(0, 4);
+        };
+        const textOrDash = function (value) {
+            const s = String(value || '').trim();
+            return s || '\u2014';
+        };
+        const roleLabel = function (role) {
+            const s = String(role || '');
+            return s ? s.charAt(0) + s.slice(1).toLowerCase() : '\u2014';
+        };
+        const messageRow = function (text) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 7;
+            td.className = 'text-muted';
+            td.textContent = text;
+            tr.appendChild(td);
+            return tr;
+        };
+        const addCell = function (tr, text) {
+            const td = document.createElement('td');
+            td.textContent = text;
+            tr.appendChild(td);
+            return td;
+        };
+        const loadUsers = async function () {
+            rows.textContent = '';
+            rows.appendChild(messageRow('Loading...'));
+            try {
+                const res = await fetch('/api/v1/admin/users?tab=users');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const body = await res.json();
+                rows.textContent = '';
+                if (body.data.length === 0) {
+                    rows.appendChild(messageRow('No users yet'));
+                }
+                body.data.forEach(function (u) {
+                    const tr = document.createElement('tr');
+                    tr.dataset.id = u.id;
+                    addCell(tr, textOrDash(u.first_name));
+                    addCell(tr, textOrDash(u.last_name));
+                    addCell(tr, roleLabel(u.role));
+                    addCell(tr, formatDate(u.last_login_at));
+                    addCell(tr, formatDate(u.created_at));
+                    addCell(tr, textOrDash(u.added_by_name));
+                    const actions = document.createElement('td');
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'btn btn-outline-dark btn-sm fw-bold';
+                    btn.disabled = true;
+                    btn.title = 'Not wired yet';
+                    btn.textContent = 'Archive';
+                    actions.appendChild(btn);
+                    tr.appendChild(actions);
+                    rows.appendChild(tr);
+                });
+                note.textContent = 'Showing ' + body.data.length + ' of ' + body.total + ' users. Tabs, search, paging, Add users and Archive are not wired yet.';
+            } catch (err) {
+                rows.textContent = '';
+                rows.appendChild(messageRow('Could not load users. Please refresh the page.'));
+                note.textContent = 'Could not load users.';
+            }
+        };
+        loadUsers();
+    })();
+    </script>
 </body>
 </html>
