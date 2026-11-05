@@ -20,6 +20,12 @@ NOTE: this entry was not present when this file was last read before 2026-11-05 
 - No backend, schema, or endpoint change — API_CONTRACT.md/SCHEMA.md/SECURITY.md not touched.
 - Not yet verified in-browser by the user as of this entry (pending confirmation).
 
+## Session: 2026-11-05 (cont.) — WORKSPACE nav placeholders for Users and MRF
+- Added two placeholder entries under WORKSPACE, below Dashboard/Applicants: "MRF" and "Users", each with a small "Soon" tag. Not real links — no route or page exists yet (`<span class="nav-link-soon" aria-disabled="true">`), so no 404 risk.
+- Scope confirmed with user: Users will hold role-based access (super admin assigns members access to specific jobs/brands). MRF will be the admin-side receiving dashboard for manpower requests submitted by managers/supervisors (flow: manager submits on a to-be-built MRF submission dashboard -> request lands here -> HR/Talent Acquisition gets assigned).
+- NOT yet designed: roles/permissions schema, MRF table schema, MRF status workflow, whether the managers' submission dashboard is a page in this app or a separate app (cross-app/scope-lock question per section 4). None of this is decided — do not invent it. HANDOFF to Structure before any schema or endpoint work starts on either feature.
+- admin-sidebar.css: added `.nav-link-soon` and `.soon-tag` rules for the placeholder styling.
+- No backend, schema, or endpoint change.
 ## Infrastructure & Environment
 - **Host:** ansible-srv (10.0.10.37)
 - **Directory:** `~/bte_webapp`
