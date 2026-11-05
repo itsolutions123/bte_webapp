@@ -167,11 +167,16 @@ Columns below are verified against `app/models.py` (lines 140-165) on 2026-10-30
 - `id` UUID, primary key
 - `email` string, NOT NULL, unique (`idx_users_email`)
 - `password_hash` string, NOT NULL (bcrypt via passlib, never returned by any endpoint)
-- `role` string, NOT NULL; free text in the DB (no CHECK constraint), validated at the API layer as SUPERADMIN, MANAGER or RECRUITER
+- `role` string, NOT NULL; free text in the DB (no CHECK constraint). CORRECTED 2026-11-05: the SUPERADMIN, MANAGER or RECRUITER list is checked only by `VALID_ROLES` in `seed_admin.py` (line 15); no code under `app/` validates or enforces `role`. DECIDED 2026-11-05 (user): the three roles stay as the fixed set.
 - `is_active` boolean, NOT NULL, default true
 - `created_at` timestamptz
 - `last_login_at` timestamptz, nullable
 - `full_name` string, nullable, trimmed, max 100 characters. APPLIED and VERIFIED LIVE 2026-10-30 (migration 016: `character varying(100)`, nullable; the users table had 1 row, 0 names), and added to the `User` model in `app/models.py`. Shown on the profile card; null means the card shows no name. Existing SUPERADMIN row to be filled with one confirmed UPDATE after the migration.
+- `first_name` string(100), nullable, trimmed. DECIDED 2026-11-05 (user, option A), NOT migrated. The Users page shows First name and Last name as separate columns. `full_name` is kept for now (the profile card reads it); dropping it later is a separate, destructive step that needs explicit confirmation. The 100-character limit mirrors `full_name` (assumption, not yet confirmed).
+- `last_name` string(100), nullable, trimmed. Same rules and status as `first_name`.
+- `archived_at` timestamptz, nullable. DECIDED 2026-11-05 (user, option B), NOT migrated. NULL = active; set = archived. Archiving sets `archived_at` and also sets `is_active = false`, so login is blocked the same way as today. Drives the Users page Archived tab. Index: NOT decided yet, to be settled when the migration is proposed (rule 18.1).
+- `added_by_user_id` UUID, nullable, FK to `users.id`. DECIDED 2026-11-05 (user, option A), NOT migrated. The user who created this account; the Users page shows that user's name in "Added by". Existing rows, including the seeded SUPERADMIN, stay NULL and show a dash. Users are archived, never hard-deleted, so the foreign key does not block anything in normal use.
+- `must_change_password` boolean, NOT NULL, default false. DECIDED 2026-11-05 (user, option B for first password), NOT migrated. New users created with a generated temporary password get true; the user must change it at first login. Existing rows stay false (default is an assumption, not yet confirmed). A change-password endpoint is a separate later step.
 
 **sessions**
 - `id` string, primary key (the session token, `secrets.token_urlsafe(32)`)
@@ -179,3 +184,12 @@ Columns below are verified against `app/models.py` (lines 140-165) on 2026-10-30
 - `created_at` timestamptz
 - `expires_at` timestamptz, NOT NULL (fixed 8-hour hard cap from login, never extended)
 - `last_active_at` timestamptz (for the planned 10-minute idle timeout, not enforced yet)
+
+**jobs.assignee_user_id** (DECIDED 2026-11-05 (user), NOT migrated, not in the `Job` model yet; REPLACES the earlier many-to-many `job_assignments` design, which is dropped)
+- `assignee_user_id` UUID, nullable, FK to `users.id` on the existing `jobs` table. NULL = unassigned, which is every existing job. One assignee per job (user decision). The same user can be the assignee on many jobs under many brands (user decision).
+- Purpose: a RECRUITER sees only the jobs assigned to them, and the applicants and resumes on those jobs. A brand shows for a RECRUITER only if at least one of its jobs is assigned to them (assumption from the user's plan, not yet confirmed).
+- Who may assign: SUPERADMIN and MANAGER, on ANY job (user, option A; no creator column on `jobs`). The assignee can be a RECRUITER or a MANAGER (user).
+- Audit trail: none. The `assigned_at` and `assigned_by_user_id` columns of the dropped table are not carried over (assumption, not yet confirmed).
+- Index: `idx_jobs_assignee_user_id` on `jobs (assignee_user_id)`, PROPOSED (rule 18.1: recruiter filtering uses it in a WHERE), to be created in the same migration.
+- Visibility: DECIDED 2026-11-05 (user, option A). SUPERADMIN and MANAGER see all brands and jobs; being an assignee only marks the job as theirs to work. Only RECRUITER is filtered to assigned jobs. SUPERADMIN is NOT selectable as an assignee (user, option A, 2026-11-05): assignees are MANAGER or RECRUITER only, enforced by the API when setting the assignee.
+- Per-recruiter live tally: PROPOSED, NOT designed. `status_counts` is per job (SCHEMA.md section 4), so a recruiter's tally would sum the rows of their assigned jobs. It stays a counter, never a recount of applications (rule 18.3).
