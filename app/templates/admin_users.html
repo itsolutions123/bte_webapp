@@ -13,6 +13,7 @@
         .users-tabs { display: flex; gap: 1.5rem; border-bottom: 1px solid var(--border-light); margin-bottom: 1rem; }
         .users-tab { font-weight: 700; font-size: 0.95rem; color: var(--text-main); padding-bottom: 0.6rem; border-bottom: 2px solid transparent; margin-bottom: -1px; }
         .users-tab.active { border-bottom-color: var(--text-main); }
+        .users-tab { cursor: pointer; }
         .users-toolbar { display: flex; gap: 0.75rem; margin-bottom: 1rem; }
         .users-search { flex: 1; border-radius: 12px; font-size: 0.9rem; }
         .users-add-btn { border-radius: 12px; font-weight: 700; background-color: var(--accent-black); color: #fff; }
@@ -41,9 +42,9 @@
                 </div>
 
                 <div class="users-tabs">
-                    <span class="users-tab active">Users</span>
-                    <span class="users-tab">Admins</span>
-                    <span class="users-tab">Archived</span>
+                    <span class="users-tab active" data-tab="users">Users</span>
+                    <span class="users-tab" data-tab="admins">Admins</span>
+                    <span class="users-tab" data-tab="archived">Archived</span>
                 </div>
 
                 <div class="users-toolbar">
@@ -82,6 +83,13 @@
         const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const rows = document.getElementById('users-rows');
         const note = document.getElementById('users-note');
+        const TABS = {
+            users: { empty: 'No users yet', noun: 'users' },
+            admins: { empty: 'No admins yet', noun: 'admins' },
+            archived: { empty: 'No archived users', noun: 'archived users' }
+        };
+        let currentTab = 'users';
+        let requestId = 0;
         const formatDate = function (iso) {
             if (!iso) return '\u2014';
             const month = MONTHS[parseInt(iso.slice(5, 7), 10) - 1];
@@ -111,16 +119,18 @@
             tr.appendChild(td);
             return td;
         };
-        const loadUsers = async function () {
+        const loadUsers = async function (tab) {
+            const myRequest = ++requestId;
             rows.textContent = '';
             rows.appendChild(messageRow('Loading...'));
             try {
-                const res = await fetch('/api/v1/admin/users?tab=users');
+                const res = await fetch('/api/v1/admin/users?tab=' + encodeURIComponent(tab));
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const body = await res.json();
+                if (myRequest !== requestId) return;
                 rows.textContent = '';
                 if (body.data.length === 0) {
-                    rows.appendChild(messageRow('No users yet'));
+                    rows.appendChild(messageRow(TABS[tab].empty));
                 }
                 body.data.forEach(function (u) {
                     const tr = document.createElement('tr');
@@ -142,14 +152,26 @@
                     tr.appendChild(actions);
                     rows.appendChild(tr);
                 });
-                note.textContent = 'Showing ' + body.data.length + ' of ' + body.total + ' users. Tabs, search, paging, Add users and Archive are not wired yet.';
+                note.textContent = 'Showing ' + body.data.length + ' of ' + body.total + ' ' + TABS[tab].noun + '. Search, paging, Add users and Archive are not wired yet.';
             } catch (err) {
+                if (myRequest !== requestId) return;
                 rows.textContent = '';
                 rows.appendChild(messageRow('Could not load users. Please refresh the page.'));
                 note.textContent = 'Could not load users.';
             }
         };
-        loadUsers();
+        document.querySelectorAll('.users-tab').forEach(function (el) {
+            el.addEventListener('click', function () {
+                const tab = el.dataset.tab;
+                if (!TABS[tab] || tab === currentTab) return;
+                currentTab = tab;
+                document.querySelectorAll('.users-tab').forEach(function (t) {
+                    t.classList.toggle('active', t === el);
+                });
+                loadUsers(tab);
+            });
+        });
+        loadUsers(currentTab);
     })();
     </script>
 </body>
