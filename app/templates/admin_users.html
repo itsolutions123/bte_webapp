@@ -27,6 +27,9 @@
         .users-table th:nth-child(7) { width: 10%; }
         .users-table th { font-size: 0.8rem; color: var(--text-muted); font-weight: 700; }
         .users-shell-note { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem; }
+        .users-pager { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.75rem; }
+        .users-pager .btn { border-radius: 12px; font-weight: 700; }
+        .users-page-label { font-size: 0.8rem; color: var(--text-muted); }
     </style>
 </head>
 <body>
@@ -69,6 +72,11 @@
                     </table>
                 </div>
                 <div class="users-shell-note" id="users-note">Loading...</div>
+                <div class="users-pager">
+                    <button type="button" class="btn btn-outline-dark btn-sm" id="users-prev" disabled>Previous</button>
+                    <span class="users-page-label" id="users-page-label">Page 1 of 1</span>
+                    <button type="button" class="btn btn-outline-dark btn-sm" id="users-next" disabled>Next</button>
+                </div>
             </main>
         </div>
     </div>
@@ -93,6 +101,17 @@
         let currentQuery = '';
         let searchTimer = null;
         const SEARCH_DELAY_MS = 300;
+        const PAGE_SIZE = 25;
+        let currentPage = 1;
+        let totalPages = 1;
+        const prevBtn = document.getElementById('users-prev');
+        const nextBtn = document.getElementById('users-next');
+        const pageLabel = document.getElementById('users-page-label');
+        const updatePager = function () {
+            pageLabel.textContent = 'Page ' + currentPage + ' of ' + totalPages;
+            prevBtn.disabled = currentPage <= 1;
+            nextBtn.disabled = currentPage >= totalPages;
+        };
         const search = document.getElementById('users-search');
         const formatDate = function (iso) {
             if (!iso) return '\u2014';
@@ -129,7 +148,7 @@
             rows.appendChild(messageRow('Loading...'));
             try {
                 const q = currentQuery;
-                let url = '/api/v1/admin/users?tab=' + encodeURIComponent(tab);
+                let url = '/api/v1/admin/users?tab=' + encodeURIComponent(tab) + '&page=' + currentPage + '&limit=' + PAGE_SIZE;
                 if (q) url += '&q=' + encodeURIComponent(q);
                 const res = await fetch(url);
                 if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -159,12 +178,16 @@
                     tr.appendChild(actions);
                     rows.appendChild(tr);
                 });
-                note.textContent = 'Showing ' + body.data.length + ' of ' + body.total + ' ' + TABS[tab].noun + (q ? ' matching "' + q + '"' : '') + '. Paging, Add users and Archive are not wired yet.';
+                note.textContent = 'Showing ' + body.data.length + ' of ' + body.total + ' ' + TABS[tab].noun + (q ? ' matching "' + q + '"' : '') + '. Add users and Archive are not wired yet.';
+                totalPages = Math.max(1, Math.ceil(body.total / body.limit));
+                updatePager();
             } catch (err) {
                 if (myRequest !== requestId) return;
                 rows.textContent = '';
                 rows.appendChild(messageRow('Could not load users. Please refresh the page.'));
                 note.textContent = 'Could not load users.';
+                prevBtn.disabled = true;
+                nextBtn.disabled = true;
             }
         };
         document.querySelectorAll('.users-tab').forEach(function (el) {
@@ -172,11 +195,22 @@
                 const tab = el.dataset.tab;
                 if (!TABS[tab] || tab === currentTab) return;
                 currentTab = tab;
+                currentPage = 1;
                 document.querySelectorAll('.users-tab').forEach(function (t) {
                     t.classList.toggle('active', t === el);
                 });
                 loadUsers(tab);
             });
+        });
+        prevBtn.addEventListener('click', function () {
+            if (currentPage <= 1) return;
+            currentPage -= 1;
+            loadUsers(currentTab);
+        });
+        nextBtn.addEventListener('click', function () {
+            if (currentPage >= totalPages) return;
+            currentPage += 1;
+            loadUsers(currentTab);
         });
         search.addEventListener('input', function () {
             clearTimeout(searchTimer);
@@ -184,6 +218,7 @@
                 const q = search.value.trim();
                 if (q === currentQuery) return;
                 currentQuery = q;
+                currentPage = 1;
                 loadUsers(currentTab);
             }, SEARCH_DELAY_MS);
         });
