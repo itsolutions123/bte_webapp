@@ -80,6 +80,27 @@ body {
     color: var(--accent-gold);
 }
 
+/* Business-unit sub-group title (Franchise / Head Office / In-house): distinct from
+   both the .nav-section group label above it and the brand leaf links below it. */
+.business-unit-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    color: var(--accent-gold);
+    text-transform: none;
+    padding-left: 0.25rem;
+    border-left: 2px solid transparent;
+}
+/* Brand leaf links: one step lighter than the sub-group title so the hierarchy reads at a glance. */
+.brand-row > a {
+    font-weight: 600;
+}
+/* Active-ancestor cue: the open brand's parent unit gets a quiet marker, not the full .active pill. */
+.business-unit.has-active-child .business-unit-title {
+    border-left-color: var(--accent-gold);
+    color: var(--accent-black);
+}
+
 /* Form row: 3-dot button + floating menu */
 .form-row, .brand-row { position: relative; display: flex; align-items: center; }
 .form-row > a, .brand-row > a { flex: 1; min-width: 0; }

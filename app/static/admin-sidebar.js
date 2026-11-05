@@ -82,8 +82,9 @@
         wrap.className = 'business-unit';
         wrap.dataset.businessUnitId = u.id;
         const head = document.createElement('div');
-        head.className = 'd-flex justify-content-between align-items-center ps-3 pe-0 mt-2 fw-bold';
+        head.className = 'd-flex justify-content-between align-items-center ps-3 pe-0 mt-2';
         const title = document.createElement('span');
+        title.className = 'business-unit-title';
         title.textContent = u.name; // textContent: names are never parsed as HTML
         const plus = document.createElement('span');
         plus.setAttribute('role', 'button');
@@ -96,11 +97,17 @@
         head.append(title, plus);
         const list = document.createElement('div');
         list.className = 'nav flex-column ps-3';
+        let hasActiveChild = false;
         if (u.brands && u.brands.length > 0) {
-            u.brands.forEach(function (b) { list.appendChild(brandRow(b)); });
+            u.brands.forEach(function (b) {
+                const row = brandRow(b);
+                if (row.querySelector('a.active')) hasActiveChild = true;
+                list.appendChild(row);
+            });
         } else {
             list.appendChild(emptyNote('No brands yet'));
         }
+        if (hasActiveChild) wrap.classList.add('has-active-child');
         wrap.append(head, list);
         return wrap;
     }

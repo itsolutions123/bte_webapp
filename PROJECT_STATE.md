@@ -1,7 +1,24 @@
 # Project State: BTE Careers (ATS)
 
-**Last Updated:** 2026-10-16
-**Status:** Admin UI Redesigned & Admin API Wired -- Form creation (name-only) live end-to-end; `/admin/forms/{form_id}` page started (shell + title wiring); apply wizard loads real questions per job and shows the real job title and brand; form-to-job attach endpoint live
+**Last Updated:** 2026-11-05
+**Status:** Admin UI Redesigned & Admin API Wired -- Form creation (name-only) live end-to-end; `/admin/forms/{form_id}` page started (shell + title wiring); apply wizard loads real questions per job and shows the real job title and brand; form-to-job attach endpoint live. Brands now nest under OPERATIONS (Franchise/Head Office/In-house); brand rename endpoint live; sidebar group/sub-group/leaf hierarchy visually distinguished.
+
+## Session: 2026-11-04 — Brands migrated into OPERATIONS, brand rename endpoint
+NOTE: this entry was not present when this file was last read before 2026-11-05 despite being reported as committed in 04817d6 — reconcile against actual git history if that matters.
+- Sidebar: BRANDS section removed; OPERATIONS now holds 3 fixed business units (Franchise, Head Office, In-house), each with brands nested and its own "+".
+- Data cleanup (user-approved, pg_dump backup taken first): deleted 3 archived brands (LOGIC8, TSG, test) with their jobs/answers/applications/status_counts and orphaned applicants/resumes. Renamed/reassigned brands: Pares Retiro -> PR, Sapporo Milktea -> Sapporo, The Sandwich Guy -> TSG (Franchise unit), Head Office -> Vacancies (Head Office unit); deleted the 0-job Franchise brand.
+- New endpoint: `PATCH /api/v1/admin/brands/{brand_id}` (rename_brand). Slug regenerates from the new name. Verified live by curl.
+- New UI: pencil in each brand's 3-dot menu opens a Rename brand modal; a `brand:renamed` event updates the open brand page's heading/title live.
+- Current brands (6, all active): PR 2 jobs, Sapporo 4, TSG 3 (Franchise); IT 0, Vacancies 3 (Head Office); KALEX 0 (In-house).
+- Not tested: rename edge cases (empty name, Cancel, Enter, 404/generic errors, renaming while another brand page open, archived-brand 409, slug-only 409); browser console showed "10 issues", not inspected.
+- Open items: delete `~/bte_backup_pre_cleanup_20261104.sql` (holds applicant PII) once satisfied; no job-delete endpoint so a brand that ever had a job can't be deleted; no unarchive for brands; delete-modal ids/variables still say "archive" (cosmetic); a stray empty note near line 831 of admin-sidebar.js.
+
+## Session: 2026-11-05 — Sidebar group/sub-group/leaf visual hierarchy
+- Problem: WORKSPACE/OPERATIONS/FORMS (group), Franchise/Head Office/In-house (sub-group) and brand links (leaf) all read at similar visual weight; no cue for which business unit a currently-open brand belongs to.
+- `admin-sidebar.css`: added `.business-unit-title` (smaller, gold, not-bold — distinct from both `.nav-section` group labels and leaf links); `.brand-row > a` set to `font-weight: 600` (one step lighter than the sub-group title); `.business-unit.has-active-child .business-unit-title` rule (gold left border + darker text) as a quiet active-ancestor cue, distinct from the full black `.active` pill reserved for the clicked leaf.
+- `admin-sidebar.js`: `unitSection()` now sets `title.className = 'business-unit-title'` and tags the wrapping `.business-unit` with `has-active-child` when one of its rendered `brandRow()` links is `.active`.
+- No backend, schema, or endpoint change — API_CONTRACT.md/SCHEMA.md/SECURITY.md not touched.
+- Not yet verified in-browser by the user as of this entry (pending confirmation).
 
 ## Infrastructure & Environment
 - **Host:** ansible-srv (10.0.10.37)
