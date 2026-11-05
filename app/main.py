@@ -38,6 +38,8 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 
+from app.roles import ROLE_SUPERADMIN, ROLE_MANAGER
+
 NO_STORE = {"Cache-Control": "no-store"}
 
 class LoginRedirect(Exception):
@@ -49,10 +51,20 @@ async def login_redirect_handler(request: Request, exc: LoginRedirect):
 
 async def require_page_session(request: Request, db: AsyncSession = Depends(get_db)):
     # Same check as the admin API (get_current_user); pages redirect instead of returning 401 JSON.
+    # The signed-in user is kept on request.state.user so role checks and the sidebar need no second lookup.
     try:
-        await get_current_user(request, db)
+        request.state.user = await get_current_user(request, db)
     except HTTPException:
         raise LoginRedirect()
+
+def require_page_roles(*allowed_roles):
+    """Page-route role check. List it AFTER require_page_session in a route's dependencies.
+    A signed-in user whose role is not allowed gets 403 {"detail": "Forbidden."} (API_CONTRACT.md, GET /admin/users)."""
+    async def check(request: Request):
+        user = getattr(request.state, "user", None)
+        if user is None or user.role not in allowed_roles:
+            raise HTTPException(status_code=403, detail="Forbidden.")
+    return check
 
 @app.get("/apply", include_in_schema=False)
 async def serve_apply_page(request: Request, job_id: str = ""):
@@ -99,9 +111,9 @@ async def serve_admin_brand_detail(request: Request, brand_id: str):
     # Shell only (section 8): brand_id is accepted but not used to fetch data yet.
     return templates.TemplateResponse(request=request, name="admin_brand_detail.html", headers=NO_STORE)
 
-@app.get("/admin/users", include_in_schema=False, dependencies=[Depends(require_page_session)])
+@app.get("/admin/users", include_in_schema=False, dependencies=[Depends(require_page_session), Depends(require_page_roles(ROLE_SUPERADMIN, ROLE_MANAGER))])
 async def serve_admin_users(request: Request):
-    # Shell only (section 8): no data is fetched yet. The SUPERADMIN-only check comes in a later step.
+    # Shell only (section 8): no data is fetched yet. Role check: SUPERADMIN and MANAGER allowed, RECRUITER gets 403 (API_CONTRACT.md).
     return templates.TemplateResponse(request=request, name="admin_users.html", headers=NO_STORE)
 
 @app.get("/admin", include_in_schema=False, dependencies=[Depends(require_page_session)])

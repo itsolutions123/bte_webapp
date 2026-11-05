@@ -11,7 +11,9 @@
         <a href="/admin/applicants" class="{% if active_page == 'applicants' %}active{% endif %}">Applicants</a>
         {# MRF: nav placeholder only, no route/page exists yet. Users links to /admin/users (shell confirmed 2026-11-05). #}
         <span class="nav-link-soon" aria-disabled="true">MRF <span class="soon-tag">Soon</span></span>
+        {% if request is defined and request.state.user is defined and request.state.user.role in ['SUPERADMIN', 'MANAGER'] %}
         <a href="/admin/users" class="{% if active_page == 'users' %}active{% endif %}">Users</a>
+        {% endif %}
     </div>
 
     {# OPERATIONS (Business Units): admin-sidebar.js render() fills #business-unit-list from GET /api/v1/admin/metadata/sidebar (business_units, brands nested). The per-unit "+" opens the Add brand modal and carries data-business-unit-id. The old header "+" and Add business unit modal are retired (hidden, not deleted). #}
