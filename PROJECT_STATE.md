@@ -1120,7 +1120,7 @@ DOCS UPDATED NOTE: rule 17.4 satisfied; the contract diff is non-empty.
 - HARDCODES: month names in the date formatter (same pattern as the applicants page); role literals in `_sidebar.html`; `VALID_ROLES` in `seed_admin.py`; fixed CORS origin in `app/main.py` (not touched).
 - DOCS UPDATED: `API_CONTRACT.md` (GET users call site, Last verified), this file (part 7 entry, part 6 hash). Backups in ~: API_CONTRACT.md.bak15-20261105, PROJECT_STATE.md.bak8-20261105, admin_users.html.bak1-20261105. Test rows `zz.mgr.recruiter@example.com` and `zz.mgr.manager@example.com` and `~/bte_test_user_passwords.txt` still exist. Uncommitted on purpose, carried forward: `app/templates/admin_applicants.html`, `package-lock.json`.
 
-## Session Log 2026-11-05 (part 8): Users page tabs wired to the tab param of GET /api/v1/admin/users (commit pending)
+## Session Log 2026-11-05 (part 8): Users page tabs wired to the tab param of GET /api/v1/admin/users (commit 574507d)
 - HANDOFF SUMMARY: work mode = feature-wiring (frontend, one data source). Page: `/admin/users`, piece (b-UI) tabs. Users, Admins and Archived now load from `GET /api/v1/admin/users?tab=users|admins|archived`. Search, paging, Add users, Archive and the Role dropdown are still placeholders.
 - DECIDED (user, 2026-11-05): empty-state wording Users "No users yet", Admins "No admins yet", Archived "No archived users".
 - DONE, frontend: `app/templates/admin_users.html`: `data-tab` on the three tab spans, a `TABS` map (empty text and note noun per tab), `loadUsers(tab)` reused (not copied), a `requestId` guard so a slow earlier reply cannot overwrite a newer tab, click handler moves the active underline and reloads, note no longer lists tabs as not wired. No backend change.
@@ -1130,3 +1130,15 @@ DOCS UPDATED NOTE: rule 17.4 satisfied; the contract diff is non-empty.
 - NEXT, one piece at a time: search box wired to `q`; paging; Add users modal (temporary password shown once); Archive; Reset password.
 - HARDCODES: `TABS` map of UI strings and month names in `admin_users.html` (same pattern as the applicants page); role literals in `_sidebar.html`; `VALID_ROLES` in `seed_admin.py`; fixed CORS origin in `app/main.py` (not touched).
 - DOCS UPDATED: `API_CONTRACT.md` (GET users Call site, page-route Status, Last verified, part 7 hash cb6bd2b), this file (part 8 entry, part 7 heading hash). `SCHEMA.md` and `SECURITY.md` need none. Backups in ~: API_CONTRACT.md.bak18-20261105, PROJECT_STATE.md.bak10-20261105, admin_users.html.bak2-20261105.
+
+## Session Log 2026-11-05 (part 9): Users page search box wired to q of GET /api/v1/admin/users (commit pending)
+- HANDOFF SUMMARY: work mode = feature-wiring (frontend, one data source). Page: `/admin/users`, piece (b-UI) search. The search box filters the current tab through `q`. Paging, Add users, Archive and the Role dropdown are still placeholders.
+- DECIDED (user, 2026-11-05): search runs while typing with a 300 ms pause (option A). Tabs commit 574507d (part 8) was pushed and checked against origin/main.
+- DONE, frontend: `app/templates/admin_users.html`: input enabled with `id` and `name` `q`, `maxlength` 100, `autocomplete` off; `currentQuery`, `searchTimer`, `SEARCH_DELAY_MS`; `loadUsers(tab)` builds the URL with an optional `q` (trimmed, blank sends none); no-match row and note text; the existing `requestId` guard reused. No backend change.
+- CONFIRMED by the user ("awesome") after the browser test. The individual checks were not itemised in the chat.
+- APPLIED BY CLAUDE, NOT CONFIRMED by the user: search text stays when switching tabs and re-runs in the new tab; "No users match your search" for an empty result while searching; note appends `matching "<q>"`.
+- NOT tested: search as MANAGER, search on the Archived tab, percent, underscore and backslash typed in the box, a 100-character entry, rapid typing or tab switching, the error line during a search.
+- OPEN: the DevTools "form field should have an id or name" hint should be gone (re-check). Part 5 to 8 open items unchanged (Archive decisions, role-change endpoint, unconfirmed GET users rules, self-reset 409 wording, email column, seed_admin.py roles, Archive button visible on Archived rows, tabs click-only).
+- NEXT, one piece at a time: paging; Add users modal (temporary password shown once); Archive; Reset password.
+- HARDCODES: `SEARCH_DELAY_MS` (300) and the `maxlength` 100 (mirrors `USER_SEARCH_MAX_LENGTH` in `app/routers/users.py`), `TABS` UI strings and month names in `admin_users.html`; role literals in `_sidebar.html`; `VALID_ROLES` in `seed_admin.py`; fixed CORS origin in `app/main.py` (not touched).
+- DOCS UPDATED: `API_CONTRACT.md` (GET users Call site, page-route Status, Last verified, tabs hash 574507d), this file (part 9 entry, part 8 heading hash). `SCHEMA.md` and `SECURITY.md` need none. Backups in ~: API_CONTRACT.md.bak19-20261105, PROJECT_STATE.md.bak11-20261105, admin_users.html.bak3-20261105.

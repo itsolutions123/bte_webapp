@@ -48,7 +48,7 @@
                 </div>
 
                 <div class="users-toolbar">
-                    <input type="search" class="form-control users-search" placeholder="Search users" disabled aria-label="Search users">
+                    <input type="search" class="form-control users-search" id="users-search" name="q" maxlength="100" autocomplete="off" placeholder="Search users" aria-label="Search users">
                     <button type="button" class="btn users-add-btn" disabled>Add users</button>
                 </div>
 
@@ -90,6 +90,10 @@
         };
         let currentTab = 'users';
         let requestId = 0;
+        let currentQuery = '';
+        let searchTimer = null;
+        const SEARCH_DELAY_MS = 300;
+        const search = document.getElementById('users-search');
         const formatDate = function (iso) {
             if (!iso) return '\u2014';
             const month = MONTHS[parseInt(iso.slice(5, 7), 10) - 1];
@@ -124,13 +128,16 @@
             rows.textContent = '';
             rows.appendChild(messageRow('Loading...'));
             try {
-                const res = await fetch('/api/v1/admin/users?tab=' + encodeURIComponent(tab));
+                const q = currentQuery;
+                let url = '/api/v1/admin/users?tab=' + encodeURIComponent(tab);
+                if (q) url += '&q=' + encodeURIComponent(q);
+                const res = await fetch(url);
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const body = await res.json();
                 if (myRequest !== requestId) return;
                 rows.textContent = '';
                 if (body.data.length === 0) {
-                    rows.appendChild(messageRow(TABS[tab].empty));
+                    rows.appendChild(messageRow(q ? 'No users match your search' : TABS[tab].empty));
                 }
                 body.data.forEach(function (u) {
                     const tr = document.createElement('tr');
@@ -152,7 +159,7 @@
                     tr.appendChild(actions);
                     rows.appendChild(tr);
                 });
-                note.textContent = 'Showing ' + body.data.length + ' of ' + body.total + ' ' + TABS[tab].noun + '. Search, paging, Add users and Archive are not wired yet.';
+                note.textContent = 'Showing ' + body.data.length + ' of ' + body.total + ' ' + TABS[tab].noun + (q ? ' matching "' + q + '"' : '') + '. Paging, Add users and Archive are not wired yet.';
             } catch (err) {
                 if (myRequest !== requestId) return;
                 rows.textContent = '';
@@ -170,6 +177,15 @@
                 });
                 loadUsers(tab);
             });
+        });
+        search.addEventListener('input', function () {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function () {
+                const q = search.value.trim();
+                if (q === currentQuery) return;
+                currentQuery = q;
+                loadUsers(currentTab);
+            }, SEARCH_DELAY_MS);
         });
         loadUsers(currentTab);
     })();
