@@ -3,13 +3,15 @@ import secrets
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from passlib.context import CryptContext
 
 from app.database import get_db
 from app.models import User, Session as SessionModel
-from app.schemas import LoginRequest, LoginResponse, MeResponse
+from app.password_rules import validate_new_password
+from app.schemas import ChangePasswordRequest, LoginRequest, LoginResponse, MeResponse
 
 router = APIRouter()
 
@@ -97,6 +99,48 @@ async def login(
     )
 
     return LoginResponse(role=user.role)
+
+
+@router.post("/change-password", status_code=204, response_class=Response)
+async def change_password(
+    payload: ChangePasswordRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Contracted 2026-11-06 (docs/API_CONTRACT.md). Stateless: no session, no cookie. Flagged accounts only;
+    every credential failure is the same generic 401 and counts in the shared login limiter. New-password
+    rules run only after the credentials verify."""
+    client_ip = request.client.host if request.client else "unknown"
+    check_login_rate_limit(client_ip)
+
+    email = payload.email.strip().lower()
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    generic_error = "Invalid email or password."
+
+    if user is None:
+        pwd_context.verify(payload.temporary_password, DUMMY_HASH)  # timing parity only, result discarded
+        record_login_failure(client_ip)
+        raise HTTPException(status_code=401, detail=generic_error)
+
+    if (
+        not user.is_active
+        or not pwd_context.verify(payload.temporary_password, user.password_hash)
+        or not user.must_change_password
+    ):
+        record_login_failure(client_ip)
+        raise HTTPException(status_code=401, detail=generic_error)
+
+    rule_error = validate_new_password(payload.new_password, payload.temporary_password)
+    if rule_error is not None:
+        raise HTTPException(status_code=422, detail=rule_error)
+
+    user.password_hash = await run_in_threadpool(pwd_context.hash, payload.new_password)
+    user.must_change_password = False
+    await db.execute(delete(SessionModel).where(SessionModel.user_id == user.id))
+    await db.commit()
+    return Response(status_code=204)
 
 
 async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)) -> User:

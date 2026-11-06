@@ -296,6 +296,13 @@ class MeResponse(BaseModel):
     role: str
 
 
+# Rules for new_password are NOT checked here: they run in the handler after the credentials verify.
+class ChangePasswordRequest(BaseModel):
+    email: EmailStr
+    temporary_password: str
+    new_password: str
+
+
 # email is a plain str here: the endpoint trims and lower-cases it before validating (EmailStr would reject padding first).
 class UserCreateRequest(BaseModel):
     first_name: str
