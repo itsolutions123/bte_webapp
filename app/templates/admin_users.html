@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link href="/static/admin-sidebar.css" rel="stylesheet">
     <style>
-        /* Users Directory (updated 2026-11-06): table rows load from GET /api/v1/admin/users; tabs, search and paging wired. Add users wired to POST /api/v1/admin/users. Role change wired to PATCH /api/v1/admin/users/{user_id}/role. Reset password and Archive are still placeholders. */
+        /* Users Directory (updated 2026-11-06): table rows load from GET /api/v1/admin/users; tabs, search and paging wired. Add users wired to POST /api/v1/admin/users. Role change wired to PATCH /api/v1/admin/users/{user_id}/role. Reset password wired to POST /api/v1/admin/users/{user_id}/reset-password (SUPERADMIN only). Archive is still a placeholder. */
         .users-header-sub { font-size: 0.9rem; color: var(--text-muted); }
         .users-tabs { display: flex; gap: 1.5rem; border-bottom: 1px solid var(--border-light); margin-bottom: 1rem; }
         .users-tab { font-weight: 700; font-size: 0.95rem; color: var(--text-main); padding-bottom: 0.6rem; border-bottom: 2px solid transparent; margin-bottom: -1px; }
@@ -90,6 +90,41 @@
 
     {% include '_form_builder.html' %}
 
+    <div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="resetPasswordModalLabel">Reset password</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="reset-pw-confirm-view">
+                        <p class="mb-2">Reset the password for <strong id="reset-pw-name"></strong>?</p>
+                        <p class="mb-2 small">They will be signed out everywhere and their current password will stop working. A new temporary password will be shown once.</p>
+                        <div class="text-danger small mt-2 d-none" id="reset-pw-error" role="alert"></div>
+                    </div>
+                    <div id="reset-pw-result-view" class="d-none">
+                        <p class="mb-2">Password reset. Share this temporary password now. It will not be shown again.</p>
+                        <div class="input-group mb-2">
+                            <input type="text" class="form-control" id="reset-pw-temp-password" readonly>
+                            <button type="button" class="btn btn-outline-dark" id="reset-pw-copy-btn">Copy</button>
+                        </div>
+                        <div class="text-success small d-none" id="reset-pw-copied">Copied.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div id="reset-pw-confirm-footer">
+                        <button type="button" class="btn btn-outline-dark fw-bold" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-danger fw-bold" id="reset-pw-confirm-btn">Reset password</button>
+                    </div>
+                    <div id="reset-pw-result-footer" class="d-none">
+                        <button type="button" class="btn btn-dark fw-bold" data-bs-dismiss="modal">Done</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -157,7 +192,7 @@
         let searchTimer = null;
         const SEARCH_DELAY_MS = 300;
         const PAGE_SIZE = 25;
-        // SHELL (2026-11-05): cosmetic only. The real enforcement is the 403 on the future reset-password endpoint.
+        // Cosmetic only: the real enforcement is the 403 on POST /api/v1/admin/users/{user_id}/reset-password.
         const IS_SUPERADMIN = {% if request is defined and request.state.user is defined and request.state.user.role == 'SUPERADMIN' %}true{% else %}false{% endif %};
         // Cosmetic only: the real enforcement is the 403 on PATCH /api/v1/admin/users/{user_id}/role.
         const CAN_CHANGE_ROLE = {% if request is defined and request.state.user is defined and request.state.user.role in ['SUPERADMIN', 'MANAGER'] %}true{% else %}false{% endif %};
@@ -294,18 +329,24 @@
                         toggle.innerHTML = '&#8942;';
                         const menu = document.createElement('ul');
                         menu.className = 'dropdown-menu dropdown-menu-end';
-                        const addItem = function (label) {
+                        const addItem = function (label, onClick) {
                             const li = document.createElement('li');
                             const item = document.createElement('button');
                             item.type = 'button';
                             item.className = 'dropdown-item';
-                            item.disabled = true;
-                            item.title = 'Not wired yet';
+                            if (onClick) {
+                                item.addEventListener('click', onClick);
+                            } else {
+                                item.disabled = true;
+                                item.title = 'Not wired yet';
+                            }
                             item.textContent = label;
                             li.appendChild(item);
                             menu.appendChild(li);
                         };
-                        if (IS_SUPERADMIN) addItem('Reset password');
+                        if (IS_SUPERADMIN) addItem('Reset password', function () {
+                            openResetPasswordModal(u.id, [u.first_name, u.last_name].filter(Boolean).join(' '));
+                        });
                         addItem('Archive');
                         dd.append(toggle, menu);
                         actions.appendChild(dd);
@@ -314,7 +355,7 @@
                     tr.appendChild(actions);
                     rows.appendChild(tr);
                 });
-                note.textContent = 'Showing ' + body.data.length + ' of ' + body.total + ' ' + TABS[tab].noun + (q ? ' matching "' + q + '"' : '') + '. Reset password and Archive are not wired yet.';
+                note.textContent = 'Showing ' + body.data.length + ' of ' + body.total + ' ' + TABS[tab].noun + (q ? ' matching "' + q + '"' : '') + '. Archive is not wired yet.';
                 totalPages = Math.max(1, Math.ceil(body.total / body.limit));
                 updatePager();
             } catch (err) {
@@ -465,6 +506,89 @@
             resetAddUserModal();
             if (wasSuccess) loadUsers(currentTab);
         });
+
+        // Reset password modal (wired 2026-11-06 to POST /api/v1/admin/users/{user_id}/reset-password)
+        const resetPwModalEl = document.getElementById('resetPasswordModal');
+        const resetPwName = document.getElementById('reset-pw-name');
+        const resetPwError = document.getElementById('reset-pw-error');
+        const resetPwConfirmView = document.getElementById('reset-pw-confirm-view');
+        const resetPwResultView = document.getElementById('reset-pw-result-view');
+        const resetPwConfirmFooter = document.getElementById('reset-pw-confirm-footer');
+        const resetPwResultFooter = document.getElementById('reset-pw-result-footer');
+        const resetPwConfirmBtn = document.getElementById('reset-pw-confirm-btn');
+        const resetPwTempPassword = document.getElementById('reset-pw-temp-password');
+        const resetPwCopyBtn = document.getElementById('reset-pw-copy-btn');
+        const resetPwCopied = document.getElementById('reset-pw-copied');
+        let resetPwTargetId = null;
+        const copyText = async function (inputEl) {
+            inputEl.select();
+            inputEl.setSelectionRange(0, inputEl.value.length);
+            try {
+                await navigator.clipboard.writeText(inputEl.value);
+                return true;
+            } catch (err) {
+                // Clipboard API requires a secure context; this app runs on plain HTTP (scope lock, no TLS).
+                try {
+                    return document.execCommand('copy');
+                } catch (err2) {
+                    return false;
+                }
+            }
+        };
+        const resetResetPwModal = function () {
+            resetPwTargetId = null;
+            resetPwName.textContent = '';
+            resetPwError.textContent = '';
+            resetPwError.classList.add('d-none');
+            resetPwConfirmBtn.disabled = false;
+            resetPwConfirmView.classList.remove('d-none');
+            resetPwResultView.classList.add('d-none');
+            resetPwConfirmFooter.classList.remove('d-none');
+            resetPwResultFooter.classList.add('d-none');
+            resetPwTempPassword.value = '';
+            resetPwCopied.classList.add('d-none');
+        };
+        const showResetPwError = function (text) {
+            resetPwError.textContent = text;
+            resetPwError.classList.remove('d-none');
+        };
+        const openResetPasswordModal = function (userId, displayName) {
+            resetResetPwModal();
+            resetPwTargetId = userId;
+            resetPwName.textContent = displayName || 'this user';
+            bootstrap.Modal.getOrCreateInstance(resetPwModalEl).show();
+        };
+        resetPwConfirmBtn.addEventListener('click', async function () {
+            if (!resetPwTargetId) return;
+            resetPwError.textContent = '';
+            resetPwError.classList.add('d-none');
+            resetPwConfirmBtn.disabled = true;
+            try {
+                const res = await fetch('/api/v1/admin/users/' + encodeURIComponent(resetPwTargetId) + '/reset-password', {
+                    method: 'POST'
+                });
+                const body = await res.json().catch(function () { return {}; });
+                if (!res.ok) {
+                    showResetPwError(typeof body.detail === 'string' ? body.detail : 'Could not reset the password.');
+                    resetPwConfirmBtn.disabled = false;
+                    return;
+                }
+                resetPwTempPassword.value = body.temporary_password;
+                resetPwConfirmView.classList.add('d-none');
+                resetPwResultView.classList.remove('d-none');
+                resetPwConfirmFooter.classList.add('d-none');
+                resetPwResultFooter.classList.remove('d-none');
+            } catch (err) {
+                showResetPwError('Could not reach the server. Please try again.');
+                resetPwConfirmBtn.disabled = false;
+            }
+        });
+        resetPwCopyBtn.addEventListener('click', async function () {
+            if (await copyText(resetPwTempPassword)) {
+                resetPwCopied.classList.remove('d-none');
+            }
+        });
+        resetPwModalEl.addEventListener('hidden.bs.modal', resetResetPwModal);
 
         loadUsers(currentTab);
     })();
