@@ -6,16 +6,16 @@ from typing import Optional
 from email_validator import validate_email, EmailNotValidError
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.concurrency import run_in_threadpool
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.database import get_db
-from app.models import User
+from app.models import Session as SessionModel, User
 from app.roles import ROLE_MANAGER, ROLE_RECRUITER, ROLE_SUPERADMIN, ALL_ROLES
 from app.routers.auth import pwd_context, require_roles
-from app.schemas import UserCreateRequest, UserCreateResponse, UserListItem, UserListResponse, UserRoleUpdateRequest
+from app.schemas import UserCreateRequest, UserCreateResponse, UserListItem, UserListResponse, UserPasswordResetResponse, UserRoleUpdateRequest
 from app.timeutil import to_app_tz
 
 router = APIRouter()
@@ -136,6 +136,33 @@ async def update_user_role(
         added_by_name=_added_by_name(user.added_by_user_id, creator_first, creator_last, creator_full, creator_email),
         archived_at=to_app_tz(user.archived_at),
     )
+
+
+@router.post("/users/{user_id}/reset-password", response_model=UserPasswordResetResponse)
+async def reset_user_password(
+    user_id: uuid.UUID,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles(ROLE_SUPERADMIN)),
+):
+    user = await db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found.")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=409, detail="Cannot reset your own password.")
+    if user.archived_at is not None:
+        raise HTTPException(status_code=409, detail="User is archived.")
+
+    temporary_password = secrets.token_urlsafe(12)
+    password_hash = await run_in_threadpool(pwd_context.hash, temporary_password)
+
+    user.password_hash = password_hash
+    user.must_change_password = True
+    await db.execute(delete(SessionModel).where(SessionModel.user_id == user.id))
+    await db.commit()
+
+    response.headers["Cache-Control"] = "no-store"
+    return UserPasswordResetResponse(id=user.id, temporary_password=temporary_password)
 
 
 USER_SEARCH_MAX_LENGTH = 100
