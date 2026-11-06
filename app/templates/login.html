@@ -205,6 +205,11 @@
                     return;
                 }
 
+                if (res.status === 403) {
+                    window.location.href = '/change-password';
+                    return;
+                }
+
                 if (res.status === 429) {
                     showError('Too many login attempts. Please wait a moment and try again.');
                 } else if (res.status === 401) {

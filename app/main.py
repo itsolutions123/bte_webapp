@@ -41,6 +41,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 
 from app.roles import ROLE_SUPERADMIN, ROLE_MANAGER
+from app.password_rules import RULES_LEAD_IN, RULE_PHRASES, PASSWORD_MIN_BYTES, PASSWORD_MAX_BYTES
 
 NO_STORE = {"Cache-Control": "no-store"}
 
@@ -92,9 +93,18 @@ async def serve_login_page(request: Request):
 
 @app.get("/change-password", include_in_schema=False)
 async def serve_change_password_page(request: Request):
-    # Shell only (section 8): form is static, no submit wiring yet. No session check on purpose:
-    # a user with a temporary password never has a session (SECURITY.md section 2, forced password change).
-    return templates.TemplateResponse(request=request, name="change_password.html")
+    # No session check on purpose: a user with a temporary password never has a session
+    # (SECURITY.md section 2, forced password change). The rules list comes from app/password_rules.py.
+    return templates.TemplateResponse(
+        request=request,
+        name="change_password.html",
+        context={
+            "rules_lead_in": RULES_LEAD_IN,
+            "rule_phrases": RULE_PHRASES,
+            "password_min_bytes": PASSWORD_MIN_BYTES,
+            "password_max_bytes": PASSWORD_MAX_BYTES,
+        },
+    )
 
 @app.get("/admin/home", include_in_schema=False, dependencies=[Depends(require_page_session)])
 async def serve_admin_dashboard(request: Request):
