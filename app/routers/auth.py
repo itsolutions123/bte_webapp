@@ -68,6 +68,12 @@ async def login(
         record_login_failure(client_ip)
         raise HTTPException(status_code=401, detail=generic_error)
 
+    # Forced password change (SECURITY.md section 2, option B): correct credentials but a
+    # flagged account gets no session, no cookie, no last_login_at update, and this does
+    # not count as a failed attempt.
+    if user.must_change_password:
+        raise HTTPException(status_code=403, detail="Password change required.")
+
     now = datetime.now(timezone.utc)
     session_id = secrets.token_urlsafe(32)
     db.add(SessionModel(
