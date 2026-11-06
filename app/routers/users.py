@@ -1,5 +1,6 @@
 """Users endpoints (docs/API_CONTRACT.md, /api/v1/admin/users). Mounted in app/main.py with the session check."""
 import secrets
+import uuid
 from typing import Optional
 
 from email_validator import validate_email, EmailNotValidError
@@ -14,7 +15,7 @@ from app.database import get_db
 from app.models import User
 from app.roles import ROLE_MANAGER, ROLE_RECRUITER, ROLE_SUPERADMIN, ALL_ROLES
 from app.routers.auth import pwd_context, require_roles
-from app.schemas import UserCreateRequest, UserCreateResponse, UserListItem, UserListResponse
+from app.schemas import UserCreateRequest, UserCreateResponse, UserListItem, UserListResponse, UserRoleUpdateRequest
 from app.timeutil import to_app_tz
 
 router = APIRouter()
@@ -82,6 +83,58 @@ async def create_user(
         email=user.email,
         role=user.role,
         temporary_password=temporary_password,
+    )
+
+
+@router.patch("/users/{user_id}/role", response_model=UserListItem)
+async def update_user_role(
+    user_id: uuid.UUID,
+    payload: UserRoleUpdateRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER)),
+):
+    role = payload.role.strip()
+    if role not in CREATABLE_ROLES:
+        raise HTTPException(status_code=422, detail="role is not allowed")
+
+    user = await db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    if user.role == ROLE_SUPERADMIN:
+        raise HTTPException(status_code=403, detail="Forbidden.")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=409, detail="Cannot change your own role.")
+    if user.archived_at is not None:
+        raise HTTPException(status_code=409, detail="User is archived.")
+    if user.role == role:
+        raise HTTPException(status_code=409, detail="User already has this role.")
+
+    user.role = role
+    await db.commit()
+    await db.refresh(user)
+
+    creator_first = creator_last = creator_full = creator_email = None
+    if user.added_by_user_id is not None:
+        creator = await db.get(User, user.added_by_user_id)
+        if creator is not None:
+            creator_first = creator.first_name
+            creator_last = creator.last_name
+            creator_full = creator.full_name
+            creator_email = creator.email
+
+    response.headers["Cache-Control"] = "no-store"
+    return UserListItem(
+        id=user.id,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        email=user.email,
+        role=user.role,
+        last_login_at=to_app_tz(user.last_login_at),
+        created_at=to_app_tz(user.created_at),
+        added_by_name=_added_by_name(user.added_by_user_id, creator_first, creator_last, creator_full, creator_email),
+        archived_at=to_app_tz(user.archived_at),
     )
 
 

@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link href="/static/admin-sidebar.css" rel="stylesheet">
     <style>
-        /* Users Directory (updated 2026-11-06): table rows load from GET /api/v1/admin/users; tabs, search and paging wired. Add users wired to POST /api/v1/admin/users. Role change, Reset password and Archive are still placeholders. */
+        /* Users Directory (updated 2026-11-06): table rows load from GET /api/v1/admin/users; tabs, search and paging wired. Add users wired to POST /api/v1/admin/users. Role change wired to PATCH /api/v1/admin/users/{user_id}/role. Reset password and Archive are still placeholders. */
         .users-header-sub { font-size: 0.9rem; color: var(--text-muted); }
         .users-tabs { display: flex; gap: 1.5rem; border-bottom: 1px solid var(--border-light); margin-bottom: 1rem; }
         .users-tab { font-weight: 700; font-size: 0.95rem; color: var(--text-main); padding-bottom: 0.6rem; border-bottom: 2px solid transparent; margin-bottom: -1px; }
@@ -159,6 +159,8 @@
         const PAGE_SIZE = 25;
         // SHELL (2026-11-05): cosmetic only. The real enforcement is the 403 on the future reset-password endpoint.
         const IS_SUPERADMIN = {% if request is defined and request.state.user is defined and request.state.user.role == 'SUPERADMIN' %}true{% else %}false{% endif %};
+        // Cosmetic only: the real enforcement is the 403 on PATCH /api/v1/admin/users/{user_id}/role.
+        const CAN_CHANGE_ROLE = {% if request is defined and request.state.user is defined and request.state.user.role in ['SUPERADMIN', 'MANAGER'] %}true{% else %}false{% endif %};
         let currentPage = 1;
         let totalPages = 1;
         const prevBtn = document.getElementById('users-prev');
@@ -224,8 +226,7 @@
                     if (tab !== 'archived' && (u.role === 'MANAGER' || u.role === 'RECRUITER')) {
                         const sel = document.createElement('select');
                         sel.className = 'form-select form-select-sm w-auto';
-                        sel.disabled = true;
-                        sel.title = 'Not wired yet';
+                        sel.disabled = !CAN_CHANGE_ROLE;
                         sel.setAttribute('aria-label', 'Role');
                         [['MANAGER', 'Manager'], ['RECRUITER', 'Recruiter']].forEach(function (o) {
                             const opt = document.createElement('option');
@@ -234,8 +235,46 @@
                             sel.appendChild(opt);
                         });
                         sel.value = u.role;
+                        sel.dataset.current = u.role;
+                        const roleErr = document.createElement('div');
+                        roleErr.className = 'text-danger small mt-1 d-none';
+                        roleErr.setAttribute('role', 'alert');
+                        sel.onchange = async function () {
+                            const previous = sel.dataset.current;
+                            const chosen = sel.value;
+                            roleErr.classList.add('d-none');
+                            if (chosen === previous) return;
+                            sel.disabled = true;
+                            let failure = null;
+                            try {
+                                const res = await fetch('/api/v1/admin/users/' + encodeURIComponent(u.id) + '/role', {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ role: chosen })
+                                });
+                                if (!res.ok) {
+                                    failure = 'Could not change the role.';
+                                    try {
+                                        const errBody = await res.json();
+                                        if (errBody && typeof errBody.detail === 'string') failure = errBody.detail;
+                                    } catch (e) { /* keep the generic message */ }
+                                } else {
+                                    sel.dataset.current = chosen;
+                                }
+                            } catch (e) {
+                                failure = 'Could not reach the server.';
+                            }
+                            if (!tr.isConnected) return;
+                            if (failure) {
+                                sel.value = previous;
+                                roleErr.textContent = failure;
+                                roleErr.classList.remove('d-none');
+                            }
+                            sel.disabled = false;
+                        };
                         roleTd.textContent = '';
                         roleTd.appendChild(sel);
+                        roleTd.appendChild(roleErr);
                     }
                     addCell(tr, formatDate(u.last_login_at)).classList.add('users-muted');
                     addCell(tr, formatDate(u.created_at)).classList.add('users-muted');
@@ -275,7 +314,7 @@
                     tr.appendChild(actions);
                     rows.appendChild(tr);
                 });
-                note.textContent = 'Showing ' + body.data.length + ' of ' + body.total + ' ' + TABS[tab].noun + (q ? ' matching "' + q + '"' : '') + '. Add users, Role, Reset password and Archive are not wired yet.';
+                note.textContent = 'Showing ' + body.data.length + ' of ' + body.total + ' ' + TABS[tab].noun + (q ? ' matching "' + q + '"' : '') + '. Reset password and Archive are not wired yet.';
                 totalPages = Math.max(1, Math.ceil(body.total / body.limit));
                 updatePager();
             } catch (err) {

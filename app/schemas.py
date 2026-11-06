@@ -313,6 +313,10 @@ class UserCreateResponse(BaseModel):
     temporary_password: str
 
 
+class UserRoleUpdateRequest(BaseModel):
+    role: str
+
+
 class UserListItem(BaseModel):
     id: UUID4
     first_name: Optional[str] = None
