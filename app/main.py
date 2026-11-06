@@ -90,6 +90,12 @@ async def serve_login_page(request: Request):
     # Shell only (section 8): form is static, no auth check or submit wiring yet.
     return templates.TemplateResponse(request=request, name="login.html")
 
+@app.get("/change-password", include_in_schema=False)
+async def serve_change_password_page(request: Request):
+    # Shell only (section 8): form is static, no submit wiring yet. No session check on purpose:
+    # a user with a temporary password never has a session (SECURITY.md section 2, forced password change).
+    return templates.TemplateResponse(request=request, name="change_password.html")
+
 @app.get("/admin/home", include_in_schema=False, dependencies=[Depends(require_page_session)])
 async def serve_admin_dashboard(request: Request):
     return templates.TemplateResponse(request=request, name="admin.html", headers=NO_STORE)
