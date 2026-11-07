@@ -41,6 +41,48 @@ logger = logging.getLogger(__name__)
 JOB_SEARCH_SIMILARITY_THRESHOLD = 0.5
 JOB_SEARCH_MAX_LENGTH = 100
 
+
+async def compute_application_scores(db: AsyncSession, application_ids):
+    # Read-time form score (docs/API_CONTRACT.md, ASSUMPTIONS until verified live).
+    # One query for all given applications. Returns {application_id: int percent or None}.
+    # Only questions with a non-null answer key count; unanswered keyed questions are not counted.
+    # Rounding is half up with integer math (Python round() would round halves to even).
+    scores = {aid: None for aid in application_ids}
+    if not scores:
+        return scores
+    rows = (
+        await db.execute(
+            select(
+                Answer.application_id,
+                Answer.applicant_answer,
+                JobQuestion.question_type,
+                JobQuestion.correct_answer,
+            )
+            .join(JobQuestion, JobQuestion.id == Answer.job_question_id)
+            .where(Answer.application_id.in_(list(scores.keys())))
+            .where(JobQuestion.correct_answer.is_not(None))
+        )
+    ).all()
+
+    scored = {}
+    correct = {}
+    for app_id, applicant_answer, question_type, key in rows:
+        if question_type == "YES_NO" and isinstance(key, str):
+            is_correct = applicant_answer == key
+        elif question_type == "MULTIPLE_CHOICE" and isinstance(key, list):
+            is_correct = applicant_answer in [str(k) for k in key]
+        else:
+            continue
+        scored[app_id] = scored.get(app_id, 0) + 1
+        if is_correct:
+            correct[app_id] = correct.get(app_id, 0) + 1
+
+    for app_id, n in scored.items():
+        c = correct.get(app_id, 0)
+        scores[app_id] = (200 * c + n) // (2 * n)
+    return scores
+
+
 @router.get("/metadata/sidebar", response_model=SidebarMetadataResponse)
 async def get_sidebar_metadata(db: AsyncSession = Depends(get_db)):
     brand_result = await db.execute(
@@ -508,17 +550,20 @@ async def list_applications(
         .limit(limit)
     )
 
+    rows = result.all()
+    scores = await compute_application_scores(db, [r[0].id for r in rows])
+
     items = [
         AdminApplicationListItem(
             id=app_row.id,
             applicant_name=f"{first} {last}".strip(),
             job_title=title,
-            score=app_row.calculated_score,
+            score=scores.get(app_row.id),
             status=app_row.status,
             has_hard_fail_flag=bool(app_row.has_hard_fail_flag),
             created_at=to_app_tz(app_row.created_at),
         )
-        for app_row, first, last, title in result.all()
+        for app_row, first, last, title in rows
     ]
     return AdminApplicationListResponse(data=items, total=total)
 
@@ -573,6 +618,8 @@ async def get_application_detail(
             )
         )
 
+    score = (await compute_application_scores(db, [application.id])).get(application.id)
+
     return AdminApplicationDetailResponse(
         id=application.id,
         applicant=AdminApplicantDetail(
@@ -584,7 +631,7 @@ async def get_application_detail(
             age=age,
         ),
         job_title=job_title,
-        score=application.calculated_score,
+        score=score,
         status=application.status,
         answers=answers,
     )

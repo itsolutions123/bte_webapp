@@ -93,10 +93,10 @@ Each job points to at most one form through `jobs.form_id`. The applicant picks 
 - One answer choice may have several rows, one per job it fails (e.g. fails Cashier but passes Store Supervisor). A unique key on (question_id, answer_value, job_id) is PROPOSED.
 - `OPEN_ENDED` questions have no rows: the applicant's full text is stored and never scored.
 
-Form scoring rules (DECIDED 2026-11-07, PROPOSED, NOT implemented):
+Form scoring rules (DECIDED 2026-11-07; read-time score IMPLEMENTED and VERIFIED LIVE 2026-11-07, see API_CONTRACT.md Score lines):
 - A scored question is a `YES_NO` or `MULTIPLE_CHOICE` question whose `correct_answer` is not NULL. All other questions are ignored.
 - An answer is correct when it equals `correct_answer` (YES_NO), or when the chosen option `id` is in the `correct_answer` array (MULTIPLE_CHOICE).
-- Score = correct answers / scored questions the applicant answered, as a whole-number percent, rounded to the nearest (rounding rule is an ASSUMPTION, unconfirmed). An applicant with no scored answers has score null (shown as a dash).
+- Score = correct answers / scored questions the applicant answered, as a whole-number percent, rounded half up with integer math, (200*c + n) // (2*n), never Python round() (it rounds halves to even); 1 of 3 = 33, 2 of 3 = 67, 1 of 8 = 13 (rounding rule is an ASSUMPTION, unconfirmed). An applicant with no scored answers has score null (shown as a dash).
 - The score is calculated on read from the applicant's saved answers and the form's current key (ASSUMPTION, Option B, user did not choose a timing option). `applications.calculated_score` is not used by this design.
 - Scoring does not change `status`. Thresholds, `is_required` and `is_hard_requirement` stay PROPOSED as written; `is_hard_requirement` depended on FAIL rows and is ON HOLD until Structure redefines it.
 - Everything below that mentions `answer_points`, FAIL rows, `job_id` keys or the suggested fit is SUPERSEDED for scoring.
