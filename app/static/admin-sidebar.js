@@ -648,6 +648,43 @@
         document.getElementById('element-mc-add-choice-btn').addEventListener('click', function () {
             document.getElementById('element-mc-choices-list').appendChild(mcChoiceRow(null, ''));
         });
+        function keyLabel(id) {
+            return document.getElementById(id).value.trim();
+        }
+        function setKeyPicker(type, value) {
+            const wrap = document.getElementById('element-key-wrap');
+            const box = document.getElementById('element-key-options');
+            box.textContent = '';
+            wrap.classList.toggle('d-none', type !== 'YES_NO');
+            if (type !== 'YES_NO') return;
+            [['YES', 'element-choice-a'], ['NO', 'element-choice-b'], ['', null]].forEach(function (opt) {
+                const label = document.createElement('label');
+                label.className = 'd-flex align-items-center gap-2';
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.name = 'element-key';
+                radio.value = opt[0];
+                radio.checked = (opt[0] === (value || ''));
+                const span = document.createElement('span');
+                if (opt[1]) span.dataset.labelSource = opt[1];
+                span.textContent = opt[1] ? (keyLabel(opt[1]) || opt[0]) : 'Not scored';
+                label.appendChild(radio);
+                label.appendChild(span);
+                box.appendChild(label);
+            });
+        }
+        function refreshKeyLabels() {
+            document.querySelectorAll('#element-key-options span[data-label-source]').forEach(function (s) {
+                s.textContent = keyLabel(s.dataset.labelSource) || (s.dataset.labelSource === 'element-choice-a' ? 'YES' : 'NO');
+            });
+        }
+        ['element-choice-a', 'element-choice-b'].forEach(function (id) {
+            document.getElementById(id).addEventListener('input', refreshKeyLabels);
+        });
+        function getKeyValue() {
+            const r = document.querySelector('input[name="element-key"]:checked');
+            return r ? r.value : '';
+        }
         function openElementEditor(type) {
             editorType = (type === 'OPEN_ENDED' || type === 'MULTIPLE_CHOICE') ? type : 'YES_NO';
             const isOpenEnded = editorType === 'OPEN_ENDED';
@@ -661,6 +698,7 @@
             document.getElementById('element-name-input').value = '';
             document.getElementById('element-choice-a').value = 'YES';
             document.getElementById('element-choice-b').value = 'NO';
+            setKeyPicker(editorType, '');
             if (isMultipleChoice) setMcChoices(null);
             document.getElementById('element-modal-error').classList.add('d-none');
             elOverlay.style.display = 'flex';
@@ -686,6 +724,7 @@
             } else {
                 document.getElementById('element-choice-a').value = card.dataset.choiceA;
                 document.getElementById('element-choice-b').value = card.dataset.choiceB;
+                if (card.dataset.elementType === 'YES_NO') setKeyPicker(card.dataset.questionId ? '' : 'YES_NO', card.dataset.correctAnswer || '');
             }
         }
 
@@ -796,6 +835,7 @@
                 editingCard.dataset.name = name;
                 editingCard.dataset.choiceA = choiceA;
                 editingCard.dataset.choiceB = choiceB;
+                if (!editingCard.dataset.questionId) editingCard.dataset.correctAnswer = getKeyValue();
                 editingCard.querySelector('.element-title').textContent = name;
                 const chipWrap = editingCard.querySelector('.element-choices');
                 chipWrap.textContent = '';
@@ -817,6 +857,7 @@
             card.dataset.name = name;
             card.dataset.choiceA = choiceA;
             card.dataset.choiceB = choiceB;
+            card.dataset.correctAnswer = editorType === 'YES_NO' ? getKeyValue() : '';
             if (editorType === 'MULTIPLE_CHOICE') {
                 card.dataset.options = JSON.stringify(mcChoices.map(function (c) { return { text: c.text }; }));
             }
@@ -1069,7 +1110,7 @@
                             ? { question_type: 'OPEN_ENDED', question_text: card.dataset.name }
                             : card.dataset.elementType === 'MULTIPLE_CHOICE'
                                 ? { question_type: 'MULTIPLE_CHOICE', question_text: card.dataset.name, options: JSON.parse(card.dataset.options).map(function (o) { return o.text; }) }
-                                : { question_type: 'YES_NO', question_text: card.dataset.name, options: [card.dataset.choiceA, card.dataset.choiceB] })
+                                : Object.assign({ question_type: 'YES_NO', question_text: card.dataset.name, options: [card.dataset.choiceA, card.dataset.choiceB] }, card.dataset.correctAnswer ? { correct_answer: card.dataset.correctAnswer } : {}))
                     });
                     if (qres.status !== 201) {
                         let detail = '';
