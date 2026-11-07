@@ -663,7 +663,9 @@
                 cb.checked = row.dataset.keyed === '1';
                 cb.addEventListener('change', function () { row.dataset.keyed = cb.checked ? '1' : ''; });
                 const span = document.createElement('span');
-                span.textContent = row.querySelector('.mc-choice-input').value.trim() || ('Choice ' + String.fromCharCode(65 + i));
+                const needsSave = !!(editingCard && editingCard.dataset.questionId) && !row.dataset.optionId;
+                cb.disabled = needsSave;
+                span.textContent = (row.querySelector('.mc-choice-input').value.trim() || ('Choice ' + String.fromCharCode(65 + i))) + (needsSave ? ' (save first to mark correct)' : '');
                 label.appendChild(cb);
                 label.appendChild(span);
                 box.appendChild(label);
@@ -675,6 +677,13 @@
                 if (row.dataset.keyed === '1') pos.push(i);
             });
             return pos;
+        }
+        function getMcKeyIds() {
+            const ids = [];
+            Array.from(document.getElementById('element-mc-choices-list').children).forEach(function (row) {
+                if (row.dataset.keyed === '1' && row.dataset.optionId) ids.push(row.dataset.optionId);
+            });
+            return ids.length ? ids : null;
         }
         function keyLabel(id) {
             return document.getElementById(id).value.trim();
@@ -750,8 +759,9 @@
             if (card.dataset.elementType === 'MULTIPLE_CHOICE') {
                 setMcChoices(card.dataset.options ? JSON.parse(card.dataset.options) : null);
                 const kp = card.dataset.keyPositions ? JSON.parse(card.dataset.keyPositions) : [];
-                Array.from(document.getElementById('element-mc-choices-list').children).forEach(function (row, i) { row.dataset.keyed = kp.indexOf(i) >= 0 ? '1' : ''; });
-                renderMcKey(!!card.dataset.questionId);
+                const kids = card.dataset.keyIds ? JSON.parse(card.dataset.keyIds) : [];
+                Array.from(document.getElementById('element-mc-choices-list').children).forEach(function (row, i) { row.dataset.keyed = (row.dataset.optionId ? kids.indexOf(row.dataset.optionId) >= 0 : kp.indexOf(i) >= 0) ? '1' : ''; });
+                renderMcKey(false);
             } else {
                 document.getElementById('element-choice-a').value = card.dataset.choiceA;
                 document.getElementById('element-choice-b').value = card.dataset.choiceB;
@@ -810,10 +820,11 @@
                     const confirmBtn = document.getElementById('element-confirm-btn');
                     confirmBtn.disabled = true;
                     let patchedOptions = null;
+                    let patchedKey = [];
                     try {
                         let reqBody;
                         if (editorType === 'OPEN_ENDED') reqBody = { question_text: name };
-                        else if (editorType === 'MULTIPLE_CHOICE') reqBody = { question_text: name, options: mcChoices.map(function (c) { return c.id ? { id: c.id, text: c.text } : { text: c.text }; }) };
+                        else if (editorType === 'MULTIPLE_CHOICE') reqBody = { question_text: name, options: mcChoices.map(function (c) { return c.id ? { id: c.id, text: c.text } : { text: c.text }; }), correct_answer: getMcKeyIds() };
                         else reqBody = { question_text: name, options: [choiceA, choiceB], correct_answer: getKeyValue() || null };
                         const res = await fetch('/api/v1/admin/forms/' + encodeURIComponent(savedFormId) + '/questions/' + encodeURIComponent(editingCard.dataset.questionId), {
                             method: 'PATCH',
@@ -835,6 +846,7 @@
                         if (editorType === 'MULTIPLE_CHOICE') {
                             const data = await res.json();
                             patchedOptions = data.options || [];
+                            patchedKey = Array.isArray(data.correct_answer) ? data.correct_answer : [];
                         }
                     } catch (err) {
                         errorEl.textContent = 'Could not reach the server.';
@@ -846,6 +858,7 @@
                     if (editorType === 'MULTIPLE_CHOICE') {
                         editingCard.dataset.name = name;
                         editingCard.dataset.options = JSON.stringify(patchedOptions);
+                        editingCard.dataset.keyIds = JSON.stringify(patchedKey);
                         editingCard.querySelector('.element-title').textContent = name;
                         const chipWrap1 = editingCard.querySelector('.element-choices');
                         chipWrap1.textContent = '';
@@ -1053,6 +1066,7 @@
                         card.dataset.correctAnswer = q.correct_answer || '';
                     } else if (q.question_type === 'MULTIPLE_CHOICE') {
                         card.dataset.options = JSON.stringify(q.options || []);
+                        card.dataset.keyIds = JSON.stringify(Array.isArray(q.correct_answer) ? q.correct_answer : []);
                     }
                     const editBtn = document.createElement('button');
                     editBtn.type = 'button';
