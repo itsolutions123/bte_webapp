@@ -34,6 +34,21 @@
     </div>
 </nav>
 
+{# Fixed profile pill (bottom-left, every admin page). Deliberately OUTSIDE the nav above, which is d-none d-md-block, so logout stays reachable on narrow screens. Filled from GET /api/v1/admin/me and logs out via POST /api/v1/admin/logout (handlers in admin-sidebar.js). Email is intentionally not shown (decided 2026-11-07, option A). #}
+<div class="profile-pill-wrap">
+    <div class="profile-pill-error d-none" id="profile-pill-error" role="alert"></div>
+    <div class="profile-pill" id="profile-pill">
+        <div class="profile-pill-avatar" id="profile-pill-initials">…</div>
+        <div class="profile-pill-info">
+            <div class="profile-pill-name" id="profile-pill-name">…</div>
+            <div class="profile-pill-role" id="profile-pill-role"></div>
+        </div>
+        <button type="button" class="profile-pill-logout" id="profile-pill-logout" aria-label="Log out" title="Log out">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>
+        </button>
+    </div>
+</div>
+
 {# Delete brand modal (ids still say archive): Confirm calls DELETE /api/v1/admin/brands/{brand_id} (handler in admin-sidebar.js). #}
 <div class="modal fade" id="archiveBrandModal" tabindex="-1" aria-labelledby="archiveBrandModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-sm">

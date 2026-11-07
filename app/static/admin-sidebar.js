@@ -1111,5 +1111,61 @@
         });
     }
 
+    // Fixed profile pill (markup in _sidebar.html, styles in admin-sidebar.css). Loads GET /api/v1/admin/me on every page; logout calls POST /api/v1/admin/logout then goes to /login.
+    function initProfilePill() {
+        const elInitials = document.getElementById('profile-pill-initials');
+        const elName = document.getElementById('profile-pill-name');
+        const elRole = document.getElementById('profile-pill-role');
+        const btnLogout = document.getElementById('profile-pill-logout');
+        const elError = document.getElementById('profile-pill-error');
+        if (!elInitials || !elName || !elRole || !btnLogout || !elError) return;
+
+        function initialsFor(fullName, email) {
+            const words = (fullName || '').trim().split(/ +/).filter(Boolean);
+            if (words.length >= 2) return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+            if (words.length === 1) return words[0][0].toUpperCase();
+            return ((email || '?')[0]).toUpperCase();
+        }
+
+        async function loadProfile() {
+            try {
+                const res = await fetch('/api/v1/admin/me', { headers: { 'Accept': 'application/json' } });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const me = await res.json();
+                elInitials.textContent = initialsFor(me.full_name, me.email);
+                elName.textContent = me.full_name || me.email;
+                elName.title = me.full_name || me.email;
+                elRole.textContent = me.role;
+            } catch (err) {
+                elInitials.textContent = '!';
+                elName.textContent = 'Could not load profile';
+                elName.title = '';
+                elRole.textContent = '';
+            }
+        }
+
+        let loggingOut = false;
+        async function logOut() {
+            if (loggingOut) return;
+            loggingOut = true;
+            btnLogout.disabled = true;
+            elError.classList.add('d-none');
+            try {
+                const res = await fetch('/api/v1/admin/logout', { method: 'POST' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                location.replace('/login');
+            } catch (err) {
+                elError.textContent = 'Could not log out. Try again.';
+                elError.classList.remove('d-none');
+                btnLogout.disabled = false;
+                loggingOut = false;
+            }
+        }
+        btnLogout.addEventListener('click', logOut);
+
+        loadProfile();
+    }
+
+    initProfilePill();
     refreshSidebar();
 })();

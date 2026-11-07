@@ -27,8 +27,105 @@ body {
     background-color: var(--bg-card);
     border-right: 1px solid var(--border-light);
     min-height: 100vh;
-    padding: 2rem 1.5rem;
+    padding: 2rem 1.5rem 6rem;
     z-index: 10;
+}
+
+/* Fixed profile pill (bottom-left, every admin page; markup in _sidebar.html, logic in admin-sidebar.js).
+   Width tracks the col-md-2 sidebar column (16.6667vw) from md up; below md the sidebar is hidden and the pill stays compact. */
+.profile-pill-wrap {
+    position: fixed;
+    left: 0.75rem;
+    bottom: 0.75rem;
+    width: 260px;
+    max-width: calc(100vw - 1.5rem);
+    z-index: 1040;
+}
+.profile-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    box-shadow: var(--soft-shadow);
+    padding: 0.5rem 0.65rem;
+}
+/* md and up: act as the footer of the sidebar column (flush bottom-left, same width as col-md-2, continues the sidebar's right border). */
+@media (min-width: 768px) {
+    .profile-pill-wrap {
+        left: 0;
+        bottom: 0;
+        width: 16.6667%;
+        max-width: none;
+        background-color: var(--bg-card);
+        border-top: 1px solid var(--border-light);
+        border-right: 1px solid var(--border-light);
+    }
+    .profile-pill {
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 0.75rem 1.5rem;
+    }
+    .profile-pill-error { left: 0.75rem; right: 0.75rem; }
+}
+.profile-pill-avatar {
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid var(--text-main);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.8rem;
+    color: var(--text-main);
+}
+.profile-pill-info { flex: 1 1 auto; min-width: 0; }
+.profile-pill-name {
+    font-weight: 800;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.profile-pill-role {
+    font-weight: 700;
+    font-size: 0.65rem;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.profile-pill-logout {
+    flex: 0 0 auto;
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    padding: 0.35rem;
+    line-height: 0;
+    color: var(--text-main);
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+.profile-pill-logout:hover { color: var(--accent-gold); }
+.profile-pill-logout:disabled { opacity: 0.6; cursor: default; }
+.profile-pill-error {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(100% + 6px);
+    font-size: 0.75rem;
+    color: #b42318;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 0.4rem 0.65rem;
 }
 .sidebar-brand {
     font-weight: 800;
