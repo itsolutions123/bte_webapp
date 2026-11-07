@@ -619,6 +619,7 @@
             input.placeholder = 'Choice text';
             input.value = text || '';
             input.setAttribute('aria-label', 'Choice text');
+            input.addEventListener('input', renderMcKey);
             const removeBtn = document.createElement('button');
             removeBtn.type = 'button';
             removeBtn.className = 'btn btn-sm btn-outline-danger mc-choice-remove';
@@ -626,7 +627,7 @@
             removeBtn.setAttribute('aria-label', 'Remove choice');
             removeBtn.addEventListener('click', function () {
                 const list = document.getElementById('element-mc-choices-list');
-                if (list.children.length > 3) row.remove();
+                if (list.children.length > 3) { row.remove(); renderMcKey(); }
             });
             row.appendChild(input);
             row.appendChild(removeBtn);
@@ -647,7 +648,34 @@
         }
         document.getElementById('element-mc-add-choice-btn').addEventListener('click', function () {
             document.getElementById('element-mc-choices-list').appendChild(mcChoiceRow(null, ''));
+            renderMcKey();
         });
+        function renderMcKey(hide) {
+            const wrap = document.getElementById('element-mc-key-wrap');
+            const box = document.getElementById('element-mc-key-list');
+            if (typeof hide === 'boolean') wrap.classList.toggle('d-none', hide);
+            box.textContent = '';
+            Array.from(document.getElementById('element-mc-choices-list').children).forEach(function (row, i) {
+                const label = document.createElement('label');
+                label.className = 'd-flex align-items-center gap-2';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = row.dataset.keyed === '1';
+                cb.addEventListener('change', function () { row.dataset.keyed = cb.checked ? '1' : ''; });
+                const span = document.createElement('span');
+                span.textContent = row.querySelector('.mc-choice-input').value.trim() || ('Choice ' + String.fromCharCode(65 + i));
+                label.appendChild(cb);
+                label.appendChild(span);
+                box.appendChild(label);
+            });
+        }
+        function getMcKeyPositions() {
+            const pos = [];
+            Array.from(document.getElementById('element-mc-choices-list').children).forEach(function (row, i) {
+                if (row.dataset.keyed === '1') pos.push(i);
+            });
+            return pos;
+        }
         function keyLabel(id) {
             return document.getElementById(id).value.trim();
         }
@@ -699,7 +727,7 @@
             document.getElementById('element-choice-a').value = 'YES';
             document.getElementById('element-choice-b').value = 'NO';
             setKeyPicker(editorType, '');
-            if (isMultipleChoice) setMcChoices(null);
+            if (isMultipleChoice) { setMcChoices(null); renderMcKey(false); }
             document.getElementById('element-modal-error').classList.add('d-none');
             elOverlay.style.display = 'flex';
             document.getElementById('element-name-input').focus();
@@ -721,6 +749,9 @@
             document.getElementById('element-name-input').value = card.dataset.name;
             if (card.dataset.elementType === 'MULTIPLE_CHOICE') {
                 setMcChoices(card.dataset.options ? JSON.parse(card.dataset.options) : null);
+                const kp = card.dataset.keyPositions ? JSON.parse(card.dataset.keyPositions) : [];
+                Array.from(document.getElementById('element-mc-choices-list').children).forEach(function (row, i) { row.dataset.keyed = kp.indexOf(i) >= 0 ? '1' : ''; });
+                renderMcKey(!!card.dataset.questionId);
             } else {
                 document.getElementById('element-choice-a').value = card.dataset.choiceA;
                 document.getElementById('element-choice-b').value = card.dataset.choiceB;
@@ -761,6 +792,7 @@
                     editingCard.querySelector('.element-title').textContent = name;
                     if (editorType === 'MULTIPLE_CHOICE') {
                         editingCard.dataset.options = JSON.stringify(mcChoices.map(function (c) { return { text: c.text }; }));
+                        editingCard.dataset.keyPositions = JSON.stringify(getMcKeyPositions());
                         const chipWrap0 = editingCard.querySelector('.element-choices');
                         chipWrap0.textContent = '';
                         mcChoices.forEach(function (c) {
@@ -862,6 +894,7 @@
             card.dataset.correctAnswer = editorType === 'YES_NO' ? getKeyValue() : '';
             if (editorType === 'MULTIPLE_CHOICE') {
                 card.dataset.options = JSON.stringify(mcChoices.map(function (c) { return { text: c.text }; }));
+                card.dataset.keyPositions = JSON.stringify(getMcKeyPositions());
             }
             const title = document.createElement('div');
             title.className = 'fw-bold element-title';
@@ -1112,7 +1145,7 @@
                         body: JSON.stringify(card.dataset.elementType === 'OPEN_ENDED'
                             ? { question_type: 'OPEN_ENDED', question_text: card.dataset.name }
                             : card.dataset.elementType === 'MULTIPLE_CHOICE'
-                                ? { question_type: 'MULTIPLE_CHOICE', question_text: card.dataset.name, options: JSON.parse(card.dataset.options).map(function (o) { return o.text; }) }
+                                ? { question_type: 'MULTIPLE_CHOICE', question_text: card.dataset.name, options: JSON.parse(card.dataset.options).map(function (o) { return o.text; }), ...(card.dataset.keyPositions && JSON.parse(card.dataset.keyPositions).length ? { correct_answer: JSON.parse(card.dataset.keyPositions) } : {}) }
                                 : Object.assign({ question_type: 'YES_NO', question_text: card.dataset.name, options: [card.dataset.choiceA, card.dataset.choiceB] }, card.dataset.correctAnswer ? { correct_answer: card.dataset.correctAnswer } : {}))
                     });
                     if (qres.status !== 201) {

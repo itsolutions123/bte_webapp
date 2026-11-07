@@ -405,3 +405,10 @@ body {
   #createJobModal.fade .modal-dialog { transition: none; transform: none; }
   #createJobModal.show .modal-body > *, #createJobModal.show .modal-body .row > *, #createJobModal .dropdown-menu, #createJobModal #create-job-error { animation: none; }
 }
+
+/* Form Builder: Multiple Choice correct-answers list, capped like the choices list (2026-11-07) */
+#element-mc-key-list { padding: 2px 4px 2px 0; }
+#element-mc-choices-list { max-height: none; overflow-y: visible; }
+#element-modal-overlay > div { display: flex; flex-direction: column; max-height: calc(100% - 2rem); overflow: hidden; }
+#element-modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; scrollbar-width: thin; scrollbar-color: #d4d4d8 transparent; }
+#element-modal-overlay > div > .d-flex.justify-content-end { flex: none; }
