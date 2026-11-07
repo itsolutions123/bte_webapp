@@ -66,7 +66,8 @@
         .applicant-cell-date { flex: 0 0 140px; }
         .applicant-cell-score { flex: 0 0 70px; }
         .applicant-status {
-            flex: 0 0 auto;
+            flex: 0 0 100px;
+            text-align: center;
             font-size: 0.75rem;
             font-weight: 800;
             color: var(--accent-gold);
@@ -74,6 +75,11 @@
             border-radius: 999px;
             padding: 0.2rem 0.7rem;
         }
+        .applicant-status[data-status="NEW"]      { color: #1d4ed8; background-color: rgba(37, 99, 235, 0.12); }
+        .applicant-status[data-status="POOLING"]  { color: #a16207; background-color: rgba(234, 179, 8, 0.20); }
+        .applicant-status[data-status="ENDORSED"] { color: #c2410c; background-color: rgba(249, 115, 22, 0.14); }
+        .applicant-status[data-status="HIRED"]    { color: #15803d; background-color: rgba(22, 163, 74, 0.14); }
+        .applicant-status[data-status="FAILED"]   { color: #b42318; background-color: rgba(180, 35, 24, 0.12); }
 
         /* Applicant detail panel (2026-10-22 revision: right-side slide-over.
            Stepper is a SHELL ONLY per section 8 -- see HANDOFF note on the markup below;
@@ -491,7 +497,8 @@
                     addEl(card, 'span', 'applicant-cell applicant-cell-brand', '[Brand]');
                     addEl(card, 'span', 'applicant-cell applicant-cell-date', applied);
                     const statusText = String(a.status || '');
-                    addEl(card, 'span', 'applicant-status', statusText.charAt(0) + statusText.slice(1).toLowerCase());
+                    const statusBadge = addEl(card, 'span', 'applicant-status', statusText.charAt(0) + statusText.slice(1).toLowerCase());
+                    statusBadge.dataset.status = statusText.toUpperCase();
                     addEl(card, 'span', 'applicant-cell applicant-cell-score', 'Score ' + ((a.score === null || a.score === undefined) ? '\u2014' : String(a.score)));
                     tbody.appendChild(card);
                 });
@@ -673,7 +680,10 @@
             if (!card) return;
             card.dataset.status = status;
             const badge = card.querySelector('.applicant-status');
-            if (badge) badge.textContent = STATUS_LABELS[status] || status;
+            if (badge) {
+                badge.textContent = STATUS_LABELS[status] || status;
+                badge.dataset.status = status;
+            }
         }
 
         async function patchApplicantStatus(applicationId, newStatus) {
