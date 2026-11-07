@@ -917,6 +917,7 @@ async def get_form_detail(form_id: str, db: AsyncSession = Depends(get_db)):
             options=q.options,
             is_hard_requirement=q.is_hard_requirement,
             answer_points=[],  # answer_points table does not exist yet (SCHEMA.md held migration)
+            correct_answer=q.correct_answer,
         )
         for q in questions_result.scalars().all()
     ]
@@ -1038,6 +1039,28 @@ async def create_question(form_id: str, payload: QuestionCreateRequest, db: Asyn
     if payload.is_hard_requirement:
         raise HTTPException(status_code=422, detail="is_hard_requirement needs answer points, which are not supported yet")
 
+    # Per-form answer key (docs/API_CONTRACT.md, POST /forms/{form_id}/questions, decided 2026-11-07).
+    # YES_NO: "YES" or "NO". MULTIPLE_CHOICE: zero-based positions into the options sent in this request,
+    # converted below to the option ids the server generates. OPEN_ENDED: no key.
+    stored_key = None
+    key_positions = None
+    ca = payload.correct_answer
+    if ca is not None:
+        if qtype == "YES_NO":
+            if not isinstance(ca, str) or ca not in ("YES", "NO"):
+                raise HTTPException(status_code=422, detail="correct_answer for YES_NO must be YES or NO")
+            stored_key = ca
+        elif qtype == "MULTIPLE_CHOICE":
+            if not isinstance(ca, list) or len(ca) == 0 or any(isinstance(i, bool) or not isinstance(i, int) for i in ca):
+                raise HTTPException(status_code=422, detail="correct_answer for MULTIPLE_CHOICE must be a non-empty list of option positions")
+            if len(set(ca)) != len(ca):
+                raise HTTPException(status_code=422, detail="correct_answer positions must be distinct")
+            if any(i < 0 or i >= len(options) for i in ca):
+                raise HTTPException(status_code=422, detail="correct_answer position is out of range")
+            key_positions = list(ca)
+        else:
+            raise HTTPException(status_code=422, detail="OPEN_ENDED takes no correct_answer")
+
     result = await db.execute(select(Form).where(Form.id == form_uuid))
     form = result.scalar_one_or_none()
     if form is None:
@@ -1053,6 +1076,8 @@ async def create_question(form_id: str, payload: QuestionCreateRequest, db: Asyn
     stored_options = options
     if qtype == "MULTIPLE_CHOICE" and options is not None:
         stored_options = [{"id": uuid.uuid4().hex, "text": o} for o in options]
+        if key_positions is not None:
+            stored_key = [stored_options[i]["id"] for i in key_positions]
 
     question = JobQuestion(
         form_id=form_uuid,
@@ -1061,6 +1086,7 @@ async def create_question(form_id: str, payload: QuestionCreateRequest, db: Asyn
         options=stored_options,
         is_hard_requirement=False,
         display_order=next_order,
+        correct_answer=stored_key,
     )
     db.add(question)
     await db.commit()
@@ -1074,6 +1100,7 @@ async def create_question(form_id: str, payload: QuestionCreateRequest, db: Asyn
         options=question.options,
         is_hard_requirement=bool(question.is_hard_requirement),
         answer_points=[],
+        correct_answer=question.correct_answer,
     )
 
 
@@ -1109,6 +1136,8 @@ async def update_question(form_id: str, question_id: str, payload: QuestionUpdat
         if not text:
             raise HTTPException(status_code=422, detail="question_text must not be empty")
         question.question_text = text
+
+    old_option_ids = {o["id"] for o in (question.options or []) if isinstance(o, dict)}
 
     if payload.options is not None:
         qtype = question.question_type
@@ -1153,6 +1182,34 @@ async def update_question(form_id: str, question_id: str, payload: QuestionUpdat
         else:
             raise HTTPException(status_code=422, detail="OPEN_ENDED takes no options")
 
+    # Per-form answer key (docs/API_CONTRACT.md, PATCH /forms/{form_id}/questions/{question_id}, decided 2026-11-07).
+    # Field omitted: key unchanged, except ids of options removed in this request are dropped from a MULTIPLE_CHOICE key.
+    # Field sent as null: key cleared. MULTIPLE_CHOICE keys here are option ids (not positions) of options that
+    # already exist and still exist after this request; a new option cannot be keyed in the same request.
+    final_ids = {o["id"] for o in (question.options or []) if isinstance(o, dict)}
+    if "correct_answer" in payload.model_fields_set:
+        ca = payload.correct_answer
+        if ca is None:
+            question.correct_answer = None
+        elif question.question_type == "YES_NO":
+            if not isinstance(ca, str) or ca not in ("YES", "NO"):
+                raise HTTPException(status_code=422, detail="correct_answer for YES_NO must be YES or NO")
+            question.correct_answer = ca
+        elif question.question_type == "MULTIPLE_CHOICE":
+            if not isinstance(ca, list) or len(ca) == 0 or any(not isinstance(i, str) for i in ca):
+                raise HTTPException(status_code=422, detail="correct_answer for MULTIPLE_CHOICE must be a non-empty list of option ids")
+            if len(set(ca)) != len(ca):
+                raise HTTPException(status_code=422, detail="correct_answer option ids must be distinct")
+            if any(i not in old_option_ids or i not in final_ids for i in ca):
+                raise HTTPException(status_code=422, detail="correct_answer has an unknown option id (save new options first, then the key)")
+            question.correct_answer = list(ca)
+        else:
+            raise HTTPException(status_code=422, detail="OPEN_ENDED takes no correct_answer")
+    elif question.question_type == "MULTIPLE_CHOICE" and isinstance(question.correct_answer, list):
+        kept = [i for i in question.correct_answer if i in final_ids]
+        if len(kept) != len(question.correct_answer):
+            question.correct_answer = kept or None
+
     await db.commit()
     await db.refresh(question)
 
@@ -1164,6 +1221,7 @@ async def update_question(form_id: str, question_id: str, payload: QuestionUpdat
         options=question.options,
         is_hard_requirement=bool(question.is_hard_requirement),
         answer_points=[],
+        correct_answer=question.correct_answer,
     )
 
 
@@ -1179,6 +1237,8 @@ async def delete_question(form_id: str, question_id: str, db: AsyncSession = Dep
     form = result.scalar_one_or_none()
     if form is None:
         raise HTTPException(status_code=404, detail="form not found")
+    if form.archived_at is not None:
+        raise HTTPException(status_code=409, detail="form is archived and read-only")
 
     q_result = await db.execute(
         select(JobQuestion).where(JobQuestion.id == question_uuid, JobQuestion.form_id == form_uuid)

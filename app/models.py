@@ -95,6 +95,7 @@ class JobQuestion(Base):
     question_text = Column(String, nullable=False)
     options = Column(JSONB(none_as_null=True), nullable=True)
     expected_answer = Column(String, nullable=True)
+    correct_answer = Column(JSONB(none_as_null=True), nullable=True)
     is_hard_requirement = Column(Boolean, default=False)
 
     job = relationship("Job", back_populates="questions")
