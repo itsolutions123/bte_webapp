@@ -724,7 +724,9 @@
             } else {
                 document.getElementById('element-choice-a').value = card.dataset.choiceA;
                 document.getElementById('element-choice-b').value = card.dataset.choiceB;
-                if (card.dataset.elementType === 'YES_NO') setKeyPicker(card.dataset.questionId ? '' : 'YES_NO', card.dataset.correctAnswer || '');
+                if (card.dataset.elementType === 'YES_NO') {
+                    setKeyPicker('YES_NO', card.dataset.correctAnswer || '');
+                }
             }
         }
 
@@ -780,7 +782,7 @@
                         let reqBody;
                         if (editorType === 'OPEN_ENDED') reqBody = { question_text: name };
                         else if (editorType === 'MULTIPLE_CHOICE') reqBody = { question_text: name, options: mcChoices.map(function (c) { return c.id ? { id: c.id, text: c.text } : { text: c.text }; }) };
-                        else reqBody = { question_text: name, options: [choiceA, choiceB] };
+                        else reqBody = { question_text: name, options: [choiceA, choiceB], correct_answer: getKeyValue() || null };
                         const res = await fetch('/api/v1/admin/forms/' + encodeURIComponent(savedFormId) + '/questions/' + encodeURIComponent(editingCard.dataset.questionId), {
                             method: 'PATCH',
                             headers: { 'Content-Type': 'application/json' },
@@ -835,7 +837,7 @@
                 editingCard.dataset.name = name;
                 editingCard.dataset.choiceA = choiceA;
                 editingCard.dataset.choiceB = choiceB;
-                if (!editingCard.dataset.questionId) editingCard.dataset.correctAnswer = getKeyValue();
+                editingCard.dataset.correctAnswer = getKeyValue();
                 editingCard.querySelector('.element-title').textContent = name;
                 const chipWrap = editingCard.querySelector('.element-choices');
                 chipWrap.textContent = '';
@@ -1015,6 +1017,7 @@
                     if (q.question_type === 'YES_NO') {
                         card.dataset.choiceA = labels[0];
                         card.dataset.choiceB = labels[1];
+                        card.dataset.correctAnswer = q.correct_answer || '';
                     } else if (q.question_type === 'MULTIPLE_CHOICE') {
                         card.dataset.options = JSON.stringify(q.options || []);
                     }
