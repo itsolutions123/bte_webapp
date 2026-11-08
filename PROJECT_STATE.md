@@ -1344,7 +1344,7 @@ DOCS UPDATED NOTE: rule 17.4 satisfied; the contract diff is non-empty.
 - CARRIED FORWARD: the HANDOFF to Structure for the `answers.application_id` index (A add a btree index now, B defer with a SCHEMA.md note; undecided); the three-to-four-place YES/NO constant; the `answer_points` stubs; the stale "detail modal is not wired" sentence in the `GET /admin/applicants` Purpose line; the postponed `/change-password` redesign; `package-lock.json` (never add).
 - NEXT (proposed, not confirmed by the user): live save test of Multiple Choice create on "ZZ picker test form" (needs the user's yes first); then the Multiple Choice picker on saved cards; then the decisions step (index, fixtures, constants, stubs).
 
-## Session Log 2026-11-07 (part 24): Form Builder answer picker, Multiple Choice live test and saved cards (commit ac8f35a; this entry commit pending)
+## Session Log 2026-11-07 (part 24): Form Builder answer picker, Multiple Choice live test and saved cards (commit ac8f35a; this entry commit 8eb8ba1)
 - REPO STATE AT START: HEAD e70e232 on main (part 23 entry), clean except `package-lock.json` and untracked `.bak` files. Part 23 header here now says e70e232.
 - LIVE TEST, Multiple Choice create path (part 23 code ca96bb0), on "ZZ picker test form": Q4 (choices A to D, B and D ticked) and Q5 (none ticked) saved in one Save. VERIFIED LIVE by GET read-back: Q4 holds the generated option ids of B and D, Q5 null; Q1 null, Q2 NO, Q3 YES unchanged. Ticks kept after Edit on an unsaved Multiple Choice card: confirmed in the browser by the user (screenshots of Q4 and Q5 in the Edit view, form not yet saved). Two of my earlier screenshot readings were inconclusive (editor before Confirm, and a card list that looks the same either way); the user clarified each time.
 - FOUND: the picker was not shown on saved Multiple Choice cards (known gap, NOT built in part 23). The user asked for the same behaviour as saved Yes/No cards.
@@ -1359,3 +1359,19 @@ DOCS UPDATED NOTE: rule 17.4 satisfied; the contract diff is non-empty.
 - CARRIED FORWARD: the HANDOFF to Structure for the `answers.application_id` index (A add a btree index now, B defer with a SCHEMA.md note; undecided); the YES/NO constant; the `answer_points` stubs and `AnswerPointItem`; the stale "detail modal is not wired" sentence in the `GET /admin/applicants` Purpose line; the postponed `/change-password` redesign; `package-lock.json` (never add).
 - LESSON: a screenshot of the editor cannot show whether Confirm was pressed or whether it is the new-card or Edit view; ask the user which one it is before reading the result.
 - NEXT (proposed, not confirmed by the user): the user confirms or changes the scoring assumptions and assumption A; then the decisions step (index, fixtures and cleanup files, YES/NO constant, `answer_points` stubs); then a part 25 entry with this docs commit hash.
+
+## Session Log 2026-11-08 (part 25): Business Unit rework, per-unit brand uniqueness, group renames, collapsible sidebar groups (commits d88fc58, 5320829, 5c25175; this entry commit pending)
+
+Scope: local-only. The website (bte_website) is paused per the v4 preamble and was not touched.
+
+DECIDED by the user: (1) brand name and slug unique per business unit, not globally (Structure option A, user wording "ah yes", read as a yes to A); (2) group renames by one-off UPDATE on business_units.name, no endpoint (option A, "proceed with A"); (3) heading text BUSINESS UNIT; collapsible groups default collapsed, active brand's group opens, state remembered per unit id.
+
+DONE and VERIFIED: migration 020 applied (dropped ix_brands_slug, added ux_brands_unit_slug and ux_brands_unit_lower_name, pg_indexes read-back, /health 200). create_brand and rename_brand scope the clash check to the same business_unit_id; Brand.slug drops unique=True in models.py. Live by curl on throwaway rows: create 201, 201, 409; rename 200 under another unit, 409 in same unit; both rows deleted (204, 204). Browser: the user created a second PR under Store Operations (bb8736e4-6911-4e8b-8e09-3291fbf39091, 0 jobs); original PR 8ee9e7c2-4270-4f50-a651-fac183b30441 (2 jobs) is under Project / Franchise. Real row, NOT cleaned up. Group renames: Franchise to Project / Franchise, In-house to Store Operations, slugs unchanged. Sidebar (frontend only, 5c25175): heading, collapsible groups, hierarchy styling; collapse seen in the user's screenshot, styling confirmed by "Awesome". API_CONTRACT.md 409 rule IMPLEMENTED and VERIFIED LIVE, Last verified names d88fc58. SCHEMA.md updated.
+
+NOT tested: keyboard toggle; remembered open/closed state after reload; very narrow windows; NULL business_unit_id; renaming an archived brand; public jobs API with two same-name brands (website paused).
+
+NOT built: brand-count pill (offered, no answer); business unit rename endpoint (unit names now differ from slugs, no UI path to rename).
+
+HARDCODES: gold tint rgba(212, 175, 55, ...) repeats --accent-gold in three CSS rules; comments near admin-sidebar.js line 315 and _sidebar.html line 19 still say OPERATIONS. Part 24 hardcodes carry over.
+
+OPEN (carried over): part 24 scoring assumptions and assumption A never confirmed; HANDOFF -> Structure on answers.application_id index (A add now, B defer); ZZ fixtures and cleanup files (each removal needs the user's explicit yes naming it; "ZZ scoring test brand" still shows under Head Office); YES/NO constant; answer_points stub cleanup; part 19 to 21 untested lists; postponed /change-password redesign; legacy expected_answer column. /tmp/bte_test_cookies.txt was recreated this session.
