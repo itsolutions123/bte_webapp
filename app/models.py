@@ -18,7 +18,7 @@ class BusinessUnit(Base):
 class Brand(Base):
     __tablename__ = "brands"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    slug = Column(String, unique=True, index=True, nullable=False)
+    slug = Column(String, index=True, nullable=False)
     name = Column(String, nullable=False)
     archived_at = Column(DateTime(timezone=True), nullable=True)
     business_unit_id = Column(UUID(as_uuid=True), ForeignKey("business_units.id"), nullable=True)

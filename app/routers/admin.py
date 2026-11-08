@@ -205,7 +205,10 @@ async def create_brand(payload: BrandCreateRequest, db: AsyncSession = Depends(g
         raise HTTPException(status_code=404, detail="business unit not found")
 
     existing = await db.execute(
-        select(Brand).where((func.lower(Brand.name) == name.lower()) | (Brand.slug == slug)).limit(1)
+        select(Brand).where(
+            Brand.business_unit_id == payload.business_unit_id,
+            (func.lower(Brand.name) == name.lower()) | (Brand.slug == slug),
+        ).limit(1)
     )
     if existing.scalars().first():
         raise HTTPException(status_code=409, detail="a brand with this name already exists")
@@ -500,6 +503,7 @@ async def rename_brand(brand_id: uuid.UUID, payload: BrandRenameRequest, db: Asy
 
     clash = await db.execute(
         select(Brand.id).where(
+            Brand.business_unit_id == brand.business_unit_id,
             (func.lower(Brand.name) == name.lower()) | (Brand.slug == slug),
             Brand.id != brand.id,
         ).limit(1)
