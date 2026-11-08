@@ -158,6 +158,35 @@ body {
 .business-unit-add {
     font-size: 0.75rem;
 }
+/* Collapsible business-unit group: the chevron + title row is the toggle; the "+" is separate. */
+.business-unit-toggle {
+    cursor: pointer;
+    user-select: none;
+    background: rgba(212, 175, 55, 0.14);
+    border-radius: 8px;
+    padding: 0.4rem 0.5rem;
+    border-left: 3px solid var(--accent-gold);
+}
+.business-unit-toggle:hover {
+    background: rgba(212, 175, 55, 0.24);
+}
+/* Brands of a group: indented under a thin guide line so they read as children of the title above. */
+.business-unit > .nav {
+    margin-left: 1.1rem;
+    border-left: 2px solid var(--border-light);
+}
+.business-unit-chevron {
+    display: inline-block;
+    width: 1.1rem;
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--accent-black);
+    line-height: 1;
+    transition: transform 0.15s;
+}
+.business-unit.is-open .business-unit-chevron {
+    transform: rotate(90deg);
+}
 /* WORKSPACE placeholder nav items (MRF, Users): no route exists yet, so these are
    not real links — quieter than an active sidebar item, with a small "Soon" tag. */
 .nav-link-soon {
@@ -205,22 +234,20 @@ body {
 /* Business-unit sub-group title (Franchise / Head Office / In-house): distinct from
    both the .nav-section group label above it and the brand leaf links below it. */
 .business-unit-title {
-    font-size: 0.8rem;
-    font-weight: 700;
+    font-size: 0.9rem;
+    font-weight: 800;
     letter-spacing: 0.3px;
-    color: var(--accent-gold);
+    color: var(--accent-black);
     text-transform: none;
     padding-left: 0.25rem;
-    border-left: 2px solid transparent;
 }
 /* Brand leaf links: one step lighter than the sub-group title so the hierarchy reads at a glance. */
 .brand-row > a {
-    font-weight: 600;
+    font-weight: 500;
 }
 /* Active-ancestor cue: the open brand's parent unit gets a quiet marker, not the full .active pill. */
-.business-unit.has-active-child .business-unit-title {
-    border-left-color: var(--accent-gold);
-    color: var(--accent-black);
+.business-unit.has-active-child .business-unit-toggle {
+    background: rgba(212, 175, 55, 0.30);
 }
 
 /* Form row: 3-dot button + floating menu */

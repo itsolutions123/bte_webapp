@@ -77,6 +77,14 @@
         return s;
     }
 
+    const UNIT_OPEN_KEY_PREFIX = 'bte.sidebar.unitOpen.';
+    function storedUnitOpen(id) {
+        try { return window.localStorage.getItem(UNIT_OPEN_KEY_PREFIX + id); } catch (err) { return null; }
+    }
+    function storeUnitOpen(id, open) {
+        try { window.localStorage.setItem(UNIT_OPEN_KEY_PREFIX + id, open ? '1' : '0'); } catch (err) { /* storage unavailable: state is just not remembered */ }
+    }
+
     function unitSection(u) {
         const wrap = document.createElement('div');
         wrap.className = 'business-unit';
@@ -94,7 +102,16 @@
         plus.className = 'business-unit-add';
         plus.setAttribute('aria-label', 'Add brand to ' + u.name);
         plus.textContent = '+';
-        head.append(title, plus);
+        const toggle = document.createElement('span');
+        toggle.className = 'business-unit-toggle d-flex align-items-center flex-grow-1';
+        toggle.setAttribute('role', 'button');
+        toggle.setAttribute('tabindex', '0');
+        const chevron = document.createElement('span');
+        chevron.className = 'business-unit-chevron';
+        chevron.setAttribute('aria-hidden', 'true');
+        chevron.textContent = '\u203A';
+        toggle.append(chevron, title);
+        head.append(toggle, plus);
         const list = document.createElement('div');
         list.className = 'nav flex-column ps-3';
         let hasActiveChild = false;
@@ -108,6 +125,21 @@
             list.appendChild(emptyNote('No brands yet'));
         }
         if (hasActiveChild) wrap.classList.add('has-active-child');
+        function setOpen(open) {
+            list.classList.toggle('d-none', !open);
+            wrap.classList.toggle('is-open', open);
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+        setOpen(hasActiveChild || storedUnitOpen(u.id) === '1');
+        toggle.addEventListener('click', function () {
+            const next = list.classList.contains('d-none');
+            setOpen(next);
+            storeUnitOpen(u.id, next);
+        });
+        toggle.addEventListener('keydown', function (ev) {
+            if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle.click(); }
+        });
+        plus.addEventListener('click', function () { storeUnitOpen(u.id, true); });
         wrap.append(head, list);
         return wrap;
     }
