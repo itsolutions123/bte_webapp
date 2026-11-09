@@ -1360,7 +1360,7 @@ DOCS UPDATED NOTE: rule 17.4 satisfied; the contract diff is non-empty.
 - LESSON: a screenshot of the editor cannot show whether Confirm was pressed or whether it is the new-card or Edit view; ask the user which one it is before reading the result.
 - NEXT (proposed, not confirmed by the user): the user confirms or changes the scoring assumptions and assumption A; then the decisions step (index, fixtures and cleanup files, YES/NO constant, `answer_points` stubs); then a part 25 entry with this docs commit hash.
 
-## Session Log 2026-11-08 (part 25): Business Unit rework, per-unit brand uniqueness, group renames, collapsible sidebar groups (commits d88fc58, 5320829, 5c25175; this entry commit pending)
+## Session Log 2026-11-08 (part 25): Business Unit rework, per-unit brand uniqueness, group renames, collapsible sidebar groups (commits d88fc58, 5320829, 5c25175; this entry commit 45f20ff)
 
 Scope: local-only. The website (bte_website) is paused per the v4 preamble and was not touched.
 
