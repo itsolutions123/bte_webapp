@@ -571,4 +571,4 @@ Reset password (admin Users tab) and Forgot password (portal): shown inert, no e
 
 ### HTML routes
 - `GET /admin/mrf`: admin MRF section, session required, registered above the `/admin` catch-alls in main.py. Tabs: Submissions, Forms, Users.
-- Portal page routes (landing, login, sign up, My Requests, Forms): paths NOT DECIDED (open question: where the portal lives).
+- Portal page routes (base path `/mrf` CONFIRMED by the user 2026-11-10; sub-paths proposed by Structure and accepted with "proceed with that format"): `GET /mrf` (landing), `GET /mrf/login`, `GET /mrf/signup`, `GET /mrf/requests` (My Requests), `GET /mrf/forms` (Forms). Served locally at 10.0.10.37:8000/mrf; the future public address bigtimeempire.com/mrf is NOT in scope (local-only lock, no domain, proxy or HTTPS assumed). Signed-out access to `/mrf/requests` and `/mrf/forms` redirects to `/mrf/login`, using the MRF session only. The `/mrf` routes sit outside `/admin`, so the admin catch-alls do not apply to them. Layout: own portal layout, no admin sidebar. Status: PROPOSED, no code.
