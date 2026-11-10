@@ -533,7 +533,7 @@ Status: PROPOSED 2026-11-10. No code exists for any endpoint below. Confirmed by
 ### Portal API (MRF users)
 
 ### `POST /api/v1/mrf/signup`
-- **Request:** `{ "email", "password", "position", "department" }` plus name fields UNVERIFIED (sign-up field list not answered).
+- **Request:** `{ "first_name", "last_name", "email", "password", "department", "position" }` (field order from the sign-up wireframe, confirmed 2026-11-10).
 - **Server-side checks:** email domain in the allow-list, position and department in the fixed lists (app/mrf_lists.py), password rules. Creates the account with status `pending`; no session is created.
 - **Response:** 201 on success; 422 for domain, position or department not allowed. Duplicate email: 409 or a generic 201 is OPEN (409 reveals which emails are registered).
 

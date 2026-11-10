@@ -217,7 +217,7 @@ Status: PROPOSED 2026-11-10. No migration written or applied. Next migration num
 - id UUID PK (uuid4), created_at timestamptz
 - email String NOT NULL, stored lowercase, UNIQUE index. Domain allow-list enforced server-side.
 - password_hash String NOT NULL (bcrypt)
-- first_name, last_name String(100): UNVERIFIED, depends on the sign-up field list (not answered)
+- first_name, last_name String(100) NOT NULL (confirmed by the sign-up wireframe, uploaded by the user 2026-11-10: First name, Last name, Email, Password, Department, Position)
 - position String NOT NULL (Head, OIC, Manager), department String NOT NULL (see lists below)
 - status String NOT NULL, default 'pending' (pending, approved). Rejected or disabled: not answered, not built.
 - approved_at timestamptz NULL, approved_by_user_id UUID NULL FK users.id (admin who approved)
