@@ -112,6 +112,12 @@ async def serve_mrf_login_page(request: Request):
     # Separate from /admin: the portal has its own layout and, once wired, its own mrf_session_id cookie.
     return templates.TemplateResponse(request=request, name="mrf/login.html", headers=NO_STORE)
 
+@app.get("/mrf/requests", include_in_schema=False)
+async def serve_mrf_requests_page(request: Request):
+    # MRF portal My Requests, SHELL only (section 8): static page with placeholder content.
+    # No session check yet; the portal session guard is added at the wiring step.
+    return templates.TemplateResponse(request=request, name="mrf/requests.html", headers=NO_STORE)
+
 @app.get("/admin/home", include_in_schema=False, dependencies=[Depends(require_page_session)])
 async def serve_admin_dashboard(request: Request):
     return templates.TemplateResponse(request=request, name="admin.html", headers=NO_STORE)

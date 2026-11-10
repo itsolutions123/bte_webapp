@@ -1393,3 +1393,25 @@ HARDCODES: existing admin login.html loads Bootstrap from the jsdelivr CDN and N
 OPEN (unanswered, not built): JOB POSITION and ASSIGNMENT column contents in My Requests (neither exists in mrf_requests); which admin roles approve accounts and change status, who counts as HR; status transitions; scoring on MRF forms (assumed none); what the sidebar badge counts; "MRF Request Form" in the sidebar FORMS list (assumed noise); admin-created accounts pre-approved; what Cancel does on login and sign-up; Users tab pending view; Commissary DRAFT on the admin wireframe but listed on the portal wireframe (contract says ACTIVE only); duplicate email on sign-up (409 or generic 201); real logo file; Forgot password styling (faded, inert). Form builder, Add user, New Request, request detail and status-change wireframes not uploaded.
 
 NEXT (proposed, not confirmed): ask the JOB POSITION and ASSIGNMENT question, build the My Requests shell at GET /mrf/requests, then the sign-up and Forms shells and the admin /admin/mrf shells, then wiring one feature per step (login, logout and session guard first). Docs: API_CONTRACT.md Last verified line unchanged because no endpoint is implemented.
+
+## Session Log 2026-11-10 (part 27): MRF portal My Requests shell (this commit: see git log)
+
+Scope: local-only (10.0.10.37:8000, plain HTTP). Repo state at the start matched the part 26 handover (main, HEAD 257771f, in sync with origin/main). Only the new `GET /mrf/requests` route was added to app/main.py; the existing system was not changed.
+
+DECIDED by the user: the contents of the JOB POSITION and ASSIGNMENT columns in My Requests are parked; the user said they depend on what the requestor answers on the Forms. Not answered, so those two headings stay placeholders and mrf_requests is unchanged. The user confirmed the shell in the browser (screenshot) and said "proceed".
+
+DONE and VERIFIED: `GET /mrf/requests` shell. Route serve_mrf_requests_page in app/main.py lines 115 to 119, directly after the login route, NO_STORE, no session check. Template app/templates/mrf/requests.html (61 lines). app/static/mrf-portal.css went from 60 to 102 lines (layout classes mrf-app-body, mrf-side, mrf-nav, mrf-user, mrf-main, mrf-table, and a 760px media query). Diff against the backups: main.py 0 removed, 6 added; CSS 0 removed, 42 added. curl: /mrf/requests 200, /mrf/login 200, signed-out /admin/home 302. docker logs: new server process 498 (492 shut down), Application startup complete. Browser (user screenshot): sidebar with My Requests active and Forms faded, New Request button, search box, Date range filter, headings JOB POSITION, ASSIGNMENT, DATE, STATUS, empty state "Nothing here yet", user chip "Signed-in user" with a "--" avatar and a logout icon. API_CONTRACT.md: the section 5 HTML routes entry (line 574) now records the My Requests shell and the Last verified line (line 2) is updated to 2026-11-10; the file stays 574 lines, diff stat 2 insertions and 2 deletions.
+
+Shell details: placeholder content only. The Forms nav item, search box, Date range select (one option), New Request button and logout icon do nothing. No external resources (own stylesheet, no Bootstrap, no CDN). The signed-out redirect to /mrf/login recorded in the contract is NOT implemented.
+
+NOT built: session guard, login wiring, logout, sign-up (shell and wiring), Forms list, /admin/mrf, sidebar badge, app/mrf_lists.py, every other mrf_* table (forms, form questions, requests, answers), every MRF endpoint. No SECURITY.md change (cookie not built).
+
+NOT tested: the layout below 760 px (media query not viewed), other browsers, long user names, a table with rows (only the empty state exists).
+
+HARDCODES: shell placeholders ("Signed-in user", "--", "Nothing here yet", the single "Date range" option) are deliberate. The pre-existing items from part 26 are unchanged: admin login.html loads Bootstrap from the jsdelivr CDN and Nunito from Google Fonts, the stale comment on serve_login_page in main.py, and CORS allowing only http://10.0.10.37:8086 for GET.
+
+OPEN: saved item 5a is still parked, now with the reason above. Items b to m from the part 26 handover are unchanged: which admin roles approve accounts and change status, status transitions, scoring on MRF forms, what the sidebar badge counts, "MRF Request Form" in the sidebar FORMS list, pre-approval of admin-created accounts, what Cancel does, the admin Users tab view, Commissary ACTIVE versus DRAFT, duplicate email 409 versus generic 201, real logo and Forgot password.
+
+Backups (untracked, not committed): app/main.py.bak-mrfrequests-20261110 and app/static/mrf-portal.css.bak-mrfrequests-20261110.
+
+NEXT (proposed, not confirmed): sign-up shell at GET /mrf/signup, then the Forms shell (ask item k, Commissary, there), then the admin /admin/mrf shells (the Submissions and Users wireframes are still not uploaded), then wiring one feature per step (login, logout and session guard first). SCHEMA.md and SECURITY.md unchanged.
