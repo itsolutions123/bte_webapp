@@ -204,3 +204,48 @@ Columns below are verified against `app/models.py` (lines 140-165) on 2026-10-30
 - Index: `idx_jobs_assignee_user_id` on `jobs (assignee_user_id)`, APPLIED and VERIFIED LIVE (migration 018, 2026-11-05; rule 18.1: recruiter filtering uses it in a WHERE).
 - Visibility: DECIDED 2026-11-05 (user, option A). SUPERADMIN and MANAGER see all brands and jobs; being an assignee only marks the job as theirs to work. Only RECRUITER is filtered to assigned jobs. SUPERADMIN is NOT selectable as an assignee (user, option A, 2026-11-05): assignees are MANAGER or RECRUITER only, enforced by the API when setting the assignee.
 - Per-recruiter live tally: PROPOSED, NOT designed. `status_counts` is per job (SCHEMA.md section 4), so a recruiter's tally would sum the rows of their assigned jobs. It stays a counter, never a recount of applications (rule 18.3).
+
+## 7. MRF (Manpower Request Form) -- PROPOSED, NOT APPLIED
+
+Status: PROPOSED 2026-11-10. No migration written or applied. Next migration number: 021 (020 is the latest).
+
+**Confirmed (user, 2026-11-10):** MRF is a separate service with its own users, sessions, forms and requests. Option A: separate `mrf_*` tables; nothing reuses `users`, `sessions`, `forms` or `job_questions`. No business unit, brand or job link. Scoring: not confirmed (assumed none).
+
+**Proposed, not confirmed:** everything in the table definitions below.
+
+### mrf_users
+- id UUID PK (uuid4), created_at timestamptz
+- email String NOT NULL, stored lowercase, UNIQUE index. Domain allow-list enforced server-side.
+- password_hash String NOT NULL (bcrypt)
+- first_name, last_name String(100): UNVERIFIED, depends on the sign-up field list (not answered)
+- position String NOT NULL (Head, OIC, Manager), department String NOT NULL (see lists below)
+- status String NOT NULL, default 'pending' (pending, approved). Rejected or disabled: not answered, not built.
+- approved_at timestamptz NULL, approved_by_user_id UUID NULL FK users.id (admin who approved)
+
+### mrf_sessions
+- Same columns as `sessions` (id String token, user_id, created_at, expires_at, last_active_at), but user_id FK mrf_users.id.
+- Index on expires_at. Cookie name: `mrf_session_id` (admin cookie `session_id` is never accepted by the portal, and the reverse).
+
+### mrf_forms
+- id UUID PK, name String NOT NULL, status String NOT NULL (ACTIVE, DRAFT), created_at timestamptz
+
+### mrf_form_questions
+- id UUID PK, form_id FK mrf_forms.id (indexed), question_text, question_type (open_ended, multiple_choice, yes_no), options (list, multiple choice only), display_order Integer NOT NULL
+- is_classification Boolean NOT NULL default false: marks the one multiple-choice question whose options are Rank and File, Supervisory, Managerial. At most one per form (open: how enforced).
+
+### mrf_requests
+- id UUID PK, form_id FK, user_id FK mrf_users.id, created_at timestamptz
+- classification String (copied from the flagged answer at submit), department String (copied from the submitter at submit)
+- status String NOT NULL default 'Pending' (wireframe: Pending, On Review, Approved, Denied; transitions not answered)
+- Indexes (rule 18.1): status, classification, department, created_at, user_id
+
+### mrf_request_answers
+- id UUID PK, request_id FK mrf_requests.id (indexed), question_id FK mrf_form_questions.id, answer Text
+
+### Fixed lists (confirmed by user; one documented constant, app/mrf_lists.py, validated server-side)
+- Position: Head, OIC, Manager
+- Department: Accounting, Admin, Audit, BCC, Executive, Human Resources, Marketing, Operations, Procurement, Project Management, Research and Development, Sales, Repairs and Maintenance
+- Allowed email domains: bigtimeempire.com, thesandwichguy.com, paresretiro.com
+
+### Open (not answered, not built)
+Sidebar badge meaning; which roles approve accounts and change status; Assignment column; admin-created accounts pre-approved or not; Users tab pending view; status transitions.

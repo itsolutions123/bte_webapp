@@ -525,3 +525,50 @@ A form's submissions are the applications for the jobs that use it: `GET /api/v1
 ### `GET /admin/applicants/{application_id}`
 - **Purpose:** Direct deep-link to open a specific applicant's detail modal/page.
 - **Response:** `text/html`
+
+## 5. MRF (Manpower Request Form) -- PROPOSED, NOT IMPLEMENTED
+
+Status: PROPOSED 2026-11-10. No code exists for any endpoint below. Confirmed by the user: Option A (separate `mrf_*` tables, own sessions, own cookie `mrf_session_id`). Everything else here is proposed, not confirmed. Tables: docs/SCHEMA.md section 7. Portal API prefix `/api/v1/mrf` (proposed) with its own guard (mrf_session_id against mrf_sessions); admin MRF API prefix `/api/v1/admin/mrf` (proposed), inherits the admin session guard. The portal never accepts the admin cookie; the admin API never accepts the MRF cookie. Every list endpoint paginates with `page` and `page_size` (rule 18.2). Not contracted yet (wireframes not uploaded): admin Forms tab, Add user, New Request fill-in, request detail, status change.
+
+### Portal API (MRF users)
+
+### `POST /api/v1/mrf/signup`
+- **Request:** `{ "email", "password", "position", "department" }` plus name fields UNVERIFIED (sign-up field list not answered).
+- **Server-side checks:** email domain in the allow-list, position and department in the fixed lists (app/mrf_lists.py), password rules. Creates the account with status `pending`; no session is created.
+- **Response:** 201 on success; 422 for domain, position or department not allowed. Duplicate email: 409 or a generic 201 is OPEN (409 reveals which emails are registered).
+
+### `POST /api/v1/mrf/login`
+- **Request:** `{ "email", "password" }`. Per-IP rate limit like the admin login.
+- **Response:** 200 sets cookie `mrf_session_id` (HttpOnly, SameSite=Lax, Secure off on plain HTTP). Wrong password or unknown email: generic 401. Correct password but status `pending`: 403 with the pending-approval message (wording as given by the user), shown only after the password is verified.
+
+### `POST /api/v1/mrf/logout`
+- **Response:** 204, always clears `mrf_session_id`.
+
+### `GET /api/v1/mrf/me`
+- **Auth:** valid MRF session. **Response:** the signed-in MRF user's display fields (no password data).
+
+### `GET /api/v1/mrf/forms`
+- **Auth:** valid MRF session. **Params:** `page`, `page_size`. **Response:** ACTIVE MRF forms only, paginated.
+
+### `GET /api/v1/mrf/requests`
+- **Auth:** valid MRF session. **Params:** `page`, `page_size`. **Response:** the signed-in user's own requests only, paginated. The Assignment column is not answered and is not included.
+
+### Admin API (Users Directory roles at /admin)
+
+### `GET /api/v1/admin/mrf/requests`
+- **Auth:** valid admin session; which roles is OPEN (SUPERADMIN, MANAGER, RECRUITER see the section per the user).
+- **Params:** `classification`, `department`, `date_from`, `date_to`, `status`, `q` (search), `page`, `page_size`.
+- **Response:** paginated rows: submitted by, classification, department, date, status, form name (form name accepted with "yes", to confirm at the shell).
+
+### `GET /api/v1/admin/mrf/users`
+- **Auth:** as above. **Params:** `page`, `page_size`; pending-only view OPEN. **Response:** MRF users, paginated, no password data.
+
+### `GET /api/v1/admin/mrf/summary`
+- **Purpose:** sidebar MRF count badge, an incremental counter (rule 18.3). What it counts is OPEN (pending accounts, pending requests, or both).
+
+### Not active (user decision)
+Reset password (admin Users tab) and Forgot password (portal): shown inert, no endpoint.
+
+### HTML routes
+- `GET /admin/mrf`: admin MRF section, session required, registered above the `/admin` catch-alls in main.py. Tabs: Submissions, Forms, Users.
+- Portal page routes (landing, login, sign up, My Requests, Forms): paths NOT DECIDED (open question: where the portal lives).
