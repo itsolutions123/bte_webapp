@@ -7,7 +7,7 @@
     <link href="/static/mrf-portal.css" rel="stylesheet">
 </head>
 <body class="mrf-app-body">
-    <!-- SHELL (section 8): static, placeholder content only. No session check, no data, no wiring. Forms, search, filter, New Request and logout do nothing yet. -->
+    <!-- SHELL (section 8): static, placeholder content only. No session check, no data, no wiring. Search, filter, New Request and logout do nothing yet. The Forms link opens /mrf/forms. -->
     <aside class="mrf-side">
         <div class="mrf-brand">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18v2H3zM3 6l4.5 4L12 4l4.5 6L21 6l-2 10H5z"/></svg>
@@ -18,7 +18,7 @@
         </div>
         <nav class="mrf-nav" aria-label="Portal">
             <a href="/mrf/requests" class="active" aria-current="page">My Requests</a>
-            <a href="#" aria-disabled="true" title="Not active">Forms</a>
+            <a href="/mrf/forms">Forms</a>
         </nav>
         <div class="mrf-user">
             <div class="mrf-avatar" aria-hidden="true">--</div>

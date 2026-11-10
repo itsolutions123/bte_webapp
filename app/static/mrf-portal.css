@@ -93,6 +93,13 @@ body.mrf-app-body {
 .mrf-table { width: 100%; border-collapse: collapse; }
 .mrf-table th { text-align: left; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; color: var(--mrf-muted); padding: 0.8rem 1rem; border-bottom: 1px solid var(--mrf-border); white-space: nowrap; }
 .mrf-empty { text-align: center; padding: 3.5rem 1rem; color: var(--mrf-muted); font-size: 0.95rem; }
+.mrf-page-sub { color: var(--mrf-muted); font-size: 0.85rem; margin: 0.25rem 0 0; }
+.mrf-form-row { display: flex; align-items: center; gap: 0.85rem; padding: 0.8rem 1rem; border-bottom: 1px solid var(--mrf-border); }
+.mrf-form-row:last-child { border-bottom: 0; }
+.mrf-form-icon { width: 32px; height: 32px; border-radius: 8px; background: #fdf1dc; display: flex; align-items: center; justify-content: center; flex: none; }
+.mrf-form-icon svg { width: 16px; height: 16px; fill: none; stroke: var(--mrf-gold); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.mrf-form-name { flex: 1; min-width: 0; font-size: 0.9rem; font-weight: 600; }
+.mrf-btn-start { height: 32px; padding: 0 0.9rem; border: 1px solid var(--mrf-border); border-radius: 8px; background: #fff; color: var(--mrf-gold); font-size: 0.8rem; font-weight: 700; cursor: not-allowed; }
 @media (max-width: 760px) {
     body.mrf-app-body { grid-template-columns: 1fr; }
     .mrf-side { min-height: 0; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.75rem; border-right: 0; border-bottom: 1px solid var(--mrf-border); padding: 0.75rem 1rem; }

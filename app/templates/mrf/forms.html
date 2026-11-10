@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MRF Portal - Forms</title>
+    <link href="/static/mrf-portal.css" rel="stylesheet">
+</head>
+<body class="mrf-app-body">
+    <!-- SHELL (section 8): static, placeholder rows only. No session check, no data, no wiring. Start, logout and the user chip do nothing yet. -->
+    <aside class="mrf-side">
+        <div class="mrf-brand">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18v2H3zM3 6l4.5 4L12 4l4.5 6L21 6l-2 10H5z"/></svg>
+            <div>
+                <div class="mrf-brand-name">BIGTIME EMPIRE</div>
+                <div class="mrf-brand-sub">MRF PORTAL</div>
+            </div>
+        </div>
+        <nav class="mrf-nav" aria-label="Portal">
+            <a href="/mrf/requests">My Requests</a>
+            <a href="/mrf/forms" class="active" aria-current="page">Forms</a>
+        </nav>
+        <div class="mrf-user">
+            <div class="mrf-avatar" aria-hidden="true">--</div>
+            <div class="mrf-user-name">Signed-in user</div>
+            <button type="button" class="mrf-icon-btn" aria-label="Log out" title="Not active">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            </button>
+        </div>
+    </aside>
+    <main class="mrf-main">
+        <div class="mrf-page-head">
+            <div>
+                <h1>Forms</h1>
+                <p class="mrf-page-sub">Pick a form to start a new Manpower Request.</p>
+            </div>
+        </div>
+        <div class="mrf-table-card">
+            <div class="mrf-form-row">
+                <div class="mrf-form-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><polyline points="14 3 14 8 19 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg></div>
+                <div class="mrf-form-name">Form name</div>
+                <button type="button" class="mrf-btn-start" title="Not active">Start</button>
+            </div>
+            <div class="mrf-form-row">
+                <div class="mrf-form-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><polyline points="14 3 14 8 19 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg></div>
+                <div class="mrf-form-name">Form name</div>
+                <button type="button" class="mrf-btn-start" title="Not active">Start</button>
+            </div>
+            <div class="mrf-form-row">
+                <div class="mrf-form-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><polyline points="14 3 14 8 19 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg></div>
+                <div class="mrf-form-name">Form name</div>
+                <button type="button" class="mrf-btn-start" title="Not active">Start</button>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
