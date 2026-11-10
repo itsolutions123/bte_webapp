@@ -1289,6 +1289,67 @@
         loadProfile();
     }
 
+    // MRF pending-accounts badge on the sidebar MRF item (SUPERADMIN and MANAGER only: the element exists only for them).
+    // Contract: GET /api/v1/admin/mrf/summary (docs/API_CONTRACT.md). Polls only while the tab is visible.
+    const MRF_BADGE_POLL_MS = 60000;
+    const MRF_BADGE_MAX_BACKOFF_MS = 300000;
+
+    function initMrfBadge() {
+        const badge = document.getElementById('mrf-nav-badge');
+        if (!badge) return;
+        let delay = MRF_BADGE_POLL_MS;
+        let timer = null;
+        let stopped = false;
+        let inFlight = false;
+
+        function schedule() {
+            clearTimeout(timer);
+            if (stopped || document.hidden) return;
+            timer = setTimeout(refreshMrfBadge, delay);
+        }
+
+        async function refreshMrfBadge() {
+            if (stopped || inFlight) return;
+            inFlight = true;
+            try {
+                const res = await fetch('/api/v1/admin/mrf/summary', { headers: { 'Accept': 'application/json' } });
+                if (res.status === 401 || res.status === 403) {
+                    stopped = true;
+                    badge.hidden = true;
+                    return;
+                }
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                const n = Number(data.pending_accounts);
+                if (Number.isInteger(n) && n > 0) {
+                    badge.textContent = String(n);
+                    badge.hidden = false;
+                } else {
+                    badge.hidden = true;
+                }
+                delay = MRF_BADGE_POLL_MS;
+            } catch (err) {
+                console.error('MRF badge load failed:', err);
+                badge.hidden = true;
+                delay = Math.min(delay * 2, MRF_BADGE_MAX_BACKOFF_MS);
+            } finally {
+                inFlight = false;
+                schedule();
+            }
+        }
+
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) {
+                clearTimeout(timer);
+            } else if (!stopped) {
+                refreshMrfBadge();
+            }
+        });
+
+        refreshMrfBadge();
+    }
+
     initProfilePill();
     refreshSidebar();
+    initMrfBadge();
 })();
