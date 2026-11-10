@@ -1297,6 +1297,19 @@
     function initMrfBadge() {
         const badge = document.getElementById('mrf-nav-badge');
         if (!badge) return;
+        // Present on /admin/mrf only (Users tab badge); shows the same count as the sidebar badge.
+        const usersBadge = document.getElementById('mrf-users-badge');
+        function showCount(n) {
+            [badge, usersBadge].forEach(function (b) {
+                if (!b) return;
+                if (n > 0) {
+                    b.textContent = String(n);
+                    b.hidden = false;
+                } else {
+                    b.hidden = true;
+                }
+            });
+        }
         let delay = MRF_BADGE_POLL_MS;
         let timer = null;
         let stopped = false;
@@ -1315,22 +1328,17 @@
                 const res = await fetch('/api/v1/admin/mrf/summary', { headers: { 'Accept': 'application/json' } });
                 if (res.status === 401 || res.status === 403) {
                     stopped = true;
-                    badge.hidden = true;
+                    showCount(0);
                     return;
                 }
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const data = await res.json();
                 const n = Number(data.pending_accounts);
-                if (Number.isInteger(n) && n > 0) {
-                    badge.textContent = String(n);
-                    badge.hidden = false;
-                } else {
-                    badge.hidden = true;
-                }
+                showCount(Number.isInteger(n) ? n : 0);
                 delay = MRF_BADGE_POLL_MS;
             } catch (err) {
                 console.error('MRF badge load failed:', err);
-                badge.hidden = true;
+                showCount(0);
                 delay = Math.min(delay * 2, MRF_BADGE_MAX_BACKOFF_MS);
             } finally {
                 inFlight = false;
