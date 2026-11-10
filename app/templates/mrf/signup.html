@@ -7,7 +7,7 @@
     <link href="/static/mrf-portal.css" rel="stylesheet">
 </head>
 <body class="mrf-auth-body">
-    <!-- SHELL (section 8): static, no submit wiring. Cancel and the log in link do nothing yet. Dropdown options are static until app/mrf_lists.py exists. -->
+    <!-- Sign-up page: the form submits to POST /api/v1/mrf/signup (see docs/API_CONTRACT.md). Dropdown options come from app/mrf_lists.py. -->
     <div class="mrf-brand">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18v2H3zM3 6l4.5 4L12 4l4.5 6L21 6l-2 10H5z"/></svg>
         <div>
@@ -16,11 +16,11 @@
         </div>
     </div>
     <div class="mrf-auth-card">
-        <h1>Create an account</h1>
-        <p class="mrf-lead">Sign up to submit and track your requests.</p>
-        <!-- Message area for the later wiring step (validation and result messages). Hidden in the shell. -->
+        <h1 id="mrf-signup-title">Create an account</h1>
+        <p id="mrf-signup-lead" class="mrf-lead">Sign up to submit and track your requests.</p>
+        <!-- Message area for validation and server error messages (filled with textContent). Hidden until needed. -->
         <div id="mrf-signup-message" class="mrf-alert" hidden></div>
-        <form onsubmit="return false" novalidate>
+        <form id="mrf-signup-form" novalidate>
             <div class="mrf-field">
                 <label for="mrf-first-name">First name</label>
                 <input id="mrf-first-name" type="text" placeholder="First name" autocomplete="given-name">
@@ -41,37 +41,126 @@
                 <label for="mrf-department">Department</label>
                 <select id="mrf-department">
                     <option value="" selected disabled>Select department</option>
-                    <option>Accounting</option>
-                    <option>Admin</option>
-                    <option>Audit</option>
-                    <option>BCC</option>
-                    <option>Executive</option>
-                    <option>Human Resources</option>
-                    <option>Marketing</option>
-                    <option>Operations</option>
-                    <option>Procurement</option>
-                    <option>Project Management</option>
-                    <option>Research and Development</option>
-                    <option>Sales</option>
-                    <option>Repairs and Maintenance</option>
+                    {% for department in departments %}
+                    <option>{{ department }}</option>
+                    {% endfor %}
                 </select>
             </div>
             <div class="mrf-field">
                 <label for="mrf-position">Position</label>
                 <select id="mrf-position">
                     <option value="" selected disabled>Select position</option>
-                    <option>Head</option>
-                    <option>OIC</option>
-                    <option>Manager</option>
+                    {% for position in positions %}
+                    <option>{{ position }}</option>
+                    {% endfor %}
                 </select>
             </div>
             <div class="mrf-actions">
-                <button type="button" class="mrf-btn">Cancel</button>
-                <button type="button" class="mrf-btn mrf-btn-primary">Create account</button>
+                <button type="button" id="mrf-signup-cancel" class="mrf-btn">Cancel</button>
+                <button type="submit" id="mrf-signup-submit" class="mrf-btn mrf-btn-primary">Create account</button>
             </div>
         </form>
-        <p class="mrf-alt">Already have an account? <a href="#">Log in</a></p>
+        <p class="mrf-alt">Already have an account? <a href="/mrf/login">Log in</a></p>
     </div>
     <div class="mrf-foot">Bigtime Empire Corporation &middot; Internal use only</div>
+    <script>
+    (function () {
+        var SUCCESS_TITLE = "Sign-up Successful!";
+        var SUCCESS_TEXT = "Your account is pending admin approval. You'll be able to log in once your account has been approved and activated.";
+        var form = document.getElementById("mrf-signup-form");
+        var message = document.getElementById("mrf-signup-message");
+        var title = document.getElementById("mrf-signup-title");
+        var lead = document.getElementById("mrf-signup-lead");
+        var submit = document.getElementById("mrf-signup-submit");
+        var password = document.getElementById("mrf-password");
+
+        var FIELD_IDS = ["mrf-first-name", "mrf-last-name", "mrf-email", "mrf-password", "mrf-department", "mrf-position"];
+        function clearField(el) {
+            el.classList.remove("mrf-invalid");
+            el.removeAttribute("aria-invalid");
+        }
+        function clearInvalid() {
+            FIELD_IDS.forEach(function (id) { clearField(document.getElementById(id)); });
+        }
+        function fieldsForMessage(text) {
+            if (text === "Email already registered" || text === "email domain is not allowed" || text === "email is not valid") { return ["mrf-email"]; }
+            if (text === "department is not allowed") { return ["mrf-department"]; }
+            if (text === "position is not allowed") { return ["mrf-position"]; }
+            if (text.indexOf("New password must") === 0) { return ["mrf-password"]; }
+            if (text.indexOf("first_name and last_name must") === 0) { return ["mrf-first-name", "mrf-last-name"]; }
+            return [];
+        }
+        function showMessage(text, ids) {
+            message.textContent = text;
+            message.hidden = false;
+            (ids || []).forEach(function (id) {
+                var el = document.getElementById(id);
+                el.classList.add("mrf-invalid");
+                el.setAttribute("aria-invalid", "true");
+            });
+            if (ids && ids.length) { document.getElementById(ids[0]).focus(); }
+        }
+
+        FIELD_IDS.forEach(function (id) {
+            var el = document.getElementById(id);
+            el.addEventListener("input", function () { clearField(el); });
+        });
+
+        document.getElementById("mrf-signup-cancel").addEventListener("click", function () {
+            window.location.href = "/mrf/login";
+        });
+
+        form.addEventListener("submit", async function (event) {
+            event.preventDefault();
+            if (submit.disabled) { return; }
+            message.hidden = true;
+            clearInvalid();
+            var body = {
+                first_name: document.getElementById("mrf-first-name").value.trim(),
+                last_name: document.getElementById("mrf-last-name").value.trim(),
+                email: document.getElementById("mrf-email").value.trim(),
+                password: password.value,
+                department: document.getElementById("mrf-department").value,
+                position: document.getElementById("mrf-position").value
+            };
+            var missing = [];
+            if (!body.first_name) { missing.push("mrf-first-name"); }
+            if (!body.last_name) { missing.push("mrf-last-name"); }
+            if (!body.email) { missing.push("mrf-email"); }
+            if (!body.password) { missing.push("mrf-password"); }
+            if (!body.department) { missing.push("mrf-department"); }
+            if (!body.position) { missing.push("mrf-position"); }
+            if (missing.length) {
+                showMessage("Please fill in every field.", missing);
+                return;
+            }
+            submit.disabled = true;
+            try {
+                var response = await fetch("/api/v1/mrf/signup", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body)
+                });
+                if (response.status === 201) {
+                    title.textContent = SUCCESS_TITLE;
+                    lead.textContent = SUCCESS_TEXT;
+                    form.style.display = "none";
+                    return;
+                }
+                var text = "Sign-up failed. Please try again.";
+                try {
+                    var data = await response.json();
+                    if (data && typeof data.detail === "string") { text = data.detail; }
+                } catch (parseError) { }
+                showMessage(text, fieldsForMessage(text));
+            } catch (networkError) {
+                showMessage("Could not reach the server. Please try again.");
+            } finally {
+                password.value = "";
+                submit.disabled = false;
+            }
+        });
+    })();
+    </script>
 </body>
 </html>

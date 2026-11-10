@@ -179,3 +179,24 @@ class Session(Base):
 
     user = relationship("User", back_populates="sessions")
 
+
+class MrfUser(Base):
+    # MRF portal account, separate from the admin users table (migration 021, table already live).
+    __tablename__ = "mrf_users"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    first_name = Column(String(100), nullable=False)
+    last_name = Column(String(100), nullable=False)
+    email = Column(String, nullable=False)
+    password_hash = Column(String, nullable=False)
+    position = Column(String, nullable=False)
+    department = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="pending", server_default="pending")
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+    approved_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+    __table_args__ = (
+        Index("idx_mrf_users_email", "email", unique=True),
+        Index("idx_mrf_users_status", "status"),
+    )
+

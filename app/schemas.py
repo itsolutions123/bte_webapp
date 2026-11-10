@@ -349,3 +349,14 @@ class UserListResponse(BaseModel):
     total: int
     page: int
     limit: int
+
+
+# MRF portal sign-up (docs/API_CONTRACT.md, POST /api/v1/mrf/signup). Plain str fields on purpose: the endpoint
+# trims and lower-cases the email and checks domain, lists, lengths and password rules itself.
+class MrfSignupRequest(BaseModel):
+    first_name: str
+    last_name: str
+    email: str
+    password: str
+    department: str
+    position: str

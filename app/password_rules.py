@@ -52,3 +52,31 @@ def validate_new_password(new_password: str, temporary_password: str) -> Optiona
     else:
         joined = ", ".join(unmet[:-1]) + " and " + unmet[-1]
     return f"{RULES_LEAD_IN} {joined}."
+
+
+def validate_sign_up_password(password: str) -> Optional[str]:
+    """Return one 422 detail string listing every unmet rule, or None when all rules pass.
+    MRF sign-up (docs/API_CONTRACT.md, POST /api/v1/mrf/signup): the first five rules above.
+    There is no temporary password, so RULE_DIFFERENT does not apply. Same special-character
+    ASSUMPTION, UNCONFIRMED, as validate_new_password."""
+    unmet = []
+
+    size = len(password.encode("utf-8"))
+    if size < PASSWORD_MIN_BYTES or size > PASSWORD_MAX_BYTES:
+        unmet.append(RULE_LENGTH)
+    if not any(ch.isupper() for ch in password):
+        unmet.append(RULE_UPPER)
+    if not any(ch.islower() for ch in password):
+        unmet.append(RULE_LOWER)
+    if not any(ch.isdigit() for ch in password):
+        unmet.append(RULE_NUMBER)
+    if not any(not (ch.isalnum() or ch.isspace()) for ch in password):
+        unmet.append(RULE_SPECIAL)
+
+    if not unmet:
+        return None
+    if len(unmet) == 1:
+        joined = unmet[0]
+    else:
+        joined = ", ".join(unmet[:-1]) + " and " + unmet[-1]
+    return f"{RULES_LEAD_IN} {joined}."

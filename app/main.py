@@ -24,6 +24,9 @@ from app.routers import auth
 app.include_router(auth.router, prefix="/api/v1/admin", tags=["Auth"])
 from app.routers import users
 app.include_router(users.router, prefix="/api/v1/admin", tags=["Users"], dependencies=[Depends(get_current_user)])
+# MRF portal API: its own prefix, NO get_current_user (sign-up is public; the portal never uses the admin session).
+from app.routers import mrf
+app.include_router(mrf.router, prefix="/api/v1/mrf", tags=["MRF"])
 
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
@@ -42,6 +45,7 @@ from app.database import get_db
 
 from app.roles import ROLE_SUPERADMIN, ROLE_MANAGER
 from app.password_rules import RULES_LEAD_IN, RULE_PHRASES, PASSWORD_MIN_BYTES, PASSWORD_MAX_BYTES
+from app.mrf_lists import DEPARTMENTS, POSITIONS
 
 NO_STORE = {"Cache-Control": "no-store"}
 
@@ -121,8 +125,13 @@ async def serve_mrf_requests_page(request: Request):
 @app.get("/mrf/signup", include_in_schema=False)
 async def serve_mrf_signup_page(request: Request):
     # MRF portal sign-up, SHELL only (section 8): static page, no session check and no submit wiring yet.
-    # Position and Department options are static until app/mrf_lists.py exists.
-    return templates.TemplateResponse(request=request, name="mrf/signup.html", headers=NO_STORE)
+    # Position and Department options come from app/mrf_lists.py (single source of truth).
+    return templates.TemplateResponse(
+        request=request,
+        name="mrf/signup.html",
+        context={"departments": DEPARTMENTS, "positions": POSITIONS},
+        headers=NO_STORE,
+    )
 
 @app.get("/mrf/forms", include_in_schema=False)
 async def serve_mrf_forms_page(request: Request):

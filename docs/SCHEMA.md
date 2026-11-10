@@ -248,4 +248,5 @@ Status: PROPOSED 2026-11-10. `mrf_users` and `mrf_sessions` APPLIED and VERIFIED
 - Allowed email domains: bigtimeempire.com, thesandwichguy.com, paresretiro.com
 
 ### Open (not answered, not built)
-Sidebar badge meaning; which roles approve accounts and change status; Assignment column; admin-created accounts pre-approved or not; Users tab pending view; status transitions.
+- Answered 2026-11-10 (part 28, recorded in docs/API_CONTRACT.md): SUPERADMIN and MANAGER approve MRF accounts; the sidebar MRF item and the Users tab carry a badge that counts pending accounts only; the Users tab pending group is contracted (PROPOSED, not built).
+- Still open: who changes request status; who counts as HR; Assignment column; admin-created accounts pre-approved or not; status transitions.

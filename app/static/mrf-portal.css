@@ -108,3 +108,6 @@ body.mrf-app-body {
     .mrf-user { margin-top: 0; margin-left: auto; padding-top: 0; border-top: 0; }
     .mrf-main { padding: 1.25rem 1rem; }
 }
+.mrf-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.mrf-btn-primary:disabled:hover { background: var(--mrf-gold); }
+.mrf-field input.mrf-invalid, .mrf-field select.mrf-invalid { border-color: #c0392b; box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.15); }
