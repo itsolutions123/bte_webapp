@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTE Careers - MRF</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="/static/admin-sidebar.css" rel="stylesheet">
+    <style>
+        /* MRF admin SHELL (section 8): placeholder content only, nothing is fetched or saved. Business Unit is parked (saved item q). */
+        .mrf-sub { font-size: 0.9rem; color: var(--text-muted); }
+        .mrf-tabs { display: flex; gap: 1.5rem; border-bottom: 1px solid var(--border-light); margin-bottom: 1rem; }
+        .mrf-tab { font-weight: 700; font-size: 0.95rem; color: var(--text-muted); padding-bottom: 0.6rem; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; }
+        .mrf-tab.active { color: var(--text-main); border-bottom-color: var(--text-main); }
+        .mrf-tab-badge { display: inline-block; min-width: 1.25rem; padding: 0 0.4rem; margin-left: 0.35rem; border-radius: 999px; background: #dc3545; color: #fff; font-size: 0.7rem; line-height: 1.25rem; text-align: center; }
+        .mrf-tab-badge[hidden] { display: none; }
+        .mrf-toolbar { display: flex; gap: 0.75rem; margin-bottom: 1rem; }
+        .mrf-search { flex: 1; border-radius: 12px; font-size: 0.9rem; }
+        .mrf-select { width: auto; border-radius: 12px; font-size: 0.9rem; }
+        .mrf-add-btn { border-radius: 12px; font-weight: 700; background-color: var(--accent-black); color: #fff; }
+        .mrf-card { background-color: #fff; border: 1px solid var(--border-light); border-radius: 16px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); margin-bottom: 1rem; }
+        .mrf-group-label { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); padding: 0.75rem 0.75rem 0; }
+        .mrf-table { font-size: 0.9rem; width: 100%; min-width: 900px; margin-bottom: 0; }
+        .mrf-table th, .mrf-table td { padding: 0.9rem 0.75rem; vertical-align: middle; white-space: nowrap; }
+        .mrf-table thead th { font-size: 0.75rem; color: var(--text-muted); font-weight: 700; background-color: #fafafa; border-bottom: 1px solid var(--border-light); }
+        .mrf-table td.mrf-muted { color: var(--text-muted); }
+        .mrf-btn { border-radius: 10px; font-weight: 700; font-size: 0.8rem; }
+        .mrf-empty { padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
+        .mrf-shell-note { font-size: 0.8rem; color: var(--text-muted); }
+    </style>
+</head>
+<body>
+    {% set active_page = 'mrf' %}
+    <div class="container-fluid p-0">
+        <div class="row g-0">
+            {% include '_sidebar.html' %}
+
+            <main class="col-md-10 px-4 pb-5">
+                <div class="mt-4 mb-4">
+                    <h4 class="fw-bold mb-0">Manpower Request Dashboard</h4>
+                    <div class="mrf-sub">Bigtime Empire Corporation</div>
+                </div>
+
+                <div class="mrf-tabs">
+                    <span class="mrf-tab active" data-tab="submissions">Submissions</span>
+                    <span class="mrf-tab" data-tab="forms">Forms</span>
+                    <span class="mrf-tab" data-tab="users">Users<span class="mrf-tab-badge" id="mrf-users-badge" hidden>0</span></span>
+                </div>
+
+                <section class="mrf-panel" data-panel="submissions">
+                    <div class="mrf-card"><div class="mrf-empty">Submissions list: placeholder, built at a later step.</div></div>
+                </section>
+
+                <section class="mrf-panel d-none" data-panel="forms">
+                    <div class="mrf-card"><div class="mrf-empty">Forms list: placeholder, built at a later step.</div></div>
+                </section>
+
+                <section class="mrf-panel d-none" data-panel="users">
+                    <div class="mrf-toolbar">
+                        <input type="search" class="form-control mrf-search" placeholder="Search users" aria-label="Search users" autocomplete="off">
+                        <select class="form-select mrf-select" aria-label="Department"><option>Department</option></select>
+                        <button type="button" class="btn mrf-add-btn">Add user</button>
+                    </div>
+
+                    <div class="mrf-card">
+                        <div class="mrf-group-label">PENDING APPROVAL</div>
+                        <div class="table-responsive">
+                            <table class="table mrf-table align-middle">
+                                <thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Department</th><th>Position</th><th>Security</th></tr></thead>
+                                <tbody>
+                                    <tr><td>--</td><td>--</td><td class="mrf-muted">--</td><td>--</td><td>--</td><td><button type="button" class="btn btn-outline-dark btn-sm mrf-btn">Approve</button></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="mrf-card">
+                        <div class="mrf-group-label">APPROVED</div>
+                        <div class="table-responsive">
+                            <table class="table mrf-table align-middle">
+                                <thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Department</th><th>Position</th><th>Security</th></tr></thead>
+                                <tbody>
+                                    <tr><td>--</td><td>--</td><td class="mrf-muted">--</td><td>--</td><td>--</td><td><button type="button" class="btn btn-outline-dark btn-sm mrf-btn">Reset password</button></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="mrf-shell-note">Shell: placeholder rows, Approve, Reset password and Add user do nothing yet.</div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    {% include '_form_builder.html' %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/admin-sidebar.js"></script>
+    <script>
+        // Shell only: switches the three tabs in the page. No data is loaded.
+        document.querySelectorAll('.mrf-tab').forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                document.querySelectorAll('.mrf-tab').forEach(function (t) { t.classList.toggle('active', t === tab); });
+                document.querySelectorAll('.mrf-panel').forEach(function (p) { p.classList.toggle('d-none', p.dataset.panel !== tab.dataset.tab); });
+            });
+        });
+    </script>
+</body>
+</html>

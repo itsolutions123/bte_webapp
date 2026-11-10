@@ -439,3 +439,7 @@ body {
 #element-modal-overlay > div { display: flex; flex-direction: column; max-height: calc(100% - 2rem); overflow: hidden; }
 #element-modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; scrollbar-width: thin; scrollbar-color: #d4d4d8 transparent; }
 #element-modal-overlay > div > .d-flex.justify-content-end { flex: none; }
+
+/* MRF nav badge (shell 2026-11-10): shows 0 until GET /api/v1/admin/mrf/summary is wired. */
+.mrf-nav-badge { display: inline-block; min-width: 1.25rem; padding: 0 0.4rem; margin-left: 0.5rem; border-radius: 999px; background: #dc3545; color: #fff; font-size: 0.7rem; line-height: 1.25rem; text-align: center; }
+.mrf-nav-badge[hidden] { display: none; }

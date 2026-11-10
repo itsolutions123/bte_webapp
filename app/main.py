@@ -158,6 +158,12 @@ async def serve_admin_users(request: Request):
     # Shell only (section 8): no data is fetched yet. Role check: SUPERADMIN and MANAGER allowed, RECRUITER gets 403 (API_CONTRACT.md).
     return templates.TemplateResponse(request=request, name="admin_users.html", headers=NO_STORE)
 
+@app.get("/admin/mrf", include_in_schema=False, dependencies=[Depends(require_page_session), Depends(require_page_roles(ROLE_SUPERADMIN, ROLE_MANAGER))])
+async def serve_admin_mrf(request: Request):
+    # Admin MRF section, SHELL only (section 8): static page with placeholder rows, no data fetched yet.
+    # Role check: SUPERADMIN and MANAGER allowed, RECRUITER gets 403 (API_CONTRACT.md section 5).
+    return templates.TemplateResponse(request=request, name="admin_mrf.html", headers=NO_STORE)
+
 @app.get("/admin", include_in_schema=False, dependencies=[Depends(require_page_session)])
 @app.get("/admin/{rest:path}", include_in_schema=False, dependencies=[Depends(require_page_session)])
 async def admin_unknown_path(request: Request, rest: str = ""):

@@ -9,9 +9,9 @@
     <div class="nav flex-column">
         <a href="/admin/home" class="{% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
         <a href="/admin/applicants" class="{% if active_page == 'applicants' %}active{% endif %}">Applicants</a>
-        {# MRF: nav placeholder only, no route/page exists yet. Users links to /admin/users (shell confirmed 2026-11-05). #}
-        <span class="nav-link-soon" aria-disabled="true">MRF <span class="soon-tag">Soon</span></span>
+        {# MRF: links to /admin/mrf (shell built 2026-11-10), shown to SUPERADMIN and MANAGER only, like Users. The badge is a shell placeholder showing 0 until GET /api/v1/admin/mrf/summary is wired. Users links to /admin/users (shell confirmed 2026-11-05). #}
         {% if request is defined and request.state.user is defined and request.state.user.role in ['SUPERADMIN', 'MANAGER'] %}
+        <a href="/admin/mrf" class="{% if active_page == 'mrf' %}active{% endif %}">MRF <span class="mrf-nav-badge" id="mrf-nav-badge" hidden>0</span></a>
         <a href="/admin/users" class="{% if active_page == 'users' %}active{% endif %}">Users</a>
         {% endif %}
     </div>
