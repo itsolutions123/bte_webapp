@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MRF Portal - Log in</title>
+    <link href="/static/mrf-portal.css" rel="stylesheet">
+</head>
+<body class="mrf-auth-body">
+    <!-- SHELL (section 8): static, no submit wiring. Cancel, Forgot password and the sign-up link do nothing yet. -->
+    <div class="mrf-brand">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18v2H3zM3 6l4.5 4L12 4l4.5 6L21 6l-2 10H5z"/></svg>
+        <div>
+            <div class="mrf-brand-name">BIGTIME EMPIRE</div>
+            <div class="mrf-brand-sub">MRF PORTAL</div>
+        </div>
+    </div>
+    <div class="mrf-auth-card">
+        <h1>Welcome back</h1>
+        <p class="mrf-lead">Log in to submit or track your requests.</p>
+        <!-- Message area for the later wiring step (pending-approval text, generic error). Hidden in the shell. -->
+        <div id="mrf-login-message" class="mrf-alert" hidden></div>
+        <form onsubmit="return false" novalidate>
+            <div class="mrf-field">
+                <label for="mrf-email">Email</label>
+                <input id="mrf-email" type="email" placeholder="Email address" autocomplete="username">
+            </div>
+            <div class="mrf-field">
+                <label for="mrf-password">Password</label>
+                <input id="mrf-password" type="password" placeholder="Password" autocomplete="current-password">
+            </div>
+            <div class="mrf-forgot" aria-disabled="true" title="Not active">Forgot password?</div>
+            <div class="mrf-actions">
+                <button type="button" class="mrf-btn">Cancel</button>
+                <button type="button" class="mrf-btn mrf-btn-primary">Log in</button>
+            </div>
+        </form>
+        <p class="mrf-alt">New here? <a href="#">Create an account</a></p>
+    </div>
+    <div class="mrf-foot">Bigtime Empire Corporation &middot; Internal use only</div>
+</body>
+</html>

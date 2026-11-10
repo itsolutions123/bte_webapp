@@ -106,6 +106,12 @@ async def serve_change_password_page(request: Request):
         },
     )
 
+@app.get("/mrf/login", include_in_schema=False)
+async def serve_mrf_login_page(request: Request):
+    # MRF portal login, SHELL only (section 8): static page, no session check and no submit wiring yet.
+    # Separate from /admin: the portal has its own layout and, once wired, its own mrf_session_id cookie.
+    return templates.TemplateResponse(request=request, name="mrf/login.html", headers=NO_STORE)
+
 @app.get("/admin/home", include_in_schema=False, dependencies=[Depends(require_page_session)])
 async def serve_admin_dashboard(request: Request):
     return templates.TemplateResponse(request=request, name="admin.html", headers=NO_STORE)
