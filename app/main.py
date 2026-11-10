@@ -24,6 +24,8 @@ from app.routers import auth
 app.include_router(auth.router, prefix="/api/v1/admin", tags=["Auth"])
 from app.routers import users
 app.include_router(users.router, prefix="/api/v1/admin", tags=["Users"], dependencies=[Depends(get_current_user)])
+from app.routers import admin_mrf
+app.include_router(admin_mrf.router, prefix="/api/v1/admin", tags=["Admin MRF"], dependencies=[Depends(get_current_user)])
 # MRF portal API: its own prefix, NO get_current_user (sign-up is public; the portal never uses the admin session).
 from app.routers import mrf
 app.include_router(mrf.router, prefix="/api/v1/mrf", tags=["MRF"])

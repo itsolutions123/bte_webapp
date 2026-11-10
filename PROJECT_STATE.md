@@ -1465,3 +1465,17 @@ OPEN: saved items a, c, d, f, g, h, k, m, n, o, p as in part 28 (h and o are now
 NEXT: commit (user says Awesome, branch verified, git add by name), then one per step: GET /api/v1/admin/mrf/summary and the two badges; GET /api/v1/admin/mrf/users and the Users tab groups; POST approve and the Approve button; portal login with its own mrf_session_id cookie and an MrfSession model, logout, session guard; Forms list and My Requests.
 
 Backups (untracked, not committed): docs/API_CONTRACT.md.bak-mrfsignup3 to -mrfsignup9-20261110, docs/SECURITY.md.bak-mrfsignup-20261110, docs/SCHEMA.md.bak-mrfopen-20261110, app/templates/mrf/signup.html.bak-mrflists-, -mrfwire- and -mrfhl-20261110, app/static/mrf-portal.css.bak-mrfwire- and -mrfhl-20261110, app/main.py.bak-mrflists- and -mrfrouter-20261110, app/models.py.bak-mrfuser-20261110, app/password_rules.py.bak-signuppw-20261110, app/schemas.py.bak-mrfsignup-20261110, PROJECT_STATE.md.bak-part29-20261110.
+
+## Session Log 2026-11-10 (part 29, continued): sign-up committed as c6564d1; GET /api/v1/admin/mrf/summary built and verified (commit: see git log)
+
+Scope: local-only (10.0.10.37:8000, plain HTTP). The sign-up work of the part 29 entry above was committed and pushed as c6564d1 (12 files, 15008df..c6564d1, branch in sync). That entry still says "commit: see git log"; the hash is c6564d1. After the commit the contract for GET /api/v1/admin/mrf/summary was tightened first (401, 403, no-store, implementation plan, stale main.py line number 161 corrected to 170), then the code was written.
+
+DONE and VERIFIED: new app/routers/admin_mrf.py (25 lines, one endpoint GET /mrf/summary returning {"pending_accounts": <count>} from an indexed COUNT on mrf_users where status = pending, Cache-Control no-store set in code, guarded by require_roles SUPERADMIN and MANAGER) mounted in app/main.py (now 186 lines, lines 27 and 28, with get_current_user like users.py). Reload confirmed by new processes 573 and 574 with Application startup complete and no Traceback. Seen live: signed out 401 Not authenticated (curl); SUPERADMIN 200, MANAGER 200 and RECRUITER 403 Forbidden in the browser (the user stated which screenshot was which role); the count was 0 because mrf_users has no rows. Contract (586 lines), SECURITY.md (new section 8, 61 lines) and this file updated.
+
+NOT tested (the user chose to skip the non-zero test 2026-11-10): a non-zero count, so the status = pending filter has not run against real data; the Cache-Control no-store header in a live response; the two badges are NOT wired.
+
+HARDCODES: STATUS_PENDING = "pending" is a named constant in admin_mrf.py duplicating the model and DB default. Everything from the part 29 entry still applies. LESSONS: line-count predictions were wrong twice more (a 25-line file predicted as 24; a diff stat predicted with the unchanged heading line); a Python import without a mount is unreachable, so the mount and the reload check are separate steps.
+
+NEXT, one per step: wire the two badges (sidebar MRF item and Users tab) to the summary endpoint; then GET /api/v1/admin/mrf/users and the Users tab groups; POST approve and the Approve button; portal login with its own mrf_session_id cookie and an MrfSession model, logout, session guard; Forms list and My Requests.
+
+Backups (untracked, not committed): docs/API_CONTRACT.md.bak-mrfsummary1-20261110 and -mrfsummary2-20261110, docs/SECURITY.md.bak-mrfsummary-20261110, app/main.py.bak-mrfsummary-20261110, PROJECT_STATE.md.bak-part29b-20261110.

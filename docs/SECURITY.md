@@ -53,3 +53,9 @@
 - **Page behaviour:** server messages are shown with `textContent`, never `innerHTML`. The submit button is disabled while a request is in flight. The fixed success text is shown only on a 201.
 - **Transport:** plain HTTP on the LAN, so the password travels unencrypted. Accepted under the local-only lock; TLS is future work and is not built.
 - **NOT verified:** portal and admin sessions being non-interchangeable, approval enforcement at login (neither is built), the 254-character email limit, and the 429 message in the browser.
+
+## 8. MRF Admin Summary (`GET /api/v1/admin/mrf/summary`) (IMPLEMENTED and VERIFIED LIVE 2026-11-10)
+- **Access:** admin session required (`get_current_user` at router level) and role SUPERADMIN or MANAGER (`require_roles`, same guard as the users endpoints). Seen live: signed out 401, SUPERADMIN and MANAGER 200, RECRUITER 403.
+- **Data exposed:** one integer, the count of pending MRF accounts. No names, emails or password data.
+- **Caching:** `Cache-Control: no-store` is set in code; the header was NOT seen in a live response.
+- **NOT verified:** that an MRF portal session can never satisfy this endpoint and an admin session can never satisfy a portal endpoint (portal login and sessions are not built yet), and a non-zero count.
