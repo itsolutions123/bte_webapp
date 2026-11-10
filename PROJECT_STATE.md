@@ -1444,7 +1444,7 @@ OPEN: items from the part 27 handover are unchanged except b (approval roles ans
 
 Backups (untracked, not committed): app/main.py.bak-mrfadmin-20261110, app/templates/_sidebar.html.bak-mrfadmin-20261110 and -mrfadmin2-, app/static/admin-sidebar.css.bak-mrfadmin-20261110 and -mrfadmin2-, app/templates/admin_mrf.html.bak-mrfadmin-20261110, docs/API_CONTRACT.md.bak-mrfadmin-20261110, -mrfadmin2- and -mrfadmin3-, PROJECT_STATE.md.bak-part28-20261110.
 
-## Session Log 2026-11-10 (part 29): MRF sign-up endpoint and sign-up page wired, live-tested (commit: see git log)
+## Session Log 2026-11-10 (part 29): MRF sign-up endpoint and sign-up page wired, live-tested (commit c6564d1)
 
 Scope: local-only (10.0.10.37:8000, plain HTTP). Repo state at the start matched the part 29 handover (main, HEAD 15008df, in sync with origin/main, nothing committed during parts 28 and 29 work). Sign-up plan steps (a) to (f) are now all done; everything is UNCOMMITTED until the commit step.
 
@@ -1466,7 +1466,7 @@ NEXT: commit (user says Awesome, branch verified, git add by name), then one per
 
 Backups (untracked, not committed): docs/API_CONTRACT.md.bak-mrfsignup3 to -mrfsignup9-20261110, docs/SECURITY.md.bak-mrfsignup-20261110, docs/SCHEMA.md.bak-mrfopen-20261110, app/templates/mrf/signup.html.bak-mrflists-, -mrfwire- and -mrfhl-20261110, app/static/mrf-portal.css.bak-mrfwire- and -mrfhl-20261110, app/main.py.bak-mrflists- and -mrfrouter-20261110, app/models.py.bak-mrfuser-20261110, app/password_rules.py.bak-signuppw-20261110, app/schemas.py.bak-mrfsignup-20261110, PROJECT_STATE.md.bak-part29-20261110.
 
-## Session Log 2026-11-10 (part 29, continued): sign-up committed as c6564d1; GET /api/v1/admin/mrf/summary built and verified (commit: see git log)
+## Session Log 2026-11-10 (part 29, continued): sign-up committed as c6564d1; GET /api/v1/admin/mrf/summary built and verified (commit 6ee8d59)
 
 Scope: local-only (10.0.10.37:8000, plain HTTP). The sign-up work of the part 29 entry above was committed and pushed as c6564d1 (12 files, 15008df..c6564d1, branch in sync). That entry still says "commit: see git log"; the hash is c6564d1. After the commit the contract for GET /api/v1/admin/mrf/summary was tightened first (401, 403, no-store, implementation plan, stale main.py line number 161 corrected to 170), then the code was written.
 
@@ -1479,3 +1479,19 @@ HARDCODES: STATUS_PENDING = "pending" is a named constant in admin_mrf.py duplic
 NEXT, one per step: wire the two badges (sidebar MRF item and Users tab) to the summary endpoint; then GET /api/v1/admin/mrf/users and the Users tab groups; POST approve and the Approve button; portal login with its own mrf_session_id cookie and an MrfSession model, logout, session guard; Forms list and My Requests.
 
 Backups (untracked, not committed): docs/API_CONTRACT.md.bak-mrfsummary1-20261110 and -mrfsummary2-20261110, docs/SECURITY.md.bak-mrfsummary-20261110, app/main.py.bak-mrfsummary-20261110, PROJECT_STATE.md.bak-part29b-20261110.
+
+## Session Log 2026-11-10 (part 30): sidebar MRF badge wired to GET /api/v1/admin/mrf/summary (commit fdf6c96)
+
+Scope: local-only (10.0.10.37:8000, plain HTTP). Repo state at the start matched the part 30 handover (main, HEAD 6ee8d59, in sync with origin/main, clean apart from untracked package-lock.json and .bak files). The two part 29 headings above now carry their hashes (c6564d1 and 6ee8d59); the sentence in the continued entry saying the hash is missing is left as written and is out of date.
+
+DONE: sidebar MRF badge only. Decided by the user: live update by polling (option 1), every 60 s, only while the tab is visible. New initMrfBadge in app/static/admin-sidebar.js (61 lines, file 1294 to 1355): no request if #mrf-nav-badge is missing (the element is rendered only for SUPERADMIN and MANAGER), badge shows the exact count above 0 and is hidden at 0 or on failure, polling stops for good on 401 or 403, the wait doubles after other failures up to a 5 minute cap (cap PROPOSED, not decided by the user), one refresh when a hidden tab becomes visible, an in-flight guard against overlapping requests. Stale comment on app/templates/_sidebar.html line 12 fixed. API_CONTRACT.md: Call site line added to the summary entry, Status line and line 2 updated, the old "NOT built" wording replaced. Commit fdf6c96 (3 files, 65 insertions, 3 deletions, pushed, main in sync with origin/main).
+
+SEEN in the browser as SUPERADMIN: zero count (badge hidden, two 200 summary requests about a minute apart, initiator admin-sidebar.js line 1315) and non-zero count (red 1 after one throwaway sign-up, on /admin/mrf and on the Applicants page; the Users tab badge stayed hidden). This is the first run of the status = pending filter against real data. The throwaway row (Zz Badge) was deleted by id after the user confirmed; mrf_users has 0 rows and mrf_sessions has 0 rows. The red console error was stated by the user to be a favicon; I did not see its text.
+
+NOT tested: the response body of a summary request, how long the badge took to appear, MANAGER, RECRUITER (no badge, no request), the pause in a hidden tab and the immediate refresh on return, the 401/403 stop, the failure backoff, the Cache-Control no-store header in a live response. NOT built: the Users tab badge (#mrf-users-badge).
+
+HARDCODES: MRF_BADGE_POLL_MS and MRF_BADGE_MAX_BACKOFF_MS are named constants; the endpoint path is a fixed string like the other fetches in the file; red #dc3545 is still in two CSS rules (admin-sidebar.css line 444 and admin_mrf.html line 16), and the two badge styles are near-duplicates. Everything from the part 29 entries still applies.
+
+LESSONS: never put exit in a pasted block (it closed the SSH session). The paste redraw can run the start of a block before the echoed lines, so judge state from git log and git status, not from the echo. git rev-parse --short takes one revision per call. My predictions were wrong three times (a line number, a grep line count, and a count of an old phrase that older entries also use): calculate from what was shown and allow for older entries.
+
+NEXT, one per step: wire the Users tab badge (#mrf-users-badge) to the same summary endpoint; then GET /api/v1/admin/mrf/users and the Users tab groups; POST approve and the Approve button; portal login with its own mrf_session_id cookie and an MrfSession model, logout, session guard; Forms list and My Requests.
