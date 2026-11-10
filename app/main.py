@@ -118,6 +118,12 @@ async def serve_mrf_requests_page(request: Request):
     # No session check yet; the portal session guard is added at the wiring step.
     return templates.TemplateResponse(request=request, name="mrf/requests.html", headers=NO_STORE)
 
+@app.get("/mrf/signup", include_in_schema=False)
+async def serve_mrf_signup_page(request: Request):
+    # MRF portal sign-up, SHELL only (section 8): static page, no session check and no submit wiring yet.
+    # Position and Department options are static until app/mrf_lists.py exists.
+    return templates.TemplateResponse(request=request, name="mrf/signup.html", headers=NO_STORE)
+
 @app.get("/admin/home", include_in_schema=False, dependencies=[Depends(require_page_session)])
 async def serve_admin_dashboard(request: Request):
     return templates.TemplateResponse(request=request, name="admin.html", headers=NO_STORE)

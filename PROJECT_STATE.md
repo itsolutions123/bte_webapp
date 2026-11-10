@@ -1394,7 +1394,7 @@ OPEN (unanswered, not built): JOB POSITION and ASSIGNMENT column contents in My 
 
 NEXT (proposed, not confirmed): ask the JOB POSITION and ASSIGNMENT question, build the My Requests shell at GET /mrf/requests, then the sign-up and Forms shells and the admin /admin/mrf shells, then wiring one feature per step (login, logout and session guard first). Docs: API_CONTRACT.md Last verified line unchanged because no endpoint is implemented.
 
-## Session Log 2026-11-10 (part 27): MRF portal My Requests shell (this commit: see git log)
+## Session Log 2026-11-10 (part 27): MRF portal My Requests shell and sign-up shell (commit 3653518 and this commit: see git log)
 
 Scope: local-only (10.0.10.37:8000, plain HTTP). Repo state at the start matched the part 26 handover (main, HEAD 257771f, in sync with origin/main). Only the new `GET /mrf/requests` route was added to app/main.py; the existing system was not changed.
 
@@ -1414,4 +1414,8 @@ OPEN: saved item 5a is still parked, now with the reason above. Items b to m fro
 
 Backups (untracked, not committed): app/main.py.bak-mrfrequests-20261110 and app/static/mrf-portal.css.bak-mrfrequests-20261110.
 
-NEXT (proposed, not confirmed): sign-up shell at GET /mrf/signup, then the Forms shell (ask item k, Commissary, there), then the admin /admin/mrf shells (the Submissions and Users wireframes are still not uploaded), then wiring one feature per step (login, logout and session guard first). SCHEMA.md and SECURITY.md unchanged.
+ADDED later in part 27 (sign-up shell): `GET /mrf/signup` SHELL BUILT and confirmed by the user in the browser (screenshots with both dropdowns open, layout held at two window widths). Route serve_mrf_signup_page in app/main.py lines 121 to 125, directly after the My Requests route, NO_STORE, no session check (diff against backup: 0 removed, 6 added). Template app/templates/mrf/signup.html (77 lines): fields in the decided order First name, Last name, Email, Password, Department, Position; Department lists the 13 values from SCHEMA.md section 7 and Position lists Head, OIC, Manager, both STATIC in the template (16 options counted) until app/mrf_lists.py exists; hidden #mrf-signup-message div reserved; Cancel and the Log in link do nothing; the Create account button label is a placeholder, not from the wireframe. app/static/mrf-portal.css 102 to 103 lines (2 removed, 3 added: the input rule and its focus rule extended to select). curl: /mrf/signup, /mrf/login and /mrf/requests 200, signed-out /admin/home 302; docker logs: new server process 500 (498 finished), Application startup complete. The login page was rechecked in the browser after the shared input rule change and looks unchanged; the gold focus ring on the login inputs was NOT viewed. API_CONTRACT.md: section 5 HTML routes entry (line 574) records the sign-up shell and the Last verified line (line 2) is updated, with this commit's hash still shown as pending; the file stays 574 lines. Backups (untracked, not committed): app/main.py.bak-mrfsignup-20261110, app/static/mrf-portal.css.bak-mrfsignup-20261110, docs/API_CONTRACT.md.bak-mrfsignup-20261110.
+
+NOT built (sign-up): wiring, POST /api/v1/mrf/signup, the server-side domain check, app/mrf_lists.py. NOT tested: the sign-up page at phone width, other browsers, keyboard use of the dropdowns.
+
+NEXT (proposed, not confirmed): Forms shell GET /mrf/forms (ask item k, Commissary, there; propose a shared sidebar partial instead of repeating the markup), then the admin /admin/mrf shells (the Submissions and Users wireframes are still not uploaded), then wiring one feature per step (login, logout and session guard first). SCHEMA.md and SECURITY.md unchanged.
