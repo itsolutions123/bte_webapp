@@ -360,3 +360,21 @@ class MrfSignupRequest(BaseModel):
     password: str
     department: str
     position: str
+
+
+# MRF admin Users list (docs/API_CONTRACT.md, GET /api/v1/admin/mrf/users). Fields as contracted; never password data.
+class MrfUserListItem(BaseModel):
+    id: UUID4
+    first_name: str
+    last_name: str
+    email: str
+    department: str
+    position: str
+    status: str
+
+
+class MrfUserListResponse(BaseModel):
+    data: List[MrfUserListItem]
+    total: int
+    page: int
+    page_size: int
