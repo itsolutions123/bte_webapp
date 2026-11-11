@@ -1544,7 +1544,7 @@ LESSONS: throwaway password through a hidden read -rs prompt pasted alone, then 
 
 NEXT, one per step: pieces 3 to 5 of the Users tab, then the contract call-site note, then POST approve (see part 33).
 
-## Session Log 2026-11-11 (part 33): Users tab pieces 3 to 5 built (pagers, search box, First name sort); API_CONTRACT.md call-site note (uncommitted when written)
+## Session Log 2026-11-11 (part 33): Users tab pieces 3 to 5 built (pagers, search box, First name sort); API_CONTRACT.md call-site note (commit 5dc3a1e)
 
 Scope: local-only (10.0.10.37:8000, plain HTTP). Repo state at the start matched the part 33 handover (main, HEAD 7ded3e5, in sync with origin/main; modified app/templates/admin_mrf.html uncommitted; untracked package-lock.json and .bak files, never commit). The endpoint is unchanged; no backend change.
 
