@@ -45,17 +45,27 @@
 - Existing gap, unchanged: the admin endpoints have no HR-auth check yet (see section 2).
 
 ## 7. MRF Portal Sign-up (`POST /api/v1/mrf/signup`) (IMPLEMENTED and VERIFIED LIVE by curl 2026-11-10; page wired and confirmed in the browser)
-- **Pending accounts only:** sign-up creates an `mrf_users` row with status `pending` and no session. The account cannot do anything until an admin approves it (approval and portal login are NOT built yet).
+- **Pending accounts only:** sign-up creates an `mrf_users` row with status `pending` and no session. The account cannot do anything until an admin approves it (approval and portal login are built; a pending account that logs in with the correct password gets 403, no cookie and no session row, seen by curl in part 38, status and headers only).
 - **Server-side enforcement:** the allowed email domains, the Department and Position lists (app/mrf_lists.py), the password rules and the length limits are checked on the server. The page's own checks are for convenience only. Seen live: wrong domain, bad department, bad position, weak password, empty field and a 101-character name were all rejected with 422.
 - **Duplicate email (409):** the endpoint answers `Email already registered`, which reveals which emails are registered. Accepted trade-off, decided by the user 2026-11-10. The email is trimmed and lowercased before the check (seen live with a padded, uppercase copy).
 - **Rate limiting:** 5 attempts per IP in a 60 second window (5 decided by the user; the window and counting every attempt are PROPOSED). In-memory cache of its own, separate from the login limiter, per process, so it resets on restart. Every attempt counts, success or failure. The 6th attempt returns 429, checked before validation (seen live). NOT known: whether rejected 429 attempts extend the window, and how the client IP is read if the app is ever put behind a proxy (UNVERIFIED, out of scope under the local-only lock).
 - **Passwords:** hashed with bcrypt before the insert (from the code description; the hash column was deliberately never read during testing). The page clears the password field after every response and never logs or displays it.
 - **Page behaviour:** server messages are shown with `textContent`, never `innerHTML`. The submit button is disabled while a request is in flight. The fixed success text is shown only on a 201.
 - **Transport:** plain HTTP on the LAN, so the password travels unencrypted. Accepted under the local-only lock; TLS is future work and is not built.
-- **NOT verified:** portal and admin sessions being non-interchangeable, approval enforcement at login (neither is built), the 254-character email limit, and the 429 message in the browser.
+- **NOT verified:** portal and admin sessions being non-interchangeable (the portal guard and the me endpoint are not built, so the cross-cookie tests wait for them), the 254-character email limit, and the 429 message in the browser.
 
 ## 8. MRF Admin Summary (`GET /api/v1/admin/mrf/summary`) (IMPLEMENTED and VERIFIED LIVE 2026-11-10)
 - **Access:** admin session required (`get_current_user` at router level) and role SUPERADMIN or MANAGER (`require_roles`, same guard as the users endpoints). Seen live: signed out 401, SUPERADMIN and MANAGER 200, RECRUITER 403.
 - **Data exposed:** one integer, the count of pending MRF accounts. No names, emails or password data.
 - **Caching:** `Cache-Control: no-store` is set in code; the header was NOT seen in a live response.
-- **NOT verified:** that an MRF portal session can never satisfy this endpoint and an admin session can never satisfy a portal endpoint (portal login and sessions are not built yet), and a non-zero count.
+- **NOT verified:** that an MRF portal session can never satisfy this endpoint and an admin session can never satisfy a portal endpoint (portal login and sessions are built, but the guard that reads the portal cookie is not, so the cross-cookie tests wait for it), and a non-zero count.
+
+## 9. MRF Portal Login (`POST /api/v1/mrf/login`) (IMPLEMENTED 2026-11-11, code commit 04d2ef5; TESTED by curl, status and headers only)
+- **Session:** a successful login writes one `mrf_sessions` row with a random id (`secrets.token_urlsafe(32)`) and sets the cookie `mrf_session_id`: HttpOnly, SameSite=Lax, Path `/`, Max-Age 28800 (8 hours), Secure off because the app runs on plain HTTP (local-only scope). Seen by curl: the cookie attributes, content-length 0, `Cache-Control: no-store`, and one session row with a lifetime of 08:00:00 and `last_active_at` equal to `created_at`.
+- **Lifetime:** a fixed 8-hour hard cap (`expires_at`, never extended). There is NO idle timeout by decision. Expired rows are never deleted yet (cleanup is NOT decided).
+- **Generic failure:** a wrong password and an unknown email return the same 401 with the same message. Seen by curl: both gave 401 with content-length 39 and no cookie. The response body text was NOT seen. The code runs a dummy bcrypt verify for an unknown email to keep the timing close; that timing was NOT measured.
+- **Pending accounts:** a pending account with the correct password gets 403, no cookie and no session row. Seen by curl: 403, content-length 46, no cookie, no session row. The body text was NOT seen. A pending account with a wrong password gets 401, not 403: NOT tested.
+- **Rate limit:** 5 failed attempts per 60 seconds per IP, kept in memory (per process, cleared by a restart). Seen by curl: 5 x 401, then 429 on the 6th and 7th attempt. The 429 headers and body were NOT seen. That a pending 403 is not counted as a failure is inferred from the run, not proven.
+- **Cookie separation:** the portal cookie `mrf_session_id` and the admin cookie `session_id` are separate by decision. NOT verified: the cross-cookie tests (they need the portal guard and the me endpoint, which are NOT built).
+- **NOT built:** logout, the me endpoint, the portal session guard, and the login page script.
+- **NOT verified:** that no response body echoes a password, the behaviour in a browser, and the effect of a server restart on the limiter.
