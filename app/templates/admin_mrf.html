@@ -28,6 +28,8 @@
         .mrf-btn { border-radius: 10px; font-weight: 700; font-size: 0.8rem; }
         .mrf-empty { padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
         .mrf-shell-note { font-size: 0.8rem; color: var(--text-muted); }
+        .mrf-sortable { cursor: pointer; user-select: none; }
+        .mrf-pager { display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; padding: 0.75rem; font-size: 0.85rem; color: var(--text-muted); }
     </style>
 </head>
 <body>
@@ -63,24 +65,24 @@
                     </div>
 
                     <div class="mrf-card">
-                        <div class="mrf-group-label">PENDING APPROVAL</div>
+                        <div class="mrf-group-label" id="mrf-pending-label">PENDING APPROVAL</div>
                         <div class="table-responsive">
                             <table class="table mrf-table align-middle">
                                 <thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Department</th><th>Position</th><th>Security</th></tr></thead>
                                 <tbody>
-                                    <tr><td>--</td><td>--</td><td class="mrf-muted">--</td><td>--</td><td>--</td><td><button type="button" class="btn btn-outline-dark btn-sm mrf-btn">Approve</button></td></tr>
+                                    
                                 </tbody>
                             </table>
                         </div>
                     </div>
 
                     <div class="mrf-card">
-                        <div class="mrf-group-label">APPROVED</div>
+                        <div class="mrf-group-label" id="mrf-approved-label">APPROVED</div>
                         <div class="table-responsive">
                             <table class="table mrf-table align-middle">
                                 <thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Department</th><th>Position</th><th>Security</th></tr></thead>
                                 <tbody>
-                                    <tr><td>--</td><td>--</td><td class="mrf-muted">--</td><td>--</td><td>--</td><td><button type="button" class="btn btn-outline-dark btn-sm mrf-btn">Reset password</button></td></tr>
+                                    
                                 </tbody>
                             </table>
                         </div>
@@ -103,6 +105,203 @@
                 document.querySelectorAll('.mrf-panel').forEach(function (p) { p.classList.toggle('d-none', p.dataset.panel !== tab.dataset.tab); });
             });
         });
+    </script>
+    <script>
+        (function () {
+            var MRF_USERS_API = '/api/v1/admin/mrf/users';
+            var MRF_EMPTY_TEXT = 'Nothing to see here';
+            var MRF_ERROR_SESSION = 'Oops, your session has ended. Please sign in again.';
+            var MRF_ERROR_ACCESS = "Oops, you don't have access to this list.";
+            var MRF_ERROR_OTHER = 'Oops, something went wrong while loading this list. Please try again.';
+            var MRF_USERS_COLUMNS = 6;
+            var MRF_PAGE_SIZE = 10;
+            var MRF_PREV_TEXT = 'Previous';
+            var MRF_NEXT_TEXT = 'Next';
+            var MRF_PAGE_WORD = 'Page';
+            var MRF_OF_WORD = 'of';
+            var pages = { pending: 1, approved: 1 };
+            var latest = { pending: 0, approved: 0 };
+            var MRF_SORT_NEWEST = 'newest';
+            var MRF_SORT_ASC = 'first_name_asc';
+            var MRF_SORT_DESC = 'first_name_desc';
+            var MRF_ARROW_NEUTRAL = '\u2195';
+            var MRF_ARROW_ASC = '\u25B2';
+            var MRF_ARROW_DESC = '\u25BC';
+            var sorts = { pending: MRF_SORT_NEWEST, approved: MRF_SORT_NEWEST };
+            var searchText = '';
+            var MRF_SEARCH_DELAY_MS = 300;
+            var MRF_SEARCH_MAX_LENGTH = 100;
+            var usersTab = document.querySelector('.mrf-tab[data-tab="users"]');
+            var usersLoaded = false;
+
+            function messageRow(text) {
+                var tr = document.createElement('tr');
+                var td = document.createElement('td');
+                td.colSpan = MRF_USERS_COLUMNS;
+                td.className = 'mrf-muted';
+                td.textContent = text;
+                tr.appendChild(td);
+                return tr;
+            }
+
+            function cell(text, className) {
+                var td = document.createElement('td');
+                if (className) { td.className = className; }
+                td.textContent = text;
+                return td;
+            }
+
+            function userRow(item, buttonText) {
+                var tr = document.createElement('tr');
+                tr.appendChild(cell(item.first_name));
+                tr.appendChild(cell(item.last_name));
+                tr.appendChild(cell(item.email, 'mrf-muted'));
+                tr.appendChild(cell(item.department));
+                tr.appendChild(cell(item.position));
+                var action = document.createElement('td');
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn btn-outline-dark btn-sm mrf-btn';
+                btn.textContent = buttonText;
+                action.appendChild(btn);
+                tr.appendChild(action);
+                return tr;
+            }
+
+            function usersUrl(status) {
+                var url = MRF_USERS_API + '?status=' + status + '&page=' + pages[status] + '&page_size=' + MRF_PAGE_SIZE;
+                if (searchText) { url += '&q=' + encodeURIComponent(searchText); }
+                url += '&sort=' + sorts[status];
+                return url;
+            }
+
+            function renderPager(card, status, labelId, buttonText, total) {
+                var oldBar = card.querySelector('.mrf-pager');
+                if (oldBar) { oldBar.remove(); }
+                if (!total) { return; }
+                var pageCount = Math.ceil(total / MRF_PAGE_SIZE);
+                var page = pages[status];
+                var bar = document.createElement('div');
+                bar.className = 'mrf-pager';
+                var prev = document.createElement('button');
+                prev.type = 'button';
+                prev.className = 'btn btn-outline-dark btn-sm mrf-btn';
+                prev.textContent = MRF_PREV_TEXT;
+                prev.disabled = page <= 1;
+                prev.addEventListener('click', function () {
+                    pages[status] = page - 1;
+                    loadGroup(status, labelId, buttonText);
+                });
+                var label = document.createElement('span');
+                label.textContent = MRF_PAGE_WORD + ' ' + page + ' ' + MRF_OF_WORD + ' ' + pageCount;
+                var next = document.createElement('button');
+                next.type = 'button';
+                next.className = 'btn btn-outline-dark btn-sm mrf-btn';
+                next.textContent = MRF_NEXT_TEXT;
+                next.disabled = page >= pageCount;
+                next.addEventListener('click', function () {
+                    pages[status] = page + 1;
+                    loadGroup(status, labelId, buttonText);
+                });
+                bar.appendChild(prev);
+                bar.appendChild(label);
+                bar.appendChild(next);
+                card.appendChild(bar);
+            }
+
+            function loadGroup(status, labelId, buttonText) {
+                var card = document.getElementById(labelId).closest('.mrf-card');
+                var tbody = card.querySelector('tbody');
+                var mine = ++latest[status];
+                fetch(usersUrl(status), { credentials: 'same-origin', cache: 'no-store' })
+                    .then(function (res) {
+                        if (!res.ok) {
+                            var err = new Error('request failed');
+                            err.status = res.status;
+                            throw err;
+                        }
+                        return res.json();
+                    })
+                    .then(function (body) {
+                        if (mine !== latest[status]) { return; }
+                        tbody.replaceChildren();
+                        renderPager(card, status, labelId, buttonText, body.total);
+                        if (!body.data.length) {
+                            tbody.appendChild(messageRow(MRF_EMPTY_TEXT));
+                            return;
+                        }
+                        body.data.forEach(function (item) { tbody.appendChild(userRow(item, buttonText)); });
+                    })
+                    .catch(function (err) {
+                        if (mine !== latest[status]) { return; }
+                        usersLoaded = false;
+                        var text = MRF_ERROR_OTHER;
+                        if (err.status === 401) { text = MRF_ERROR_SESSION; }
+                        else if (err.status === 403) { text = MRF_ERROR_ACCESS; }
+                        tbody.replaceChildren(messageRow(text));
+                        renderPager(card, status, labelId, buttonText, 0);
+                    });
+            }
+
+            function loadBothGroups() {
+                loadGroup('pending', 'mrf-pending-label', 'Approve');
+                loadGroup('approved', 'mrf-approved-label', 'Reset password');
+            }
+
+            function setupSort(status, labelId, buttonText) {
+                var card = document.getElementById(labelId).closest('.mrf-card');
+                var th = card.querySelector('thead th');
+                var arrow = document.createElement('span');
+                th.className = 'mrf-sortable';
+                th.setAttribute('role', 'button');
+                th.tabIndex = 0;
+                arrow.textContent = ' ' + MRF_ARROW_NEUTRAL;
+                th.appendChild(arrow);
+                function changeSort() {
+                    var current = sorts[status];
+                    if (current === MRF_SORT_NEWEST) {
+                        sorts[status] = MRF_SORT_ASC;
+                        arrow.textContent = ' ' + MRF_ARROW_ASC;
+                    } else if (current === MRF_SORT_ASC) {
+                        sorts[status] = MRF_SORT_DESC;
+                        arrow.textContent = ' ' + MRF_ARROW_DESC;
+                    } else {
+                        sorts[status] = MRF_SORT_NEWEST;
+                        arrow.textContent = ' ' + MRF_ARROW_NEUTRAL;
+                    }
+                    pages[status] = 1;
+                    loadGroup(status, labelId, buttonText);
+                }
+                th.addEventListener('click', changeSort);
+                th.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); changeSort(); }
+                });
+            }
+            setupSort('pending', 'mrf-pending-label', 'Approve');
+            setupSort('approved', 'mrf-approved-label', 'Reset password');
+
+            var searchBox = document.querySelector('.mrf-search');
+            var searchTimer = null;
+            searchBox.maxLength = MRF_SEARCH_MAX_LENGTH;
+            searchBox.addEventListener('input', function () {
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(function () {
+                    var text = searchBox.value.trim();
+                    if (text === searchText) { return; }
+                    searchText = text;
+                    pages.pending = 1;
+                    pages.approved = 1;
+                    loadBothGroups();
+                }, MRF_SEARCH_DELAY_MS);
+            });
+
+            usersTab.addEventListener('click', function () {
+                if (usersLoaded) { return; }
+                usersLoaded = true;
+                loadBothGroups();
+                
+            });
+        })();
     </script>
 </body>
 </html>
