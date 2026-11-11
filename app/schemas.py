@@ -362,6 +362,12 @@ class MrfSignupRequest(BaseModel):
     position: str
 
 
+# MRF portal login (docs/API_CONTRACT.md, POST /api/v1/mrf/login, DECIDED part 37): plain strings, no length caps.
+class MrfLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
 # MRF admin Users list (docs/API_CONTRACT.md, GET /api/v1/admin/mrf/users). Fields as contracted; never password data.
 class MrfUserListItem(BaseModel):
     id: UUID4

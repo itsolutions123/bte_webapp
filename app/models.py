@@ -200,3 +200,19 @@ class MrfUser(Base):
         Index("idx_mrf_users_status", "status"),
     )
 
+
+class MrfSession(Base):
+    # MRF portal session, separate from the admin sessions table (migration 021, table already live).
+    # Fixed 8-hour hard cap in expires_at, no idle timeout (DECIDED part 37, docs/API_CONTRACT.md).
+    __tablename__ = "mrf_sessions"
+    id = Column(String, primary_key=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("mrf_users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    last_active_at = Column(DateTime(timezone=True), default=utc_now)
+
+    __table_args__ = (
+        Index("idx_mrf_sessions_expires_at", "expires_at"),
+        Index("idx_mrf_sessions_user_id", "user_id"),
+    )
+

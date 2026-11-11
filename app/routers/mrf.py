@@ -1,8 +1,10 @@
 """MRF portal endpoints (docs/API_CONTRACT.md section 5, /api/v1/mrf).
 
-Sign-up only so far. Mounted in app/main.py WITHOUT get_current_user: sign-up is public, and the
-portal never uses the admin session. Login, logout and the portal session guard come in later steps."""
+Sign-up and login so far. Mounted in app/main.py WITHOUT get_current_user: sign-up and login are public, and the
+portal never uses the admin session. Logout, me and the portal session guard come in later steps."""
+import secrets
 import time
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List
 
 from email_validator import validate_email, EmailNotValidError
@@ -13,11 +15,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import MrfUser
+from app.models import MrfSession, MrfUser
 from app.mrf_lists import ALLOWED_EMAIL_DOMAINS, DEPARTMENTS, POSITIONS
 from app.password_rules import validate_sign_up_password
-from app.routers.auth import pwd_context
-from app.schemas import MrfSignupRequest
+from app.routers.auth import DUMMY_HASH, pwd_context
+from app.schemas import MrfLoginRequest, MrfSignupRequest
 
 router = APIRouter()
 
@@ -29,6 +31,18 @@ EMAIL_MAX_CHARS = 254
 SIGNUP_RATE_LIMIT_MAX = 5
 SIGNUP_RATE_LIMIT_WINDOW_SECONDS = 60
 SIGNUP_RATE_LIMIT_CACHE: Dict[str, List[float]] = {}
+
+# Portal login (docs/API_CONTRACT.md, POST /api/v1/mrf/login, DECIDED part 37). Its own cookie and its own limiter.
+MRF_SESSION_COOKIE_NAME = "mrf_session_id"
+MRF_SESSION_DURATION_SECONDS = 8 * 60 * 60  # fixed hard cap, never extended; no idle timeout
+MRF_STATUS_APPROVED = "approved"  # duplicates the value the admin approve endpoint writes
+MRF_LOGIN_INVALID_MESSAGE = "Invalid email or password."
+MRF_LOGIN_PENDING_MESSAGE = "Your account is pending approval."
+MRF_LOGIN_RATE_LIMIT_MESSAGE = "Too many login attempts from this IP. Please try again later."
+# Own in-memory cache, separate from LOGIN_RATE_LIMIT_CACHE and the sign-up cache. Failed attempts only.
+MRF_LOGIN_RATE_LIMIT_MAX = 5
+MRF_LOGIN_RATE_LIMIT_WINDOW_SECONDS = 60
+MRF_LOGIN_RATE_LIMIT_CACHE: Dict[str, List[float]] = {}
 
 
 def check_and_record_signup_attempt(client_ip: str):
@@ -104,3 +118,72 @@ async def signup(
         raise HTTPException(status_code=409, detail="Email already registered")
 
     return Response(status_code=201, headers={"Cache-Control": "no-store"})
+
+
+def check_mrf_login_rate_limit(client_ip: str):
+    now = time.time()
+    for ip, timestamps in list(MRF_LOGIN_RATE_LIMIT_CACHE.items()):
+        recent = [ts for ts in timestamps if now - ts < MRF_LOGIN_RATE_LIMIT_WINDOW_SECONDS]
+        if recent:
+            MRF_LOGIN_RATE_LIMIT_CACHE[ip] = recent
+        else:
+            del MRF_LOGIN_RATE_LIMIT_CACHE[ip]
+    if len(MRF_LOGIN_RATE_LIMIT_CACHE.get(client_ip, [])) >= MRF_LOGIN_RATE_LIMIT_MAX:
+        raise HTTPException(status_code=429, detail=MRF_LOGIN_RATE_LIMIT_MESSAGE)
+
+
+def record_mrf_login_failure(client_ip: str):
+    MRF_LOGIN_RATE_LIMIT_CACHE.setdefault(client_ip, []).append(time.time())
+
+
+@router.post("/login")
+async def login(
+    payload: MrfLoginRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    client_ip = request.client.host if request.client else "unknown"
+    check_mrf_login_rate_limit(client_ip)
+
+    email = payload.email.strip().lower()
+    user = (await db.execute(select(MrfUser).where(MrfUser.email == email))).scalar_one_or_none()
+
+    if user is None:
+        # Timing parity only, result discarded: an unknown email still pays for one bcrypt verify.
+        await run_in_threadpool(pwd_context.verify, payload.password, DUMMY_HASH)
+        record_mrf_login_failure(client_ip)
+        raise HTTPException(status_code=401, detail=MRF_LOGIN_INVALID_MESSAGE)
+
+    if not await run_in_threadpool(pwd_context.verify, payload.password, user.password_hash):
+        record_mrf_login_failure(client_ip)
+        raise HTTPException(status_code=401, detail=MRF_LOGIN_INVALID_MESSAGE)
+
+    # Correct password, account not approved yet (only pending exists today): no cookie, no session,
+    # and it does not count as a failed attempt.
+    if user.status != MRF_STATUS_APPROVED:
+        raise HTTPException(status_code=403, detail=MRF_LOGIN_PENDING_MESSAGE)
+
+    now = datetime.now(timezone.utc)
+    session_id = secrets.token_urlsafe(32)
+    db.add(
+        MrfSession(
+            id=session_id,
+            user_id=user.id,
+            created_at=now,
+            expires_at=now + timedelta(seconds=MRF_SESSION_DURATION_SECONDS),
+            last_active_at=now,
+        )
+    )
+    await db.commit()
+
+    response = Response(status_code=200, headers={"Cache-Control": "no-store"})
+    response.set_cookie(
+        key=MRF_SESSION_COOKIE_NAME,
+        value=session_id,
+        httponly=True,
+        secure=False,  # LAN HTTP, no TLS (same as the admin cookie, SECURITY.md section 2)
+        samesite="lax",
+        max_age=MRF_SESSION_DURATION_SECONDS,
+        path="/",
+    )
+    return response
