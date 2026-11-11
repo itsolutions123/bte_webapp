@@ -27,6 +27,7 @@
         .mrf-table td.mrf-muted { color: var(--text-muted); }
         .mrf-btn { border-radius: 10px; font-weight: 700; font-size: 0.8rem; }
         .mrf-empty { padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
+        .mrf-approve-error { color: #dc3545; font-size: 0.85rem; padding: 0.5rem 0.75rem 0; }
         .mrf-shell-note { font-size: 0.8rem; color: var(--text-muted); }
         .mrf-sortable { cursor: pointer; user-select: none; }
         .mrf-pager { display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; padding: 0.75rem; font-size: 0.85rem; color: var(--text-muted); }
@@ -66,6 +67,7 @@
 
                     <div class="mrf-card">
                         <div class="mrf-group-label" id="mrf-pending-label">PENDING APPROVAL</div>
+                        <div class="mrf-approve-error" id="mrf-approve-error" role="alert" hidden></div>
                         <div class="table-responsive">
                             <table class="table mrf-table align-middle">
                                 <thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Department</th><th>Position</th><th>Security</th></tr></thead>
@@ -87,7 +89,7 @@
                             </table>
                         </div>
                     </div>
-                    <div class="mrf-shell-note">Shell: placeholder rows, Approve, Reset password and Add user do nothing yet.</div>
+                    <div class="mrf-shell-note">Shell: Reset password and Add user do nothing yet.</div>
                 </section>
             </main>
         </div>
@@ -113,6 +115,13 @@
             var MRF_ERROR_SESSION = 'Oops, your session has ended. Please sign in again.';
             var MRF_ERROR_ACCESS = "Oops, you don't have access to this list.";
             var MRF_ERROR_OTHER = 'Oops, something went wrong while loading this list. Please try again.';
+            var MRF_APPROVE_TEXT = 'Approve';
+            var MRF_APPROVE_SUFFIX = '/approve';
+            var MRF_APPROVE_ERROR_ID = 'mrf-approve-error';
+            var MRF_APPROVE_ERROR_SESSION = 'Oops, your session has ended. Please sign in again.';
+            var MRF_APPROVE_ERROR_ACCESS = "Oops, you don't have permission to approve accounts.";
+            var MRF_APPROVE_ERROR_CHANGED = 'Oops, this account has changed. The list has been refreshed.';
+            var MRF_APPROVE_ERROR_OTHER = "Oops, couldn't approve this account. Please try again.";
             var MRF_USERS_COLUMNS = 6;
             var MRF_PAGE_SIZE = 10;
             var MRF_PREV_TEXT = 'Previous';
@@ -151,6 +160,43 @@
                 return td;
             }
 
+            function showApproveError(text) {
+                var box = document.getElementById(MRF_APPROVE_ERROR_ID);
+                box.textContent = text;
+                box.hidden = !text;
+            }
+
+            function refreshAfterApprove() {
+                loadBothGroups();
+                if (typeof window.refreshMrfBadge === 'function') { window.refreshMrfBadge(); }
+            }
+
+            function approveUser(btn) {
+                showApproveError('');
+                btn.disabled = true;
+                var url = MRF_USERS_API + '/' + encodeURIComponent(btn.getAttribute('data-user-id')) + MRF_APPROVE_SUFFIX;
+                fetch(url, { method: 'POST', credentials: 'same-origin', cache: 'no-store' })
+                    .then(function (res) {
+                        if (!res.ok) {
+                            var err = new Error('request failed');
+                            err.status = res.status;
+                            throw err;
+                        }
+                        refreshAfterApprove();
+                    })
+                    .catch(function (err) {
+                        btn.disabled = false;
+                        var text = MRF_APPROVE_ERROR_OTHER;
+                        if (err.status === 401) { text = MRF_APPROVE_ERROR_SESSION; }
+                        else if (err.status === 403) { text = MRF_APPROVE_ERROR_ACCESS; }
+                        else if (err.status === 404 || err.status === 409) {
+                            text = MRF_APPROVE_ERROR_CHANGED;
+                            refreshAfterApprove();
+                        }
+                        showApproveError(text);
+                    });
+            }
+
             function userRow(item, buttonText) {
                 var tr = document.createElement('tr');
                 tr.appendChild(cell(item.first_name));
@@ -163,6 +209,10 @@
                 btn.type = 'button';
                 btn.className = 'btn btn-outline-dark btn-sm mrf-btn';
                 btn.textContent = buttonText;
+                btn.setAttribute('data-user-id', item.id);
+                if (buttonText === MRF_APPROVE_TEXT) {
+                    btn.addEventListener('click', function () { approveUser(btn); });
+                }
                 action.appendChild(btn);
                 tr.appendChild(action);
                 return tr;
@@ -224,6 +274,11 @@
                     })
                     .then(function (body) {
                         if (mine !== latest[status]) { return; }
+                        if (!body.data.length && pages[status] > 1) {
+                            pages[status] = pages[status] - 1;
+                            loadGroup(status, labelId, buttonText);
+                            return;
+                        }
                         tbody.replaceChildren();
                         renderPager(card, status, labelId, buttonText, body.total);
                         if (!body.data.length) {

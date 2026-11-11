@@ -1346,6 +1346,8 @@
             }
         }
 
+        window.refreshMrfBadge = refreshMrfBadge;
+
         document.addEventListener('visibilitychange', function () {
             if (document.hidden) {
                 clearTimeout(timer);
