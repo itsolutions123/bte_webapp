@@ -81,6 +81,7 @@ body.mrf-app-body {
 .mrf-user-name { flex: 1; min-width: 0; font-size: 0.85rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mrf-icon-btn { border: 0; background: transparent; padding: 0.35rem; border-radius: 8px; color: var(--mrf-muted); cursor: not-allowed; line-height: 0; }
 .mrf-icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#mrf-logout:not(:disabled) { cursor: pointer; }
 .mrf-main { padding: 1.75rem 2rem; min-width: 0; }
 .mrf-page-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
 .mrf-page-head h1 { font-size: 1.4rem; font-weight: 700; margin: 0; }

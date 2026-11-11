@@ -1,7 +1,7 @@
 """MRF portal endpoints (docs/API_CONTRACT.md section 5, /api/v1/mrf).
 
-Sign-up and login so far. Mounted in app/main.py WITHOUT get_current_user: sign-up and login are public, and the
-portal never uses the admin session. Logout, me and the portal session guard come in later steps."""
+Sign-up, login and logout so far. Mounted in app/main.py WITHOUT get_current_user: sign-up, login and logout are
+public, and the portal never uses the admin session. The portal session guard dependency and me are here too (me needs the mrf_session_id cookie). The page guard comes later."""
 import secrets
 import time
 from datetime import datetime, timedelta, timezone
@@ -10,7 +10,7 @@ from typing import Dict, List
 from email_validator import validate_email, EmailNotValidError
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.concurrency import run_in_threadpool
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -187,3 +187,54 @@ async def login(
         path="/",
     )
     return response
+
+
+@router.post("/logout", status_code=204, response_class=Response)
+async def logout(request: Request, db: AsyncSession = Depends(get_db)):
+    """Ends the current portal session only (docs/API_CONTRACT.md, POST /api/v1/mrf/logout, DECIDED part 37).
+    No auth dependency on purpose: an expired or unknown session can still log out. Always 204, always clears
+    the cookie. Other sessions of the same user stay valid."""
+    session_id = request.cookies.get(MRF_SESSION_COOKIE_NAME)
+    if session_id:
+        await db.execute(delete(MrfSession).where(MrfSession.id == session_id))
+        await db.commit()
+
+    response = Response(status_code=204)
+    response.headers["Cache-Control"] = "no-store"
+    response.delete_cookie(
+        key=MRF_SESSION_COOKIE_NAME,
+        path="/",
+        httponly=True,
+        secure=False,  # same as login: LAN HTTP, no TLS (SECURITY.md section 2)
+        samesite="lax",
+    )
+    return response
+
+
+async def get_current_mrf_user(request: Request, db: AsyncSession = Depends(get_db)) -> MrfUser:
+    """Portal session guard (docs/API_CONTRACT.md, GET /api/v1/mrf/me, DECIDED part 37): mrf_session_id cookie ->
+    mrf_sessions row -> mrf_users row. Reads only the MRF cookie, never the admin session_id. Fixed 8 h cap
+    (expires_at), no idle timeout. Every failure is the same 401. The user is kept on request.state.mrf_user."""
+    not_authenticated = HTTPException(status_code=401, detail="Not authenticated.")
+
+    session_id = request.cookies.get(MRF_SESSION_COOKIE_NAME)
+    if not session_id:
+        raise not_authenticated
+
+    session_row = (await db.execute(select(MrfSession).where(MrfSession.id == session_id))).scalar_one_or_none()
+    if session_row is None or session_row.expires_at <= datetime.now(timezone.utc):
+        raise not_authenticated
+
+    user = (await db.execute(select(MrfUser).where(MrfUser.id == session_row.user_id))).scalar_one_or_none()
+    if user is None or user.status != MRF_STATUS_APPROVED:
+        raise not_authenticated
+
+    request.state.mrf_user = user
+    return user
+
+
+@router.get("/me")
+async def me(response: Response, user: MrfUser = Depends(get_current_mrf_user)):
+    """Name for the portal footer. No email, id, position, department or status (contract)."""
+    response.headers["Cache-Control"] = "no-store"
+    return {"first_name": user.first_name, "last_name": user.last_name}

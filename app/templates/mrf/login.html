@@ -7,7 +7,7 @@
     <link href="/static/mrf-portal.css" rel="stylesheet">
 </head>
 <body class="mrf-auth-body">
-    <!-- SHELL (section 8): static, no submit wiring. Cancel, Forgot password and the sign-up link do nothing yet. -->
+    <!-- Wired in step 5.6: Log in posts to /api/v1/mrf/login, Cancel clears the form. Forgot password and the sign-up link do nothing yet. -->
     <div class="mrf-brand">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18v2H3zM3 6l4.5 4L12 4l4.5 6L21 6l-2 10H5z"/></svg>
         <div>
@@ -18,9 +18,9 @@
     <div class="mrf-auth-card">
         <h1>Welcome back</h1>
         <p class="mrf-lead">Log in to submit or track your requests.</p>
-        <!-- Message area for the later wiring step (pending-approval text, generic error). Hidden in the shell. -->
+        <!-- Message area: shows the server message (pending approval, invalid login, rate limit) or a client message. Hidden until used. -->
         <div id="mrf-login-message" class="mrf-alert" hidden></div>
-        <form onsubmit="return false" novalidate>
+        <form id="mrf-login-form" novalidate>
             <div class="mrf-field">
                 <label for="mrf-email">Email</label>
                 <input id="mrf-email" type="email" placeholder="Email address" autocomplete="username">
@@ -31,12 +31,79 @@
             </div>
             <div class="mrf-forgot" aria-disabled="true" title="Not active">Forgot password?</div>
             <div class="mrf-actions">
-                <button type="button" class="mrf-btn">Cancel</button>
-                <button type="button" class="mrf-btn mrf-btn-primary">Log in</button>
+                <button type="button" id="mrf-login-cancel" class="mrf-btn">Cancel</button>
+                <button type="submit" id="mrf-login-submit" class="mrf-btn mrf-btn-primary">Log in</button>
             </div>
         </form>
         <p class="mrf-alt">New here? <a href="#">Create an account</a></p>
     </div>
     <div class="mrf-foot">Bigtime Empire Corporation &middot; Internal use only</div>
+    <script>
+    (function () {
+        var LOGIN_URL = "/api/v1/mrf/login";
+        var AFTER_LOGIN_URL = "/mrf/requests";
+        var EMPTY_MESSAGE = "Please enter your email and password.";
+        var NETWORK_MESSAGE = "Could not reach the server. Please try again.";
+        var FAILED_MESSAGE = "Log in failed. Please try again.";
+        var form = document.getElementById("mrf-login-form");
+        var message = document.getElementById("mrf-login-message");
+        var email = document.getElementById("mrf-email");
+        var password = document.getElementById("mrf-password");
+        var submit = document.getElementById("mrf-login-submit");
+        var redirecting = false;
+
+        function showMessage(text) {
+            message.textContent = text;
+            message.hidden = false;
+        }
+        function clearMessage() {
+            message.textContent = "";
+            message.hidden = true;
+        }
+
+        document.getElementById("mrf-login-cancel").addEventListener("click", function () {
+            email.value = "";
+            password.value = "";
+            clearMessage();
+            email.focus();
+        });
+
+        form.addEventListener("submit", async function (event) {
+            event.preventDefault();
+            if (submit.disabled) { return; }
+            clearMessage();
+            var body = { email: email.value.trim(), password: password.value };
+            if (!body.email || !body.password) {
+                showMessage(EMPTY_MESSAGE);
+                (body.email ? password : email).focus();
+                return;
+            }
+            submit.disabled = true;
+            try {
+                var response = await fetch(LOGIN_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body)
+                });
+                if (response.status === 200) {
+                    redirecting = true;
+                    window.location.href = AFTER_LOGIN_URL;
+                    return;
+                }
+                var text = FAILED_MESSAGE;
+                try {
+                    var data = await response.json();
+                    if (data && typeof data.detail === "string") { text = data.detail; }
+                } catch (parseError) { }
+                showMessage(text);
+            } catch (networkError) {
+                showMessage(NETWORK_MESSAGE);
+            } finally {
+                password.value = "";
+                if (!redirecting) { submit.disabled = false; }
+            }
+        });
+    })();
+    </script>
 </body>
 </html>

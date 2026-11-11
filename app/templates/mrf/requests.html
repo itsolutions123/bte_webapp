@@ -7,7 +7,7 @@
     <link href="/static/mrf-portal.css" rel="stylesheet">
 </head>
 <body class="mrf-app-body">
-    <!-- SHELL (section 8): static, placeholder content only. No session check, no data, no wiring. Search, filter, New Request and logout do nothing yet. The Forms link opens /mrf/forms. -->
+    <!-- SHELL (section 8): static, placeholder content only. No session check, no data, no wiring. Search, filter and New Request do nothing yet. The logout icon calls POST /api/v1/mrf/logout. The Forms link opens /mrf/forms. -->
     <aside class="mrf-side">
         <div class="mrf-brand">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18v2H3zM3 6l4.5 4L12 4l4.5 6L21 6l-2 10H5z"/></svg>
@@ -23,12 +23,13 @@
         <div class="mrf-user">
             <div class="mrf-avatar" aria-hidden="true">--</div>
             <div class="mrf-user-name">Signed-in user</div>
-            <button type="button" class="mrf-icon-btn" aria-label="Log out" title="Not active">
+            <button type="button" id="mrf-logout" class="mrf-icon-btn" aria-label="Log out" title="Log out">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             </button>
         </div>
     </aside>
     <main class="mrf-main">
+        <div class="mrf-alert" id="mrf-logout-message" role="alert" hidden></div>
         <div class="mrf-page-head">
             <h1>My Requests</h1>
             <button type="button" class="mrf-btn mrf-btn-primary mrf-btn-new">New Request</button>
@@ -57,5 +58,33 @@
             </table>
         </div>
     </main>
+<script>
+    (function () {
+        var LOGOUT_URL = "/api/v1/mrf/logout";
+        var AFTER_LOGOUT_URL = "/mrf/login";
+        var FAILED_MESSAGE = "Could not log out. Try again.";
+
+        var button = document.getElementById("mrf-logout");
+        var message = document.getElementById("mrf-logout-message");
+
+        button.addEventListener("click", async function () {
+            message.hidden = true;
+            message.textContent = "";
+            button.disabled = true;
+            try {
+                var response = await fetch(LOGOUT_URL, { method: "POST" });
+                if (response.status === 204) {
+                    window.location.replace(AFTER_LOGOUT_URL);
+                    return;
+                }
+            } catch (err) {
+                // network failure: fall through to the message below
+            }
+            message.textContent = FAILED_MESSAGE;
+            message.hidden = false;
+            button.disabled = false;
+        });
+    })();
+    </script>
 </body>
 </html>
