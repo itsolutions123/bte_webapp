@@ -1,9 +1,10 @@
 import uuid
 from datetime import datetime, timezone, timedelta
-from sqlalchemy import Column, String, Text, Integer, Boolean, ForeignKey, DateTime, Date, Index
+from sqlalchemy import Column, String, Text, Integer, Boolean, ForeignKey, DateTime, Date, Index, func
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from .database import Base
+from .mrf_lists import MRF_FORM_NAME_MAX_LENGTH, MRF_FORM_STATUS_DRAFT
 
 def utc_now():
     return datetime.now(timezone.utc)
@@ -216,3 +217,36 @@ class MrfSession(Base):
         Index("idx_mrf_sessions_user_id", "user_id"),
     )
 
+
+class MrfForm(Base):
+    # MRF form (migration 022, table already live). Separate from the job forms table; never attached to jobs.
+    # Status is ACTIVE or DRAFT (app/mrf_lists.py). Duplicate names are refused case-insensitively by the unique index on lower(name).
+    __tablename__ = "mrf_forms"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(MRF_FORM_NAME_MAX_LENGTH), nullable=False)
+    status = Column(String, nullable=False, default=MRF_FORM_STATUS_DRAFT, server_default=MRF_FORM_STATUS_DRAFT)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+    __table_args__ = (
+        Index("idx_mrf_forms_name_lower", func.lower(name), unique=True),
+        Index("idx_mrf_forms_status", "status"),
+    )
+
+
+class MrfFormQuestion(Base):
+    # MRF form question (migration 022, table already live). Same type names and option shape as job_questions, no scoring columns.
+    # At most one is_classification question per form (partial unique index).
+    __tablename__ = "mrf_form_questions"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    form_id = Column(UUID(as_uuid=True), ForeignKey("mrf_forms.id"), nullable=False)
+    question_type = Column(String, nullable=False)
+    question_text = Column(String, nullable=False)
+    options = Column(JSONB(none_as_null=True), nullable=True)
+    is_required = Column(Boolean, nullable=False)
+    is_classification = Column(Boolean, nullable=False, default=False, server_default="false")
+    display_order = Column(Integer, nullable=False)
+
+    __table_args__ = (
+        Index("idx_mrf_form_questions_form_id", "form_id"),
+        Index("idx_mrf_form_questions_one_classification", "form_id", unique=True, postgresql_where=is_classification),
+    )

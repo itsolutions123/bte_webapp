@@ -32,3 +32,27 @@ ALLOWED_EMAIL_DOMAINS = (
     "thesandwichguy.com",
     "paresretiro.com",
 )
+
+
+# --- MRF forms (migration 022). DECIDED by the user 2026-11-12 (part 42), docs/SCHEMA.md section 7. ---
+# Single source of truth for form status values, question types, the fixed classification options
+# and the form name limit. Validated in app code, not by database constraints.
+MRF_FORM_STATUS_ACTIVE = "ACTIVE"
+MRF_FORM_STATUS_DRAFT = "DRAFT"
+MRF_FORM_STATUSES = (MRF_FORM_STATUS_ACTIVE, MRF_FORM_STATUS_DRAFT)
+
+MRF_QUESTION_TYPE_YES_NO = "YES_NO"
+MRF_QUESTION_TYPE_MULTIPLE_CHOICE = "MULTIPLE_CHOICE"
+MRF_QUESTION_TYPE_OPEN_ENDED = "OPEN_ENDED"
+MRF_QUESTION_TYPES = (
+    MRF_QUESTION_TYPE_YES_NO,
+    MRF_QUESTION_TYPE_MULTIPLE_CHOICE,
+    MRF_QUESTION_TYPE_OPEN_ENDED,
+)
+
+# The Classification element in the form builder creates a MULTIPLE_CHOICE question with exactly these options, locked.
+# Order is the order shown. Option ids are assigned by the server when the question is created.
+MRF_CLASSIFICATION_OPTIONS = ("Rank and File", "Supervisory", "Managerial")
+
+# Trimmed form names are at most this long (decided, option A; longer returns 422). Matches mrf_forms.name VARCHAR(100).
+MRF_FORM_NAME_MAX_LENGTH = 100

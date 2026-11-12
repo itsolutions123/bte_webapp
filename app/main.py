@@ -175,6 +175,24 @@ async def serve_admin_mrf(request: Request):
     # Role check: SUPERADMIN and MANAGER allowed, RECRUITER gets 403 (API_CONTRACT.md section 5).
     return templates.TemplateResponse(request=request, name="admin_mrf.html", headers=NO_STORE)
 
+# MRF admin tab addresses (DECIDED 2026-11-12, part 42): each opens the same page with that tab selected.
+# Same guard as /admin/mrf (SUPERADMIN and MANAGER, RECRUITER gets 403). Registered here, above the /admin catch-alls.
+MRF_ADMIN_TABS = ("submissions", "forms", "users")
+
+def _make_mrf_tab_page(tab: str):
+    async def serve_admin_mrf_tab(request: Request):
+        return templates.TemplateResponse(request=request, name="admin_mrf.html", context={"initial_tab": tab}, headers=NO_STORE)
+    return serve_admin_mrf_tab
+
+for _mrf_tab in MRF_ADMIN_TABS:
+    app.add_api_route(
+        f"/admin/mrf/{_mrf_tab}",
+        _make_mrf_tab_page(_mrf_tab),
+        methods=["GET"],
+        include_in_schema=False,
+        dependencies=[Depends(require_page_session), Depends(require_page_roles(ROLE_SUPERADMIN, ROLE_MANAGER))],
+    )
+
 @app.get("/admin", include_in_schema=False, dependencies=[Depends(require_page_session)])
 @app.get("/admin/{rest:path}", include_in_schema=False, dependencies=[Depends(require_page_session)])
 async def admin_unknown_path(request: Request, rest: str = ""):

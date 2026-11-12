@@ -56,7 +56,28 @@
                 </section>
 
                 <section class="mrf-panel d-none" data-panel="forms">
-                    <div class="mrf-card"><div class="mrf-empty">Forms list: placeholder, built at a later step.</div></div>
+                    <div class="mrf-toolbar">
+                        <select class="form-select mrf-select" aria-label="Filter by status">
+                            <option>All statuses</option>
+                            <option>Active</option>
+                            <option>Draft</option>
+                        </select>
+                        <div class="flex-grow-1"></div>
+                        <button type="button" class="btn mrf-add-btn">New form</button>
+                    </div>
+                    <div class="mrf-card">
+                        <div class="table-responsive">
+                            <table class="table mrf-table align-middle" style="min-width: 600px;">
+                                <thead><tr><th>FORM NAME</th><th>STATUS</th><th>QUESTIONS</th><th>CREATED</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Form name</td><td class="mrf-muted">&mdash;</td><td class="mrf-muted">0</td><td class="mrf-muted">&mdash;</td></tr>
+                                    <tr><td>Form name</td><td class="mrf-muted">&mdash;</td><td class="mrf-muted">0</td><td class="mrf-muted">&mdash;</td></tr>
+                                    <tr><td>Form name</td><td class="mrf-muted">&mdash;</td><td class="mrf-muted">0</td><td class="mrf-muted">&mdash;</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="mrf-shell-note">Shell: New form, the status filter and the rows do nothing yet.</div>
                 </section>
 
                 <section class="mrf-panel d-none" data-panel="users">
@@ -100,12 +121,30 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/admin-sidebar.js"></script>
     <script>
-        // Shell only: switches the three tabs in the page. No data is loaded.
+        // Switches the three tabs in the page and keeps the address in step (DECIDED 2026-11-12, part 42).
+        // Each tab has its own address; opening one directly selects that tab. Users data is loaded by its own click handler below.
+        var MRF_TAB_PATHS = { submissions: '/admin/mrf/submissions', forms: '/admin/mrf/forms', users: '/admin/mrf/users' };
+        var MRF_INITIAL_TAB = {{ initial_tab|default('submissions')|tojson }};
         document.querySelectorAll('.mrf-tab').forEach(function (tab) {
             tab.addEventListener('click', function () {
                 document.querySelectorAll('.mrf-tab').forEach(function (t) { t.classList.toggle('active', t === tab); });
                 document.querySelectorAll('.mrf-panel').forEach(function (p) { p.classList.toggle('d-none', p.dataset.panel !== tab.dataset.tab); });
+                var path = MRF_TAB_PATHS[tab.dataset.tab];
+                if (path && window.location.pathname !== path) { history.pushState(null, '', path); }
             });
+        });
+        window.addEventListener('popstate', function () {
+            var name = 'submissions';
+            Object.keys(MRF_TAB_PATHS).forEach(function (key) {
+                if (MRF_TAB_PATHS[key] === window.location.pathname) { name = key; }
+            });
+            var tab = document.querySelector('.mrf-tab[data-tab="' + name + '"]');
+            if (tab) { tab.click(); }
+        });
+        window.addEventListener('DOMContentLoaded', function () {
+            if (MRF_INITIAL_TAB === 'submissions') { return; }
+            var tab = document.querySelector('.mrf-tab[data-tab="' + MRF_INITIAL_TAB + '"]');
+            if (tab) { tab.click(); }
         });
     </script>
     <script>

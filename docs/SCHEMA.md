@@ -207,11 +207,11 @@ Columns below are verified against `app/models.py` (lines 140-165) on 2026-10-30
 
 ## 7. MRF (Manpower Request Form) -- PARTLY APPLIED (mrf_users, mrf_sessions); rest PROPOSED
 
-Status: PROPOSED 2026-11-10. `mrf_users` and `mrf_sessions` APPLIED and VERIFIED by read-back 2026-11-10 (migration 021, migrations/021_create_mrf_users_sessions.sql; 16 columns, indexes idx_mrf_users_email unique, idx_mrf_users_status, idx_mrf_sessions_user_id, idx_mrf_sessions_expires_at). All other mrf_* tables below are still PROPOSED, no migration written. Next migration number: 022.
+Status: PROPOSED 2026-11-10. `mrf_users` and `mrf_sessions` APPLIED and VERIFIED by read-back 2026-11-10 (migration 021, migrations/021_create_mrf_users_sessions.sql; 16 columns, indexes idx_mrf_users_email unique, idx_mrf_users_status, idx_mrf_sessions_user_id, idx_mrf_sessions_expires_at). All other mrf_* tables below are still PROPOSED, no migration written, except mrf_forms and mrf_form_questions: migration 022 (migrations/022_create_mrf_forms_questions.sql) APPLIED and VERIFIED by read-back 2026-11-12 (part 42); mrf_requests and mrf_request_answers below stay PROPOSED. Next migration number: 023.
 
-**Confirmed (user, 2026-11-10):** MRF is a separate service with its own users, sessions, forms and requests. Option A: separate `mrf_*` tables; nothing reuses `users`, `sessions`, `forms` or `job_questions`. No business unit, brand or job link. Scoring: not confirmed (assumed none).
+**Confirmed (user, 2026-11-10):** MRF is a separate service with its own users, sessions, forms and requests. Option A: separate `mrf_*` tables; nothing reuses `users`, `sessions`, `forms` or `job_questions`. No business unit, brand or job link. Scoring: DECIDED none (user, 2026-11-12, part 42): MRF forms have no answer_points, no correct_answer and no hard requirement.
 
-**Proposed, not confirmed:** everything in the table definitions below.
+**Proposed, not confirmed:** the table definitions below, except mrf_forms and mrf_form_questions (DECIDED 2026-11-12, part 42; see their entries).
 
 ### mrf_users
 - id UUID PK (uuid4), created_at timestamptz
@@ -227,11 +227,21 @@ Status: PROPOSED 2026-11-10. `mrf_users` and `mrf_sessions` APPLIED and VERIFIED
 - Index on expires_at. Cookie name: `mrf_session_id` (admin cookie `session_id` is never accepted by the portal, and the reverse).
 
 ### mrf_forms
-- id UUID PK, name String NOT NULL, status String NOT NULL (ACTIVE, DRAFT), created_at timestamptz
+DECIDED 2026-11-12 (user, part 42, contract approved). Migration 022 APPLIED and VERIFIED by read-back 2026-11-12 (indexes idx_mrf_forms_status and idx_mrf_forms_name_lower, unique on lower(name)); model MrfForm in app/models.py. The proposal that was here before is replaced.
+- id UUID PK, name String NOT NULL, status String NOT NULL default 'DRAFT' (ACTIVE, DRAFT), created_at timestamptz
+- name: trimmed, required, at most 100 characters (decided, option A; 422 above that). Duplicate names are refused case-insensitively (409). Enforced by the unique index idx_mrf_forms_name_lower on lower(name) (APPLIED); the endpoint also checks first and returns 409 (built with the endpoint).
+- Index on status (rule 18.1). No slug and no archived_at: status covers it, and there is no delete or archive endpoint for forms. Not tied to a business unit, brand or job.
+- New forms start DRAFT. The portal lists ACTIVE forms only. ACTIVE on a form with no questions is refused (422).
 
 ### mrf_form_questions
-- id UUID PK, form_id FK mrf_forms.id (indexed), question_text, question_type (open_ended, multiple_choice, yes_no), options (list, multiple choice only), display_order Integer NOT NULL
-- is_classification Boolean NOT NULL default false: marks the one multiple-choice question whose options are Rank and File, Supervisory, Managerial. At most one per form (open: how enforced).
+DECIDED 2026-11-12 (user, part 42). Same question shape as the job forms; the earlier lowercase type names and plain-list options are replaced. Migration 022 APPLIED and VERIFIED by read-back 2026-11-12; model MrfFormQuestion in app/models.py. question_text is VARCHAR NOT NULL, matching job_questions (decided 2026-11-12, option A). Indexes: idx_mrf_form_questions_form_id and the partial unique idx_mrf_form_questions_one_classification.
+- id UUID PK, form_id FK mrf_forms.id (indexed), question_type String (YES_NO, MULTIPLE_CHOICE, OPEN_ENDED; immutable after create), question_text, options JSONB nullable, is_required Boolean NOT NULL, is_classification Boolean NOT NULL default false, display_order Integer NOT NULL
+- options: as in the job forms. MULTIPLE_CHOICE is a list of {"id","text"} with server-assigned ids and 3 or more entries; YES_NO has an optional pair of labels; OPEN_ENDED has none.
+- is_required: set in the builder; default on for YES_NO and MULTIPLE_CHOICE, off for OPEN_ENDED.
+- No scoring columns (no answer_points, correct_answer or hard requirement).
+- Partial unique index on form_id where is_classification: at most one classification question per form (the API returns 409 on a second).
+- Classification question: MULTIPLE_CHOICE, required, options exactly Rank and File, Supervisory, Managerial from one constant in app/mrf_lists.py; its options and flag are locked.
+- A question that has answers cannot be deleted (409). That check arrives with the migration that creates mrf_request_answers.
 
 ### mrf_requests
 - id UUID PK, form_id FK, user_id FK mrf_users.id, created_at timestamptz
