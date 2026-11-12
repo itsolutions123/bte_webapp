@@ -57,10 +57,10 @@
 
                 <section class="mrf-panel d-none" data-panel="forms">
                     <div class="mrf-toolbar">
-                        <select class="form-select mrf-select" aria-label="Filter by status">
-                            <option>All statuses</option>
-                            <option>Active</option>
-                            <option>Draft</option>
+                        <select class="form-select mrf-select" id="mrf-forms-status" aria-label="Filter by status">
+                            <option value="">All statuses</option>
+                            <option value="ACTIVE">Active</option>
+                            <option value="DRAFT">Draft</option>
                         </select>
                         <div class="flex-grow-1"></div>
                         <button type="button" class="btn mrf-add-btn">New form</button>
@@ -69,15 +69,12 @@
                         <div class="table-responsive">
                             <table class="table mrf-table align-middle" style="min-width: 600px;">
                                 <thead><tr><th>FORM NAME</th><th>STATUS</th><th>QUESTIONS</th><th>CREATED</th></tr></thead>
-                                <tbody>
-                                    <tr><td>Form name</td><td class="mrf-muted">&mdash;</td><td class="mrf-muted">0</td><td class="mrf-muted">&mdash;</td></tr>
-                                    <tr><td>Form name</td><td class="mrf-muted">&mdash;</td><td class="mrf-muted">0</td><td class="mrf-muted">&mdash;</td></tr>
-                                    <tr><td>Form name</td><td class="mrf-muted">&mdash;</td><td class="mrf-muted">0</td><td class="mrf-muted">&mdash;</td></tr>
+                                <tbody id="mrf-forms-body">
                                 </tbody>
                             </table>
                         </div>
                     </div>
-                    <div class="mrf-shell-note">Shell: New form, the status filter and the rows do nothing yet.</div>
+                    <div class="mrf-shell-note">Shell: New form and the rows do nothing yet.</div>
                 </section>
 
                 <section class="mrf-panel d-none" data-panel="users">
@@ -394,6 +391,139 @@
                 usersLoaded = true;
                 loadBothGroups();
                 
+            });
+        })();
+    </script>
+    <script>
+        // Forms list (GET /api/v1/admin/mrf/forms). Created column shows the date only (DECIDED 2026-11-12, part 43, option A).
+        (function () {
+            var MRF_FORMS_API = '/api/v1/admin/mrf/forms';
+            var MRF_FORMS_PAGE_SIZE = 10;
+            var MRF_FORMS_COLUMNS = 4;
+            var MRF_FORMS_DATE_LENGTH = 10;
+            var MRF_FORMS_EMPTY_TEXT = 'Nothing to see here';
+            var MRF_FORMS_ERROR_SESSION = 'Oops, your session has ended. Please sign in again.';
+            var MRF_FORMS_ERROR_ACCESS = "Oops, you don't have access to this list.";
+            var MRF_FORMS_ERROR_OTHER = 'Oops, something went wrong while loading this list. Please try again.';
+            var MRF_FORMS_STATUS_LABELS = { ACTIVE: 'Active', DRAFT: 'Draft' };
+            var MRF_FORMS_PREV_TEXT = 'Previous';
+            var MRF_FORMS_NEXT_TEXT = 'Next';
+            var MRF_FORMS_PAGE_WORD = 'Page';
+            var MRF_FORMS_OF_WORD = 'of';
+            var formsTab = document.querySelector('.mrf-tab[data-tab="forms"]');
+            var formsBody = document.getElementById('mrf-forms-body');
+            var formsStatus = document.getElementById('mrf-forms-status');
+            var formsCard = formsBody.closest('.mrf-card');
+            var formsPage = 1;
+            var formsLatest = 0;
+            var formsLoaded = false;
+
+            function formsMessageRow(text) {
+                var tr = document.createElement('tr');
+                var td = document.createElement('td');
+                td.colSpan = MRF_FORMS_COLUMNS;
+                td.className = 'mrf-muted';
+                td.textContent = text;
+                tr.appendChild(td);
+                return tr;
+            }
+
+            function formsCell(text, className) {
+                var td = document.createElement('td');
+                if (className) { td.className = className; }
+                td.textContent = text;
+                return td;
+            }
+
+            function formsRow(item) {
+                var tr = document.createElement('tr');
+                tr.appendChild(formsCell(item.name));
+                tr.appendChild(formsCell(MRF_FORMS_STATUS_LABELS[item.status] || item.status, 'mrf-muted'));
+                tr.appendChild(formsCell(String(item.question_count), 'mrf-muted'));
+                tr.appendChild(formsCell(String(item.created_at || '').slice(0, MRF_FORMS_DATE_LENGTH), 'mrf-muted'));
+                return tr;
+            }
+
+            function formsUrl() {
+                var url = MRF_FORMS_API + '?page=' + formsPage + '&page_size=' + MRF_FORMS_PAGE_SIZE;
+                if (formsStatus.value) { url += '&status=' + encodeURIComponent(formsStatus.value); }
+                return url;
+            }
+
+            function formsPager(total) {
+                var oldBar = formsCard.querySelector('.mrf-pager');
+                if (oldBar) { oldBar.remove(); }
+                if (!total) { return; }
+                var pageCount = Math.ceil(total / MRF_FORMS_PAGE_SIZE);
+                var page = formsPage;
+                var bar = document.createElement('div');
+                bar.className = 'mrf-pager';
+                var prev = document.createElement('button');
+                prev.type = 'button';
+                prev.className = 'btn btn-outline-dark btn-sm mrf-btn';
+                prev.textContent = MRF_FORMS_PREV_TEXT;
+                prev.disabled = page <= 1;
+                prev.addEventListener('click', function () { formsPage = page - 1; loadForms(); });
+                var label = document.createElement('span');
+                label.textContent = MRF_FORMS_PAGE_WORD + ' ' + page + ' ' + MRF_FORMS_OF_WORD + ' ' + pageCount;
+                var next = document.createElement('button');
+                next.type = 'button';
+                next.className = 'btn btn-outline-dark btn-sm mrf-btn';
+                next.textContent = MRF_FORMS_NEXT_TEXT;
+                next.disabled = page >= pageCount;
+                next.addEventListener('click', function () { formsPage = page + 1; loadForms(); });
+                bar.appendChild(prev);
+                bar.appendChild(label);
+                bar.appendChild(next);
+                formsCard.appendChild(bar);
+            }
+
+            function loadForms() {
+                var mine = ++formsLatest;
+                fetch(formsUrl(), { credentials: 'same-origin', cache: 'no-store' })
+                    .then(function (res) {
+                        if (!res.ok) {
+                            var err = new Error('request failed');
+                            err.status = res.status;
+                            throw err;
+                        }
+                        return res.json();
+                    })
+                    .then(function (body) {
+                        if (mine !== formsLatest) { return; }
+                        if (!body.data.length && formsPage > 1) {
+                            formsPage = formsPage - 1;
+                            loadForms();
+                            return;
+                        }
+                        formsBody.replaceChildren();
+                        formsPager(body.total);
+                        if (!body.data.length) {
+                            formsBody.appendChild(formsMessageRow(MRF_FORMS_EMPTY_TEXT));
+                            return;
+                        }
+                        body.data.forEach(function (item) { formsBody.appendChild(formsRow(item)); });
+                    })
+                    .catch(function (err) {
+                        if (mine !== formsLatest) { return; }
+                        formsLoaded = false;
+                        var text = MRF_FORMS_ERROR_OTHER;
+                        if (err.status === 401) { text = MRF_FORMS_ERROR_SESSION; }
+                        else if (err.status === 403) { text = MRF_FORMS_ERROR_ACCESS; }
+                        formsBody.replaceChildren(formsMessageRow(text));
+                        formsPager(0);
+                    });
+            }
+
+            formsStatus.addEventListener('change', function () {
+                formsPage = 1;
+                loadForms();
+            });
+
+            formsTab.addEventListener('click', function () {
+                if (formsLoaded) { return; }
+                formsLoaded = true;
+                loadForms();
             });
         })();
     </script>

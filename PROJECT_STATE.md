@@ -1709,3 +1709,17 @@ OPEN (unchanged): 5.8 page guard, 5.9 end-to-end run, 5.10 saves; bare /admin/mr
 COMMIT (step 4.3 feature 1, backend and docs): 3c1810d, pushed to origin/main.
 
 NEXT: ask for git status and branch, commit with NAMED paths (app/routers/admin_mrf.py, app/schemas.py, docs/API_CONTRACT.md, PROJECT_STATE.md); then step 4.2 of the handover: wire the Forms list UI (read the second script block of app/templates/admin_mrf.html first).
+
+STEP 4.3 feature 1, frontend half (Forms tab list call site, app/templates/admin_mrf.html only): DECIDED by the user, option A (lettered): the CREATED column shows the date only, the first 10 characters of created_at (options B date and time, C browser locale were not chosen). BUILT: the Forms panel markup (select id mrf-forms-status with values "", ACTIVE, DRAFT; the three fake "Form name" rows removed; tbody id mrf-forms-body) and its own script block after the Users one (constants MRF_FORMS_*; client page size 10; rows with textContent; Previous and Next pager as on the Users tab; a page past the end steps back one page; empty text; 401, 403 and other messages; a status change returns to page 1; loads on the Forms tab click and on a direct open of /admin/mrf/forms). The shell note now reads "Shell: New form and the rows do nothing yet." Row click and New form stay inert.
+
+SEEN (browser, SUPERADMIN, screenshots): with 12 throwaway rows (ZZ test 01 to 12, inserted with docker exec psql, read back 12 total, 6 ACTIVE, 6 DRAFT): page 1 (01 to 10, newest first) and page 2 (11 and 12), pager text Page 1 of 2 and Page 2 of 2, date-only CREATED, Active and Draft labels, the select with its three options, the Active filter (01, 03, 05, 07, 09, 11; Page 1 of 1) and the Draft filter (02, 04, 06, 08, 10, 12; Page 1 of 1). The throwaway rows were DELETED by id with a name guard (DELETE 12); read-back forms 0, questions 0. Both mrf tables are empty again.
+
+NOT tested: the browser console on /admin/mrf/forms; All statuses after a filter; the filter reset to page 1 from page 2; the disabled state of Previous and Next; row click and New form being inert; the empty state; the 401, 403 and other failure messages; a narrow window; other browsers; QUESTIONS above 0 in the UI (tested on the endpoint only). The user skipped the remaining checks.
+
+HARDCODES: the three fake rows were removed. MRF_FORMS_PAGE_SIZE = 10 is a client copy of the server default (same pattern as MRF_PAGE_SIZE for Users). The status labels and messages are named constants.
+
+DOCS: docs/API_CONTRACT.md GET /api/v1/admin/mrf/forms Status line (call site BUILT) and "Last verified" line 2 updated; its "this commit (pending)" marker gets the hash in the next docs edit.
+
+COMMIT (step 4.3 feature 1, frontend half and docs): pending.
+
+NEXT: ask for git status and branch, commit with NAMED paths (app/templates/admin_mrf.html, docs/API_CONTRACT.md, PROJECT_STATE.md); then fix the pending hash. After that, step 4.3 of the handover: POST create + New form modal (own contract status line and call site). Part 41 items 5.8, 5.9 and 5.10 stay OPEN.
