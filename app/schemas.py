@@ -384,3 +384,18 @@ class MrfUserListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class MrfFormListItem(BaseModel):
+    id: UUID4
+    name: str
+    status: str
+    question_count: int
+    created_at: datetime
+
+
+class MrfFormListResponse(BaseModel):
+    data: List[MrfFormListItem]
+    total: int
+    page: int
+    page_size: int

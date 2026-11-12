@@ -10,10 +10,12 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import MrfUser, User
+from app.models import MrfForm, MrfFormQuestion, MrfUser, User
+from app.mrf_lists import MRF_FORM_STATUSES
 from app.roles import ROLE_MANAGER, ROLE_SUPERADMIN
 from app.routers.auth import require_roles
-from app.schemas import MrfUserListItem, MrfUserListResponse
+from app.schemas import MrfFormListItem, MrfFormListResponse, MrfUserListItem, MrfUserListResponse
+from app.timeutil import to_app_tz
 
 router = APIRouter()
 
@@ -25,6 +27,11 @@ USER_STATUSES = (STATUS_PENDING, STATUS_APPROVED)
 MRF_USERS_DEFAULT_PAGE_SIZE = 10
 MRF_USERS_MAX_PAGE_SIZE = 50
 MRF_USERS_SEARCH_MAX_LENGTH = 100
+
+# Forms list limits and messages (docs/API_CONTRACT.md, GET /api/v1/admin/mrf/forms, decided by the user 2026-11-12, part 43, option A).
+MRF_FORMS_DEFAULT_PAGE_SIZE = 10
+MRF_FORMS_MAX_PAGE_SIZE = 50
+MRF_FORM_STATUS_INVALID = "status must be ACTIVE or DRAFT"
 SORT_NEWEST = "newest"
 SORT_FIRST_NAME_ASC = "first_name_asc"
 SORT_FIRST_NAME_DESC = "first_name_desc"
@@ -105,6 +112,64 @@ async def list_mrf_users(
                 status=u.status,
             )
             for u in rows
+        ],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get(
+    "/mrf/forms",
+    response_model=MrfFormListResponse,
+    dependencies=[Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER))],
+)
+async def list_mrf_forms(
+    response: Response,
+    status: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(MRF_FORMS_DEFAULT_PAGE_SIZE, ge=1, le=MRF_FORMS_MAX_PAGE_SIZE),
+    db: AsyncSession = Depends(get_db),
+):
+    """MRF forms, newest first, optionally one status, paged. question_count is one grouped count for the rows on the page."""
+    if status is not None and status not in MRF_FORM_STATUSES:
+        raise HTTPException(status_code=422, detail=MRF_FORM_STATUS_INVALID)
+
+    flt = []
+    if status is not None:
+        flt.append(MrfForm.status == status)
+
+    total = (await db.execute(select(func.count()).select_from(MrfForm).where(*flt))).scalar_one()
+    forms = (
+        await db.execute(
+            select(MrfForm)
+            .where(*flt)
+            .order_by(MrfForm.created_at.desc(), MrfForm.id)
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+    ).scalars().all()
+
+    counts = {}
+    if forms:
+        count_rows = await db.execute(
+            select(MrfFormQuestion.form_id, func.count())
+            .where(MrfFormQuestion.form_id.in_([f.id for f in forms]))
+            .group_by(MrfFormQuestion.form_id)
+        )
+        counts = {form_id: n for form_id, n in count_rows.all()}
+
+    response.headers["Cache-Control"] = "no-store"
+    return MrfFormListResponse(
+        data=[
+            MrfFormListItem(
+                id=f.id,
+                name=f.name,
+                status=f.status,
+                question_count=counts.get(f.id, 0),
+                created_at=to_app_tz(f.created_at),
+            )
+            for f in forms
         ],
         total=total,
         page=page,

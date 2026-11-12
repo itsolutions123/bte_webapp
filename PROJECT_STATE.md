@@ -1680,6 +1680,8 @@ OPEN (unchanged): 5.8 page guard, 5.9 end-to-end run, 5.10 saves; bare /admin/mr
 
 COMMIT (step 4.1 docs): 4aac9f6, pushed to origin/main.
 
+COMMIT (step 4.2 shell): f47f69a, pushed to origin/main.
+
 STEP 4.2 (single-form page SHELL, frontend and page route only): DECIDED by the user, option A (lettered): a new standalone template app/templates/admin_mrf_form.html, shared sidebar and card look, builder laid out inline in two columns (elements left, contents right, name and status in the header), no scoring markup, no _form_builder.html include, no job builder JS. Options B (a flag on the shared builder) and C (a stripped copy shown as a modal) were not chosen. BUILT: the template (102 lines, grep found no scoring or job-builder markup) and the route serve_admin_mrf_form in app/main.py after the tab-route loop, above the /admin catch-alls, same guards (SUPERADMIN and MANAGER, RECRUITER 403). form_id is any string and is not used yet. Placeholder content only; Classification and the Required switches are disabled placeholders.
 
 FINDINGS: the job builder markup is _form_builder.html (scoring controls: element-mc-key-wrap, element-key-wrap); it is also included in admin_mrf.html at line 119 (the handover said about 97). admin-sidebar.js guards each modal block with an if (element) check (lines 186, 274, 349, 414, 503, 560, 626) and the toast lookups too, so a page without the partial should load; initMrfBadge returns early when the sidebar badge is missing and tolerates a missing mrf-users-badge. admin_form_detail.html is a submissions page, not a builder.
@@ -1691,3 +1693,19 @@ NOT tested: the browser console on this page, RECRUITER 403, the signed-out redi
 HARDCODES: fake labels in admin_mrf_form.html on purpose (Form name, Question text, Option 1 to 3); the Classification option texts must come from MRF_CLASSIFICATION_OPTIONS when wired.
 
 NEXT: step 4.3, one feature per step, each with its contract status line and call site: GET list and the Forms list UI (form page size constants separate from MRF_USERS_*), then POST create with the New form modal, GET one (id check and the page header), PATCH name and status, the question endpoints, Classification, Required.
+
+STEP 4.3 feature 1 (GET /api/v1/admin/mrf/forms, backend half): contract DECIDED by the user, option A (lettered): follow the users list exactly. Response { data, total, page, page_size }; rows id, name, status, question_count, created_at (+08:00 via to_app_tz); newest first (created_at descending, then id); optional status ACTIVE or DRAFT exactly as written (missing means all, anything else 422 "status must be ACTIVE or DRAFT"); Cache-Control no-store; own constants MRF_FORMS_DEFAULT_PAGE_SIZE = 10 and MRF_FORMS_MAX_PAGE_SIZE = 50; question_count from one grouped count over mrf_form_questions for the rows on the page (index idx_mrf_form_questions_form_id, no migration). BUILT: list_mrf_forms in app/routers/admin_mrf.py (constants MRF_FORMS_*, MRF_FORM_STATUS_INVALID) and MrfFormListItem and MrfFormListResponse in app/schemas.py; py_compile OK, uvicorn --reload picked it up. Code read against the contract this part: route, guard, params, order, grouped count, header at line 162 and constants at lines 32 to 34 all match.
+
+SEEN (live): signed out 401 by curl; as SUPERADMIN in the browser 200 empty for no params and for status=ACTIVE, 422 "status must be ACTIVE or DRAFT" for status=nope, FastAPI 422 for page_size=51 and page=0. With three throwaway rows (ZZ test A, B, C, inserted with docker exec psql, read back): all forms total 3 in order C, B, A with question_count 0, 1, 2 and created_at ending +08:00 (stored UTC 03:01:52 shown as 11:01:52); status=ACTIVE gave C then A; status=DRAFT gave B; page_size=2 page 1 gave C and B, page 2 gave A, page 3 gave 200 with empty data and total 3. The throwaway rows were DELETED by id (DELETE 3 and DELETE 3); read-back forms 0, questions 0. Both mrf tables are empty again.
+
+NOT tested: RECRUITER 403 on GET /api/v1/admin/mrf/forms and on the new page routes; the signed-out redirect on the new page routes; the browser console on /admin/mrf/forms/{form_id}; Back and Forward; a narrow window; the Cache-Control header on the wire; lowercase status=active by hand (Chrome's address bar changed it to ACTIVE; the check is the same one that gave 422 for nope). The part 42 NOT tested list stands.
+
+HARDCODES: none found or removed; the status error text and the page sizes are named constants.
+
+DOCS: docs/API_CONTRACT.md GET /api/v1/admin/mrf/forms Status line now IMPLEMENTED and VERIFIED LIVE; "Last verified" line 2 updated (its "this commit (pending)" marker gets the hash in the next docs edit).
+
+OPEN (unchanged): 5.8 page guard, 5.9 end-to-end run, 5.10 saves; bare /admin/mrf behaviour; request status values, who changes status, who counts as HR, Assignment column; sign-up link and Forgot password; the unique index on lower(name) was Claude's proposal in part 42, applied without a lettered answer (tell the user if they want it changed).
+
+COMMIT (step 4.3 feature 1, backend and docs): pending.
+
+NEXT: ask for git status and branch, commit with NAMED paths (app/routers/admin_mrf.py, app/schemas.py, docs/API_CONTRACT.md, PROJECT_STATE.md); then step 4.2 of the handover: wire the Forms list UI (read the second script block of app/templates/admin_mrf.html first).
