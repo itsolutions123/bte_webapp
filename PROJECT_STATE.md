@@ -1742,6 +1742,24 @@ DOCS: docs/API_CONTRACT.md entry for POST /api/v1/admin/mrf/forms now has Auth, 
 
 COMMIT (step 6.2, backend and contract): 9cb281d, pushed to origin/main. The commit that records this hash (docs/API_CONTRACT.md line 2 and this section) stays unrecorded, one-step lag on purpose.
 
-OPEN: the New form modal call site (still to do, own step): the modal look (read the existing modal pattern on /admin/mrf/forms first) and what the page does after a successful create (stay and refresh the list, or open /admin/mrf/forms/{id}); both still to be asked, one per message with a recommendation. The 23 older "this commit (pending)" markers on docs/API_CONTRACT.md line 2 (entries from before part 43) still carry no hash. The unique index on lower(name) was Claude's proposal in part 42, applied without a lettered answer. Part 41 items 5.8, 5.9 and 5.10 stay OPEN. The memory file /areas/bte-mrf-portal.md (if the user keeps it by hand) needs the part 45 decisions: 422s custom after trimming (option A) and message text (option A).
+OPEN: the New form modal call site (still to do, own step): the modal look and the after-create behaviour are DECIDED (option A each, lettered, decided by the user in part 45 and written out in the part 46 section below): Bootstrap modal matching the Create job modal, shell first; after a successful create the page stays on the Forms tab, the modal closes, the status filter resets to All statuses and the list reloads on page 1. Opening /admin/mrf/forms/{id} instead (option B) is a small change to the success handler once GET one and the question endpoints exist. The 23 older "this commit (pending)" markers on docs/API_CONTRACT.md line 2 (entries from before part 43) still carry no hash. The unique index on lower(name) was Claude's proposal in part 42, applied without a lettered answer. Part 41 items 5.8, 5.9 and 5.10 stay OPEN. The memory file /areas/bte-mrf-portal.md (if the user keeps it by hand) needs the part 45 decisions: 422s custom after trimming (option A), message text (option A), modal look (option A), and after create stay on Forms and reset to All (option A).
 
 NEXT: docs-only commit with NAMED paths (docs/API_CONTRACT.md, PROJECT_STATE.md); then the New form modal.
+
+## Session Log 2026-11-12 (part 46): MRF form creator, New form modal shell (step 6.2)
+
+REPO STATE at the start (pasted): branch main, HEAD e1a4e3a, in sync with origin/main; app/templates/admin_mrf.html and app/static/admin-sidebar.css modified (the part 45 shell edit had been applied); package-lock.json untracked (never commit). Nothing else.
+
+DECIDED by the user in part 45, option A each (lettered), written out here because the part 45 section does not list them: (c) the New form modal is a Bootstrap modal matching the Create job modal, shell first; (d) after a successful create the page STAYS on the Forms tab: the modal closes, the status filter resets to All statuses and the list reloads on page 1. Opening /admin/mrf/forms/{id} instead (option B) is a small change to the success handler once GET one and the question endpoints exist.
+
+SHELL (New form modal on the Forms tab): the New form button opens a Bootstrap modal (id newFormModal) with a Form name input (id mrf-new-form-name, no maxlength on purpose), Cancel and Create (id mrf-new-form-create, inert, with its own shell note); a CSS block scoped to #newFormModal in app/static/admin-sidebar.css. CONFIRMED by the user from a screenshot that shows the modal open with the Form name field, Cancel, Create and the X. The screenshot does not prove that Cancel, X or Escape close it; the user confirmed the shell and those checks were skipped, so they are NOT tested.
+
+COMMIT: 0c3ddf7 (app/templates/admin_mrf.html, app/static/admin-sidebar.css; 38 insertions, 2 deletions), pushed to origin/main (e1a4e3a..0c3ddf7). The docs commit that records this hash stays unrecorded, one-step lag on purpose.
+
+NOT tested: Cancel, X and Escape closing the modal; hard-refreshed CSS; a narrow window; other browsers. Everything about Create is unwired.
+
+HARDCODES: none found or removed.
+
+DOCS: PROJECT_STATE.md only (the part 45 OPEN line now says the modal look and after-create behaviour are decided). docs/API_CONTRACT.md needs no edit for the shell (no endpoint or call site change).
+
+NEXT: docs-only commit with the named path PROJECT_STATE.md; then WIRE the modal to POST /api/v1/admin/mrf/forms (own step, read the Forms script block first). Questions for that step, one per message with a recommendation: whether the page checks for a blank name before sending (recommendation: no, let the server's messages show), and where the 100-character limit for the input comes from (a route-context value from MRF_FORM_NAME_MAX_LENGTH, or no maxlength; not a second hardcoded 100). The contract call-site entry and line 2 go in the same commit as the wiring.
