@@ -1777,3 +1777,27 @@ HARDCODES: none added; the shell note "Create does nothing yet" is removed; no m
 DOCS: docs/API_CONTRACT.md (POST create Status line, Call site bullet, line 2) and this section, in the same commit as the code. COMMIT of the wiring (step 6.3): 563954d, pushed to origin/main (4a670d0..563954d). The docs commit that records this hash is recorded one step later, on purpose.
 
 NEXT: GET one (UUID check, page header on /admin/mrf/forms/{form_id}), one step with its contract status line and call site, and revisit the after-create behaviour (option B) with the user once it exists.
+
+## Session Log 2026-11-12 (part 47): MRF form creator, GET one backend (step 5.2)
+
+START: repo state confirmed from pasted output: main, HEAD 894ba7b, in sync with origin/main, tree clean apart from untracked package-lock.json (never commit) and .bak files (never commit). Docs commit 894ba7b (part 46 wiring hash 563954d recorded in API_CONTRACT.md line 2 and PROJECT_STATE.md) is recorded here.
+
+STEP 5.2 (GET one, backend only): GET /api/v1/admin/mrf/forms/{form_id}. Contract entry edited BEFORE the code (17.2). DECIDED by the user, lettered, one question per message with a recommendation, option A each: (h) the 404 text is "Form not found."; (i) the response carries Cache-Control: no-store (as the list; create does not); (j) created_at goes through to_app_tz, +08:00 as on the list and create. Roles SUPERADMIN and MANAGER (router-wide guard). No migration: idx_mrf_form_questions_form_id already covers the lookup.
+
+BUILT: app/schemas.py MrfFormQuestionItem and MrfFormDetail; app/routers/admin_mrf.py the constant MRF_FORM_NOT_FOUND, the two schema imports and get_mrf_form (one select for the form, 404 if missing, one query for its questions ordered by display_order then id, no-store, to_app_tz).
+
+SEEN live by curl as an admin account (login 200, cookie jar in /tmp, removed afterwards): signed out 401 "Not authenticated."; ZZ test 11 200 with cache-control: no-store, created_at with +08:00, three questions in display_order 1, 2, 3 (inserted as 2, 1, 3), options as stored (a list) and null, is_classification true on one; ZZ test 12 200 with questions []; unknown valid id 404 "Form not found."; malformed id FastAPI 422. The 404 and 422 were seen on the first pair of throwaway rows.
+
+FOUND by the live test: the first throwaway rows used ids that were not UUID version 4, and the response schemas use UUID4, so GET one returned 500 for them (traceback: Pydantic uuid_version at MrfFormDetail). A test-data problem, not a handler bug: real rows get uuid4() from the model. The rows were replaced with v4 ids and the test passed. Lesson: throwaway ids must be valid UUID v4.
+
+CLEANUP: throwaway rows deleted by id with a name guard in one transaction that aborts unless 3 questions and 2 forms are deleted; read-back forms 0, questions 0. The two real pending accounts in mrf_users were not touched.
+
+NOT tested: RECRUITER 403; which of SUPERADMIN or MANAGER the test account holds; Cache-Control on the 404 and 422; the real MRF question type names (a throwaway type zz_test_type was used, the column has no CHECK); the browser (no call site yet). Earlier lists in parts 42 to 46 stand.
+
+HARDCODES: none found or added; the 404 text is a named constant.
+
+DOCS: docs/API_CONTRACT.md (GET one Response and Status lines, line 2) in the same commit as the code. COMMIT of GET one (step 5.2): 4c92ac2 (app/schemas.py, app/routers/admin_mrf.py, docs/API_CONTRACT.md; 70 insertions, 3 deletions), pushed to origin/main (894ba7b..4c92ac2). The docs commit that records this hash stays unrecorded, one-step lag on purpose.
+
+LESSONS: throwaway ids must be valid UUID v4; never put a read prompt in the same paste as the commands after it (the terminal feeds the pasted lines into the prompt and the login never runs: the first curl attempt was invalid for that reason).
+
+OPEN: step 5.3, the call site for GET one (page header on /admin/mrf/forms/{form_id}; what that route does today is UNVERIFIED, check app/main.py first). Then the after-create behaviour (option B) with the user. Part 41 items 5.8 (page guard), 5.9 (end-to-end run) and 5.10 (saves) stay OPEN. The older pending markers on docs/API_CONTRACT.md line 2: wording and count UNVERIFIED, separate docs task. The unique index on lower(name) was Claude's proposal in part 42, applied without a lettered answer. The roles for POST create (SUPERADMIN and MANAGER) were taken from the router-wide rule, not asked as a lettered question.
