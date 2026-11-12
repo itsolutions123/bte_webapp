@@ -1656,8 +1656,26 @@ NOT tested: RECRUITER 403 on the new routes; Back and Forward buttons; signed-ou
 
 HARDCODES: MRF_TAB_PATHS in the template and MRF_ADMIN_TABS in main.py; Forms rows fake on purpose. Job forms keep their own QUESTION_TYPES in app/routers/admin.py, MRF does not reuse it.
 
+COMMIT: acb2bd2 (part 42 code and docs), pushed to origin/main.
+
 BACKUPS: ~/bak_mrf42/ (outside the repo).
 
 OPEN: bare /admin/mrf behaviour; Users tab and sidebar route change (own step); request status values, who changes status, who counts as HR, Assignment column (SCHEMA.md); 5.8 page guard, 5.9 end-to-end run, 5.10 saves; sign-up link and Forgot password.
 
 NEXT, one per step: single-form page shell at /admin/mrf/forms/{form_id}; then GET list, POST create with New form modal, GET one, PATCH, question endpoints in the builder, Classification element, Required toggle; later portal detail, submit (new migration plus the 409 delete check), Submissions wiring.
+
+## Session Log 2026-11-12 (part 43): docs housekeeping after part 42 (step 4.1)
+
+Scope: local-only (10.0.10.37:8000). Repo state at the start: main, HEAD acb2bd2, in sync with origin/main, no tracked file modified, only package-lock.json and .bak files untracked.
+
+DONE (docs only, no code, no endpoint, no migration): (1) PROJECT_STATE.md part 42 entry now records COMMIT acb2bd2. (2) docs/SCHEMA.md section 7: header names mrf_users, mrf_sessions, mrf_forms, mrf_form_questions as applied; Status line now reads PARTLY APPLIED instead of PROPOSED. (3) docs/API_CONTRACT.md: the `GET /admin/mrf` entry no longer says the Submissions and Forms tabs are empty placeholders (Submissions is a placeholder, Forms is a shell with fake rows); "Last verified" line 2 has a part 43 entry and the two part 42 "this commit" markers now say commit acb2bd2. The stale line was at 640, not about 601.
+
+SEEN: read-back after each edit (grep and sed output pasted); git diff --stat showed only these three files changed.
+
+NOT tested: nothing in the browser this part; the part 42 NOT tested list stands (RECRUITER 403 on the new routes, Back and Forward, signed-out redirect on the new routes).
+
+HARDCODES: none found or removed.
+
+OPEN (unchanged): 5.8 page guard, 5.9 end-to-end run, 5.10 saves; bare /admin/mrf behaviour; request status values, who changes status, who counts as HR, Assignment column; sign-up link and Forgot password.
+
+NEXT: step 4.2, single-form page SHELL at GET /admin/mrf/forms/{form_id}: read app/templates/_form_builder.html and app/templates/admin_form_detail.html first (grep -n, sed -n, under 300 lines per paste), then the route and the shell.
