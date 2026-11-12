@@ -1774,6 +1774,6 @@ NOT tested: input and red line cleared on open; Create disabled while sending; t
 
 HARDCODES: none added; the shell note "Create does nothing yet" is removed; no maxlength and no second 100 in the template; MRF_FORMS_PAGE_SIZE = 10 stays as the known client copy of the page size.
 
-DOCS: docs/API_CONTRACT.md (POST create Status line, Call site bullet, line 2) and this section, in the same commit as the code. The commit hash is recorded one step later, on purpose.
+DOCS: docs/API_CONTRACT.md (POST create Status line, Call site bullet, line 2) and this section, in the same commit as the code. COMMIT of the wiring (step 6.3): 563954d, pushed to origin/main (4a670d0..563954d). The docs commit that records this hash is recorded one step later, on purpose.
 
-NEXT: record the hash of the wiring commit in docs/API_CONTRACT.md line 2 and here; then GET one (UUID check, page header on /admin/mrf/forms/{form_id}), one step with its contract status line and call site, and revisit the after-create behaviour (option B) with the user once it exists.
+NEXT: GET one (UUID check, page header on /admin/mrf/forms/{form_id}), one step with its contract status line and call site, and revisit the after-create behaviour (option B) with the user once it exists.
