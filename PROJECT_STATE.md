@@ -1678,4 +1678,16 @@ HARDCODES: none found or removed.
 
 OPEN (unchanged): 5.8 page guard, 5.9 end-to-end run, 5.10 saves; bare /admin/mrf behaviour; request status values, who changes status, who counts as HR, Assignment column; sign-up link and Forgot password.
 
-NEXT: step 4.2, single-form page SHELL at GET /admin/mrf/forms/{form_id}: read app/templates/_form_builder.html and app/templates/admin_form_detail.html first (grep -n, sed -n, under 300 lines per paste), then the route and the shell.
+COMMIT (step 4.1 docs): 4aac9f6, pushed to origin/main.
+
+STEP 4.2 (single-form page SHELL, frontend and page route only): DECIDED by the user, option A (lettered): a new standalone template app/templates/admin_mrf_form.html, shared sidebar and card look, builder laid out inline in two columns (elements left, contents right, name and status in the header), no scoring markup, no _form_builder.html include, no job builder JS. Options B (a flag on the shared builder) and C (a stripped copy shown as a modal) were not chosen. BUILT: the template (102 lines, grep found no scoring or job-builder markup) and the route serve_admin_mrf_form in app/main.py after the tab-route loop, above the /admin catch-alls, same guards (SUPERADMIN and MANAGER, RECRUITER 403). form_id is any string and is not used yet. Placeholder content only; Classification and the Required switches are disabled placeholders.
+
+FINDINGS: the job builder markup is _form_builder.html (scoring controls: element-mc-key-wrap, element-key-wrap); it is also included in admin_mrf.html at line 119 (the handover said about 97). admin-sidebar.js guards each modal block with an if (element) check (lines 186, 274, 349, 414, 503, 560, 626) and the toast lookups too, so a page without the partial should load; initMrfBadge returns early when the sidebar badge is missing and tolerates a missing mrf-users-badge. admin_form_detail.html is a submissions page, not a builder.
+
+SEEN: screenshot as SUPERADMIN at /admin/mrf/forms/test (sidebar with MRF highlighted and badge, profile pill, header, four element buttons, three fake content cards, shell note); the back link to /admin/mrf/forms confirmed by the user.
+
+NOT tested: the browser console on this page, RECRUITER 403, the signed-out redirect, Back and Forward, a narrow window. The part 42 NOT tested list stands.
+
+HARDCODES: fake labels in admin_mrf_form.html on purpose (Form name, Question text, Option 1 to 3); the Classification option texts must come from MRF_CLASSIFICATION_OPTIONS when wired.
+
+NEXT: step 4.3, one feature per step, each with its contract status line and call site: GET list and the Forms list UI (form page size constants separate from MRF_USERS_*), then POST create with the New form modal, GET one (id check and the page header), PATCH name and status, the question endpoints, Classification, Required.

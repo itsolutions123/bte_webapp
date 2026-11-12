@@ -193,6 +193,12 @@ for _mrf_tab in MRF_ADMIN_TABS:
         dependencies=[Depends(require_page_session), Depends(require_page_roles(ROLE_SUPERADMIN, ROLE_MANAGER))],
     )
 
+# MRF single-form page (DECIDED 2026-11-12, part 42; page SHELL, part 43 step 4.2, option A): form_id is accepted but not used to fetch data yet.
+# Same guard as the tab addresses above. Registered here, above the /admin catch-alls.
+@app.get("/admin/mrf/forms/{form_id}", include_in_schema=False, dependencies=[Depends(require_page_session), Depends(require_page_roles(ROLE_SUPERADMIN, ROLE_MANAGER))])
+async def serve_admin_mrf_form(request: Request, form_id: str):
+    return templates.TemplateResponse(request=request, name="admin_mrf_form.html", headers=NO_STORE)
+
 @app.get("/admin", include_in_schema=False, dependencies=[Depends(require_page_session)])
 @app.get("/admin/{rest:path}", include_in_schema=False, dependencies=[Depends(require_page_session)])
 async def admin_unknown_path(request: Request, rest: str = ""):

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTE Careers - MRF Form</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="/static/admin-sidebar.css" rel="stylesheet">
+    <style>
+        .mrf-form-back { display: inline-block; margin-bottom: 1rem; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-decoration: none; }
+        .mrf-form-back:hover { color: var(--text-main); }
+        .mrf-form-card { background-color: #fff; border: 1px solid var(--border-light); border-radius: 20px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); overflow: hidden; }
+        .mrf-form-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; padding: 1.5rem 1.75rem; border-bottom: 1px solid var(--border-light); }
+        .mrf-form-title { font-size: 1.4rem; font-weight: 800; line-height: 1.2; }
+        .mrf-form-sub { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-top: 0.15rem; }
+        .mrf-form-pill { display: inline-block; background-color: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-muted); font-weight: 700; font-size: 0.7rem; padding: 0.3rem 0.7rem; border-radius: 10px; margin-top: 0.6rem; }
+        .mrf-form-btn { border-radius: 10px; font-weight: 700; font-size: 0.85rem; }
+        .mrf-form-label { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 0.75rem; }
+        .mrf-form-element { text-align: left; border-radius: 10px; font-weight: 700; font-size: 0.9rem; }
+        .mrf-form-q { border: 1px solid var(--border-light); border-radius: 14px; padding: 1rem 1.1rem; margin-bottom: 0.75rem; background-color: #fff; }
+        .mrf-form-q-text { font-weight: 700; }
+        .mrf-form-q-type { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); }
+        .mrf-form-note { font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem; }
+    </style>
+</head>
+<body>
+    {# MRF single-form page SHELL (part 43, step 4.2, option A): placeholder content only, nothing is fetched or saved, no job-builder markup or scripts. #}
+    {% set active_page = 'mrf' %}
+    <div class="container-fluid p-0">
+        <div class="row g-0">
+            {% include '_sidebar.html' %}
+            <main class="col-md-10 px-4 pt-4 pb-5">
+                <a href="/admin/mrf/forms" class="mrf-form-back">&larr; Forms</a>
+                <div class="mrf-form-card">
+                    <div class="mrf-form-head">
+                        <div>
+                            <div class="mrf-form-title">Form name</div>
+                            <div class="mrf-form-sub">Manpower request form</div>
+                            <span class="mrf-form-pill">Status: &mdash;</span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-dark mrf-form-btn">Edit name</button>
+                            <button type="button" class="btn btn-sm btn-dark mrf-form-btn">Set status</button>
+                        </div>
+                    </div>
+                    <div class="row g-0" style="min-height: 420px;">
+                        <div class="col-3 border-end p-3">
+                            <div class="mrf-form-label">ELEMENTS</div>
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-outline-secondary mrf-form-element">Yes / No Question</button>
+                                <button type="button" class="btn btn-outline-secondary mrf-form-element">Open ended</button>
+                                <button type="button" class="btn btn-outline-secondary mrf-form-element">Multiple Choice</button>
+                                <button type="button" class="btn btn-outline-secondary mrf-form-element">Classification</button>
+                            </div>
+                        </div>
+                        <div class="col-9 p-4">
+                            <div class="mrf-form-label">FORM CONTENTS</div>
+                            <div class="mrf-form-q">
+                                <div class="d-flex justify-content-between align-items-center gap-3">
+                                    <div>
+                                        <div class="mrf-form-q-text">Question text</div>
+                                        <div class="mrf-form-q-type">Yes / No</div>
+                                    </div>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="mrf-shell-req-1" checked disabled>
+                                        <label class="form-check-label small fw-bold" for="mrf-shell-req-1">Required</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mrf-form-q">
+                                <div class="d-flex justify-content-between align-items-center gap-3">
+                                    <div>
+                                        <div class="mrf-form-q-text">Question text</div>
+                                        <div class="mrf-form-q-type">Open ended</div>
+                                    </div>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="mrf-shell-req-2" disabled>
+                                        <label class="form-check-label small fw-bold" for="mrf-shell-req-2">Required</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mrf-form-q">
+                                <div class="mrf-form-q-text">Classification</div>
+                                <div class="mrf-form-q-type mb-2">Fixed options, one per form</div>
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <span class="mrf-form-pill mt-0">Option 1</span>
+                                    <span class="mrf-form-pill mt-0">Option 2</span>
+                                    <span class="mrf-form-pill mt-0">Option 3</span>
+                                </div>
+                            </div>
+                            <div class="mrf-form-note">Shell: the buttons, switches and cards do nothing yet. Everything shown is placeholder text.</div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/admin-sidebar.js"></script>
+</body>
+</html>
