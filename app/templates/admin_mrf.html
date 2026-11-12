@@ -63,7 +63,7 @@
                             <option value="DRAFT">Draft</option>
                         </select>
                         <div class="flex-grow-1"></div>
-                        <button type="button" class="btn mrf-add-btn">New form</button>
+                        <button type="button" class="btn mrf-add-btn" id="mrf-new-form-btn" data-bs-toggle="modal" data-bs-target="#newFormModal">New form</button>
                     </div>
                     <div class="mrf-card">
                         <div class="table-responsive">
@@ -74,7 +74,7 @@
                             </table>
                         </div>
                     </div>
-                    <div class="mrf-shell-note">Shell: New form and the rows do nothing yet.</div>
+                    <div class="mrf-shell-note">Shell: the New form window opens and closes; Create and the rows do nothing yet.</div>
                 </section>
 
                 <section class="mrf-panel d-none" data-panel="users">
@@ -110,6 +110,26 @@
                     <div class="mrf-shell-note">Shell: Reset password and Add user do nothing yet.</div>
                 </section>
             </main>
+        </div>
+    </div>
+
+    <div class="modal fade" id="newFormModal" tabindex="-1" aria-labelledby="newFormModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="newFormModalLabel">New form</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label" for="mrf-new-form-name">Form name</label>
+                    <input type="text" class="form-control" id="mrf-new-form-name" placeholder="Form name" autocomplete="off">
+                    <div class="mrf-shell-note mt-3">Shell: Create does nothing yet.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn mrf-add-btn" id="mrf-new-form-create">Create</button>
+                </div>
+            </div>
         </div>
     </div>
 
