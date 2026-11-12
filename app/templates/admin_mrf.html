@@ -571,6 +571,7 @@
 
             newFormCreate.addEventListener('click', function () {
                 clearNewFormError();
+                var created = false;
                 newFormCreate.disabled = true;
                 fetch(MRF_FORMS_API, {
                     method: 'POST',
@@ -579,7 +580,7 @@
                     body: JSON.stringify({ name: newFormName.value })
                 })
                     .then(function (res) {
-                        if (res.ok) { return null; }
+                        if (res.ok) { return res.json().catch(function () { return null; }); }
                         return res.json().catch(function () { return null; }).then(function (body) {
                             var err = new Error('request failed');
                             err.status = res.status;
@@ -587,11 +588,11 @@
                             throw err;
                         });
                     })
-                    .then(function () {
+                    .then(function (body) {
+                        if (!body || typeof body.id !== 'string' || !body.id) { throw new Error('no id in the 201 response'); }
+                        created = true;
                         bootstrap.Modal.getInstance(newFormModal).hide();
-                        formsStatus.value = '';
-                        formsPage = 1;
-                        loadForms();
+                        window.location.assign(MRF_TAB_PATHS.forms + '/' + encodeURIComponent(body.id));
                     })
                     .catch(function (err) {
                         var text = MRF_FORMS_CREATE_ERROR_OTHER;
@@ -600,7 +601,7 @@
                         else if ((err.status === 422 || err.status === 409) && err.detail) { text = err.detail; }
                         showNewFormError(text);
                     })
-                    .then(function () { newFormCreate.disabled = false; });
+                    .then(function () { if (!created) { newFormCreate.disabled = false; } });
             });
         })();
     </script>
