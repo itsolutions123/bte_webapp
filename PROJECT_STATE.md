@@ -1720,6 +1720,6 @@ HARDCODES: the three fake rows were removed. MRF_FORMS_PAGE_SIZE = 10 is a clien
 
 DOCS: docs/API_CONTRACT.md GET /api/v1/admin/mrf/forms Status line (call site BUILT) and "Last verified" line 2 updated; its "this commit (pending)" marker gets the hash in the next docs edit.
 
-COMMIT (step 4.3 feature 1, frontend half and docs): pending.
+COMMIT (step 4.3 feature 1, frontend half and docs): 0a59f35, pushed to origin/main.
 
 NEXT: ask for git status and branch, commit with NAMED paths (app/templates/admin_mrf.html, docs/API_CONTRACT.md, PROJECT_STATE.md); then fix the pending hash. After that, step 4.3 of the handover: POST create + New form modal (own contract status line and call site). Part 41 items 5.8, 5.9 and 5.10 stay OPEN.
