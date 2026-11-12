@@ -399,3 +399,15 @@ class MrfFormListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class MrfFormCreate(BaseModel):
+    # No length limit here on purpose: the endpoint trims first, then returns its own 422 messages (docs/API_CONTRACT.md, POST /api/v1/admin/mrf/forms).
+    name: str
+
+
+class MrfFormCreated(BaseModel):
+    id: UUID4
+    name: str
+    status: str
+    created_at: datetime

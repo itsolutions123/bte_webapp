@@ -7,14 +7,22 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import MrfForm, MrfFormQuestion, MrfUser, User
-from app.mrf_lists import MRF_FORM_STATUSES
+from app.mrf_lists import MRF_FORM_NAME_MAX_LENGTH, MRF_FORM_STATUS_DRAFT, MRF_FORM_STATUSES
 from app.roles import ROLE_MANAGER, ROLE_SUPERADMIN
 from app.routers.auth import require_roles
-from app.schemas import MrfFormListItem, MrfFormListResponse, MrfUserListItem, MrfUserListResponse
+from app.schemas import (
+    MrfFormCreate,
+    MrfFormCreated,
+    MrfFormListItem,
+    MrfFormListResponse,
+    MrfUserListItem,
+    MrfUserListResponse,
+)
 from app.timeutil import to_app_tz
 
 router = APIRouter()
@@ -32,6 +40,11 @@ MRF_USERS_SEARCH_MAX_LENGTH = 100
 MRF_FORMS_DEFAULT_PAGE_SIZE = 10
 MRF_FORMS_MAX_PAGE_SIZE = 50
 MRF_FORM_STATUS_INVALID = "status must be ACTIVE or DRAFT"
+
+# Create form messages (docs/API_CONTRACT.md, POST /api/v1/admin/mrf/forms, decided by the user 2026-11-12, option A).
+MRF_FORM_NAME_REQUIRED = "Form name is required."
+MRF_FORM_NAME_TOO_LONG = f"Form name must be {MRF_FORM_NAME_MAX_LENGTH} characters or fewer."
+MRF_FORM_NAME_TAKEN = "A form with this name already exists."
 SORT_NEWEST = "newest"
 SORT_FIRST_NAME_ASC = "first_name_asc"
 SORT_FIRST_NAME_DESC = "first_name_desc"
@@ -174,6 +187,45 @@ async def list_mrf_forms(
         total=total,
         page=page,
         page_size=page_size,
+    )
+
+
+@router.post(
+    "/mrf/forms",
+    response_model=MrfFormCreated,
+    status_code=201,
+    dependencies=[Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER))],
+)
+async def create_mrf_form(
+    payload: MrfFormCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Creates a DRAFT MRF form. The name is trimmed first; blank or over the limit is a 422, a duplicate (case-insensitive) is a 409.
+    The unique index on lower(name) is the real guard: a lost race also returns the 409."""
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail=MRF_FORM_NAME_REQUIRED)
+    if len(name) > MRF_FORM_NAME_MAX_LENGTH:
+        raise HTTPException(status_code=422, detail=MRF_FORM_NAME_TOO_LONG)
+
+    existing = await db.scalar(select(MrfForm.id).where(func.lower(MrfForm.name) == func.lower(name)))
+    if existing is not None:
+        raise HTTPException(status_code=409, detail=MRF_FORM_NAME_TAKEN)
+
+    form = MrfForm(name=name, status=MRF_FORM_STATUS_DRAFT)
+    db.add(form)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail=MRF_FORM_NAME_TAKEN)
+    await db.refresh(form)
+
+    return MrfFormCreated(
+        id=form.id,
+        name=form.name,
+        status=form.status,
+        created_at=to_app_tz(form.created_at),
     )
 
 
