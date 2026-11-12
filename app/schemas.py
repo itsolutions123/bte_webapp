@@ -413,6 +413,12 @@ class MrfFormCreated(BaseModel):
     created_at: datetime
 
 
+class MrfFormUpdate(BaseModel):
+    # Both fields optional on purpose: the endpoint decides what is usable and returns its own 422 messages (docs/API_CONTRACT.md, PATCH /api/v1/admin/mrf/forms/{form_id}).
+    name: Optional[str] = None
+    status: Optional[str] = None
+
+
 class MrfFormQuestionItem(BaseModel):
     id: UUID4
     question_type: str

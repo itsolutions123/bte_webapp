@@ -1,6 +1,6 @@
 """Admin MRF endpoints (docs/API_CONTRACT.md, /api/v1/admin/mrf). Mounted in app/main.py with the session check.
 
-Summary, users list and approve so far. Roles: SUPERADMIN and MANAGER (decided by the user 2026-11-10); RECRUITER gets 403."""
+Summary, users list and approve, plus the forms endpoints (list, create, get one, update). Roles: SUPERADMIN and MANAGER (decided by the user 2026-11-10); RECRUITER gets 403."""
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import MrfForm, MrfFormQuestion, MrfUser, User
-from app.mrf_lists import MRF_FORM_NAME_MAX_LENGTH, MRF_FORM_STATUS_DRAFT, MRF_FORM_STATUSES
+from app.mrf_lists import MRF_FORM_NAME_MAX_LENGTH, MRF_FORM_STATUS_ACTIVE, MRF_FORM_STATUS_DRAFT, MRF_FORM_STATUSES
 from app.roles import ROLE_MANAGER, ROLE_SUPERADMIN
 from app.routers.auth import require_roles
 from app.schemas import (
@@ -22,6 +22,7 @@ from app.schemas import (
     MrfFormListItem,
     MrfFormQuestionItem,
     MrfFormListResponse,
+    MrfFormUpdate,
     MrfUserListItem,
     MrfUserListResponse,
 )
@@ -50,6 +51,10 @@ MRF_FORM_NAME_TAKEN = "A form with this name already exists."
 
 # Get one form message (docs/API_CONTRACT.md, GET /api/v1/admin/mrf/forms/{form_id}, decided by the user 2026-11-12, part 47, (h) option A).
 MRF_FORM_NOT_FOUND = "Form not found."
+
+# Update form messages (docs/API_CONTRACT.md, PATCH /api/v1/admin/mrf/forms/{form_id}, decided by the user 2026-11-12, part 48, (r) and (s), option A each).
+MRF_FORM_UPDATE_EMPTY = "Send a name or a status to update."
+MRF_FORM_NEEDS_QUESTION = "Add at least one question before setting this form to Active."
 SORT_NEWEST = "newest"
 SORT_FIRST_NAME_ASC = "first_name_asc"
 SORT_FIRST_NAME_DESC = "first_name_desc"
@@ -219,6 +224,67 @@ async def create_mrf_form(
 
     form = MrfForm(name=name, status=MRF_FORM_STATUS_DRAFT)
     db.add(form)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail=MRF_FORM_NAME_TAKEN)
+    await db.refresh(form)
+
+    return MrfFormCreated(
+        id=form.id,
+        name=form.name,
+        status=form.status,
+        created_at=to_app_tz(form.created_at),
+    )
+
+
+@router.patch(
+    "/mrf/forms/{form_id}",
+    response_model=MrfFormCreated,
+    dependencies=[Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER))],
+)
+async def update_mrf_form(
+    form_id: UUID,
+    payload: MrfFormUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Renames a form and/or sets its status. Order of checks: 404, then the 422s, then the 409. A lost race on the name also returns the 409."""
+    form = await db.scalar(select(MrfForm).where(MrfForm.id == form_id))
+    if form is None:
+        raise HTTPException(status_code=404, detail=MRF_FORM_NOT_FOUND)
+
+    if payload.name is None and payload.status is None:
+        raise HTTPException(status_code=422, detail=MRF_FORM_UPDATE_EMPTY)
+
+    name = None
+    if payload.name is not None:
+        name = payload.name.strip()
+        if not name:
+            raise HTTPException(status_code=422, detail=MRF_FORM_NAME_REQUIRED)
+        if len(name) > MRF_FORM_NAME_MAX_LENGTH:
+            raise HTTPException(status_code=422, detail=MRF_FORM_NAME_TOO_LONG)
+
+    if payload.status is not None:
+        if payload.status not in MRF_FORM_STATUSES:
+            raise HTTPException(status_code=422, detail=MRF_FORM_STATUS_INVALID)
+        if payload.status == MRF_FORM_STATUS_ACTIVE:
+            question_count = await db.scalar(
+                select(func.count()).select_from(MrfFormQuestion).where(MrfFormQuestion.form_id == form.id)
+            )
+            if not question_count:
+                raise HTTPException(status_code=422, detail=MRF_FORM_NEEDS_QUESTION)
+
+    if name is not None:
+        taken = await db.scalar(
+            select(MrfForm.id).where(func.lower(MrfForm.name) == func.lower(name), MrfForm.id != form.id)
+        )
+        if taken is not None:
+            raise HTTPException(status_code=409, detail=MRF_FORM_NAME_TAKEN)
+        form.name = name
+    if payload.status is not None:
+        form.status = payload.status
+
     try:
         await db.commit()
     except IntegrityError:
