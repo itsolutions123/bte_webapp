@@ -1706,6 +1706,6 @@ DOCS: docs/API_CONTRACT.md GET /api/v1/admin/mrf/forms Status line now IMPLEMENT
 
 OPEN (unchanged): 5.8 page guard, 5.9 end-to-end run, 5.10 saves; bare /admin/mrf behaviour; request status values, who changes status, who counts as HR, Assignment column; sign-up link and Forgot password; the unique index on lower(name) was Claude's proposal in part 42, applied without a lettered answer (tell the user if they want it changed).
 
-COMMIT (step 4.3 feature 1, backend and docs): pending.
+COMMIT (step 4.3 feature 1, backend and docs): 3c1810d, pushed to origin/main.
 
 NEXT: ask for git status and branch, commit with NAMED paths (app/routers/admin_mrf.py, app/schemas.py, docs/API_CONTRACT.md, PROJECT_STATE.md); then step 4.2 of the handover: wire the Forms list UI (read the second script block of app/templates/admin_mrf.html first).
