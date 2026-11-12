@@ -411,3 +411,21 @@ class MrfFormCreated(BaseModel):
     name: str
     status: str
     created_at: datetime
+
+
+class MrfFormQuestionItem(BaseModel):
+    id: UUID4
+    question_type: str
+    question_text: str
+    options: Optional[Any] = None
+    is_required: bool
+    is_classification: bool
+    display_order: int
+
+
+class MrfFormDetail(BaseModel):
+    id: UUID4
+    name: str
+    status: str
+    created_at: datetime
+    questions: List[MrfFormQuestionItem]

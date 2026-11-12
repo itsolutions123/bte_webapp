@@ -18,7 +18,9 @@ from app.routers.auth import require_roles
 from app.schemas import (
     MrfFormCreate,
     MrfFormCreated,
+    MrfFormDetail,
     MrfFormListItem,
+    MrfFormQuestionItem,
     MrfFormListResponse,
     MrfUserListItem,
     MrfUserListResponse,
@@ -45,6 +47,9 @@ MRF_FORM_STATUS_INVALID = "status must be ACTIVE or DRAFT"
 MRF_FORM_NAME_REQUIRED = "Form name is required."
 MRF_FORM_NAME_TOO_LONG = f"Form name must be {MRF_FORM_NAME_MAX_LENGTH} characters or fewer."
 MRF_FORM_NAME_TAKEN = "A form with this name already exists."
+
+# Get one form message (docs/API_CONTRACT.md, GET /api/v1/admin/mrf/forms/{form_id}, decided by the user 2026-11-12, part 47, (h) option A).
+MRF_FORM_NOT_FOUND = "Form not found."
 SORT_NEWEST = "newest"
 SORT_FIRST_NAME_ASC = "first_name_asc"
 SORT_FIRST_NAME_DESC = "first_name_desc"
@@ -226,6 +231,50 @@ async def create_mrf_form(
         name=form.name,
         status=form.status,
         created_at=to_app_tz(form.created_at),
+    )
+
+
+@router.get(
+    "/mrf/forms/{form_id}",
+    response_model=MrfFormDetail,
+    dependencies=[Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER))],
+)
+async def get_mrf_form(
+    form_id: UUID,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    """One MRF form with its questions in display_order (ties by id). Unknown id is a 404; a malformed id is FastAPI's own 422."""
+    form = await db.scalar(select(MrfForm).where(MrfForm.id == form_id))
+    if form is None:
+        raise HTTPException(status_code=404, detail=MRF_FORM_NOT_FOUND)
+
+    questions = (
+        await db.execute(
+            select(MrfFormQuestion)
+            .where(MrfFormQuestion.form_id == form.id)
+            .order_by(MrfFormQuestion.display_order, MrfFormQuestion.id)
+        )
+    ).scalars().all()
+
+    response.headers["Cache-Control"] = "no-store"
+    return MrfFormDetail(
+        id=form.id,
+        name=form.name,
+        status=form.status,
+        created_at=to_app_tz(form.created_at),
+        questions=[
+            MrfFormQuestionItem(
+                id=q.id,
+                question_type=q.question_type,
+                question_text=q.question_text,
+                options=q.options,
+                is_required=q.is_required,
+                is_classification=q.is_classification,
+                display_order=q.display_order,
+            )
+            for q in questions
+        ],
     )
 
 
