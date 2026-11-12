@@ -1723,3 +1723,25 @@ DOCS: docs/API_CONTRACT.md GET /api/v1/admin/mrf/forms Status line (call site BU
 COMMIT (step 4.3 feature 1, frontend half and docs): 0a59f35, pushed to origin/main.
 
 NEXT: ask for git status and branch, commit with NAMED paths (app/templates/admin_mrf.html, docs/API_CONTRACT.md, PROJECT_STATE.md); then fix the pending hash. After that, step 4.3 of the handover: POST create + New form modal (own contract status line and call site). Part 41 items 5.8, 5.9 and 5.10 stay OPEN.
+
+## Session Log 2026-11-12 (part 45): MRF form creator, POST create backend (step 6.2)
+
+STEP 6.1 (docs only): the two pending hashes for the part 44 frontend commit now read 0a59f35 (docs/API_CONTRACT.md line 2 and the COMMIT line of the part 44 frontend entry above). COMMIT (docs only): edd9f21, pushed to origin/main.
+
+STEP 6.2 (POST /api/v1/admin/mrf/forms, backend half): contract was DECIDED in part 42 (body { name }, trimmed, required, at most 100, DRAFT, 201 { id, name, status, created_at }, 409 on a duplicate name compared case-insensitively). DECIDED by the user this part, option A (lettered): the 422 for a blank name and for a name over 100 characters are custom, raised by the endpoint after trimming (a name of only spaces is caught), not FastAPI's own. DECIDED by the user, option A (lettered), message text: "Form name is required.", "Form name must be 100 characters or fewer." (built from MRF_FORM_NAME_MAX_LENGTH) and "A form with this name already exists.". Roles SUPERADMIN and MANAGER (RECRUITER 403) were taken from the router-wide rule in app/routers/admin_mrf.py by Claude, NOT asked as a lettered question: tell the user if create should be narrower.
+
+BUILT: create_mrf_form in app/routers/admin_mrf.py (constants MRF_FORM_NAME_REQUIRED, MRF_FORM_NAME_TOO_LONG, MRF_FORM_NAME_TAKEN; IntegrityError, MRF_FORM_NAME_MAX_LENGTH and MRF_FORM_STATUS_DRAFT imported) and MrfFormCreate (name: str, no length limit on purpose) and MrfFormCreated in app/schemas.py. Order: trim, 422 checks, SELECT on lower(name) for the 409, add, commit with IntegrityError to rollback to the same 409 (the lost-race path), refresh, then build the 201 with created_at via to_app_tz. The response is built AFTER the commit and refresh (as in users.py), not before it as in approve_mrf_user, because id and created_at come from model defaults. The model supplies id (default uuid.uuid4); the table has no database default for id. No Cache-Control header on create (the contract does not ask for one).
+
+SEEN (live, curl as a signed-in admin, cookie jar in /tmp, password typed hidden): 201 with DRAFT and created_at ending +08:00 (stored UTC 04:51 shown as 12:51); 409 for the same name in another case; 422 Form name is required. for a name of only spaces; 422 Form name must be 100 characters or fewer. for 101 characters; FastAPI's own 422 (detail is a list, type missing) for a body without name; 201 for a padded name, stored trimmed; 401 with no cookie. The two throwaway rows (ZZ test 01 and ZZ test 02) were DELETED by id with a name guard in one transaction that aborts unless 2 rows are deleted; read-back forms 0, questions 0. The cookie jar was removed. Both mrf tables are empty again.
+
+NOT tested: the race (two simultaneous creates, the IntegrityError to 409 path); RECRUITER 403; which of SUPERADMIN or MANAGER the test account holds; a non-string name such as a number; the browser (no call site yet).
+
+HARDCODES: none found or removed; the limit and DRAFT come from named constants.
+
+DOCS: docs/API_CONTRACT.md entry for POST /api/v1/admin/mrf/forms now has Auth, Errors, Other errors (observed live) and a Status line IMPLEMENTED and VERIFIED LIVE with its NOT tested list; line 2 has the new entry with commit 9cb281d.
+
+COMMIT (step 6.2, backend and contract): 9cb281d, pushed to origin/main. The commit that records this hash (docs/API_CONTRACT.md line 2 and this section) stays unrecorded, one-step lag on purpose.
+
+OPEN: the New form modal call site (still to do, own step): the modal look (read the existing modal pattern on /admin/mrf/forms first) and what the page does after a successful create (stay and refresh the list, or open /admin/mrf/forms/{id}); both still to be asked, one per message with a recommendation. The 23 older "this commit (pending)" markers on docs/API_CONTRACT.md line 2 (entries from before part 43) still carry no hash. The unique index on lower(name) was Claude's proposal in part 42, applied without a lettered answer. Part 41 items 5.8, 5.9 and 5.10 stay OPEN. The memory file /areas/bte-mrf-portal.md (if the user keeps it by hand) needs the part 45 decisions: 422s custom after trimming (option A) and message text (option A).
+
+NEXT: docs-only commit with NAMED paths (docs/API_CONTRACT.md, PROJECT_STATE.md); then the New form modal.
