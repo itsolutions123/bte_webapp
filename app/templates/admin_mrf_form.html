@@ -36,12 +36,21 @@
                     <div class="mrf-form-head">
                         <div>
                             <div class="mrf-form-title" id="mrf-form-title">Form name</div>
+                            <input type="text" class="form-control form-control-sm" id="mrf-form-name-input" maxlength="100" aria-label="Form name" style="max-width: 24rem;" hidden>
                             <div class="mrf-form-sub">Manpower request form</div>
                             <span class="mrf-form-pill" id="mrf-form-status">Status: &mdash;</span>
                         </div>
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-dark mrf-form-btn">Edit name</button>
-                            <button type="button" class="btn btn-sm btn-dark mrf-form-btn">Set status</button>
+                            <button type="button" class="btn btn-sm btn-outline-dark mrf-form-btn" id="mrf-form-edit">Edit name</button>
+                            <button type="button" class="btn btn-sm btn-dark mrf-form-btn" id="mrf-form-save" hidden>Save</button>
+                            <button type="button" class="btn btn-sm btn-outline-dark mrf-form-btn" id="mrf-form-cancel" hidden>Cancel</button>
+                            <div class="dropdown">
+                                <button type="button" class="btn btn-sm btn-dark mrf-form-btn dropdown-toggle" id="mrf-form-status-btn" data-bs-toggle="dropdown" aria-expanded="false">Set status</button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><button type="button" class="dropdown-item" data-status="ACTIVE">Active</button></li>
+                                    <li><button type="button" class="dropdown-item" data-status="DRAFT">Draft</button></li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                     <div id="mrf-form-error" class="text-danger small px-4 pt-3" role="alert" hidden></div>
@@ -90,7 +99,7 @@
                                     <span class="mrf-form-pill mt-0">Option 3</span>
                                 </div>
                             </div>
-                            <div class="mrf-form-note">Shell: the buttons, switches and cards do nothing yet. The cards and options shown are placeholder text.</div>
+                            <div class="mrf-form-note">Shell: Edit name and Set status work. The other buttons, switches and cards do nothing yet. The cards and options shown are placeholder text.</div>
                         </div>
                     </div>
                 </div>
@@ -112,6 +121,111 @@
         var errorEl = document.getElementById("mrf-form-error");
         var formId = window.location.pathname.split("/").filter(Boolean).pop();
 
+        // PATCH /api/v1/admin/mrf/forms/{form_id} (docs/API_CONTRACT.md, Call site, part 49 step 5.5): Edit name inline, Set status dropdown.
+        var MRF_FORM_SAVE_ERROR_ACCESS = "Oops, you don't have permission to change this form.";
+        var MRF_FORM_SAVE_ERROR_OTHER = "Oops, couldn't save your changes. Please try again.";
+        var inputEl = document.getElementById("mrf-form-name-input");
+        var editBtn = document.getElementById("mrf-form-edit");
+        var saveBtn = document.getElementById("mrf-form-save");
+        var cancelBtn = document.getElementById("mrf-form-cancel");
+        var statusBtn = document.getElementById("mrf-form-status-btn");
+        var statusItems = document.querySelectorAll("[data-status]");
+        var currentName = "";
+        var currentStatus = "";
+        var saving = false;
+
+        function renderHeader(form) {
+            currentName = form.name;
+            currentStatus = form.status;
+            titleEl.textContent = form.name;
+            statusEl.textContent = "Status: " + (MRF_FORM_STATUS_LABELS[form.status] || form.status);
+            for (var i = 0; i < statusItems.length; i++) {
+                statusItems[i].classList.toggle("active", statusItems[i].getAttribute("data-status") === form.status);
+            }
+        }
+
+        function clearError() {
+            errorEl.hidden = true;
+            errorEl.textContent = "";
+        }
+
+        function setSaving(on) {
+            saving = on;
+            saveBtn.disabled = on;
+            cancelBtn.disabled = on;
+            statusBtn.disabled = on;
+            for (var i = 0; i < statusItems.length; i++) { statusItems[i].disabled = on; }
+        }
+
+        function openEdit() {
+            inputEl.value = currentName;
+            titleEl.hidden = true;
+            inputEl.hidden = false;
+            editBtn.hidden = true;
+            saveBtn.hidden = false;
+            cancelBtn.hidden = false;
+            inputEl.focus();
+            inputEl.select();
+        }
+
+        function closeEdit() {
+            inputEl.hidden = true;
+            titleEl.hidden = false;
+            saveBtn.hidden = true;
+            cancelBtn.hidden = true;
+            editBtn.hidden = false;
+        }
+
+        function saveChange(body, onDone) {
+            if (saving) { return; }
+            clearError();
+            setSaving(true);
+            fetch("/api/v1/admin/mrf/forms/" + encodeURIComponent(formId), {
+                method: "PATCH",
+                credentials: "same-origin",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            })
+                .then(function (res) {
+                    if (res.ok) { return res.json(); }
+                    return res.json().catch(function () { return null; }).then(function (errBody) {
+                        var err = new Error("HTTP " + res.status);
+                        err.status = res.status;
+                        err.detail = errBody ? errBody.detail : null;
+                        throw err;
+                    });
+                })
+                .then(function (form) {
+                    if (!form || typeof form.name !== "string" || typeof form.status !== "string") { throw new Error("Unexpected response"); }
+                    renderHeader(form);
+                    onDone();
+                })
+                .catch(function (err) {
+                    var text = MRF_FORM_SAVE_ERROR_OTHER;
+                    if (err.status === 401) { text = MRF_FORM_ERROR_SESSION; }
+                    else if (err.status === 403) { text = MRF_FORM_SAVE_ERROR_ACCESS; }
+                    else if ((err.status === 404 || err.status === 409 || err.status === 422) && typeof err.detail === "string") { text = err.detail; }
+                    errorEl.textContent = text;
+                    errorEl.hidden = false;
+                })
+                .then(function () { setSaving(false); });
+        }
+
+        editBtn.addEventListener("click", function () { clearError(); openEdit(); });
+        cancelBtn.addEventListener("click", function () { clearError(); closeEdit(); });
+        saveBtn.addEventListener("click", function () { saveChange({ name: inputEl.value }, closeEdit); });
+        inputEl.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") { e.preventDefault(); saveChange({ name: inputEl.value }, closeEdit); }
+            else if (e.key === "Escape" && !saving) { clearError(); closeEdit(); }
+        });
+        for (var s = 0; s < statusItems.length; s++) {
+            statusItems[s].addEventListener("click", function (e) {
+                var chosen = e.currentTarget.getAttribute("data-status");
+                if (chosen === currentStatus) { return; }
+                saveChange({ status: chosen }, function () {});
+            });
+        }
+
         errorEl.hidden = true;
         errorEl.textContent = "";
 
@@ -126,8 +240,7 @@
                 });
             })
             .then(function (form) {
-                titleEl.textContent = form.name;
-                statusEl.textContent = "Status: " + (MRF_FORM_STATUS_LABELS[form.status] || form.status);
+                renderHeader(form);
             })
             .catch(function (err) {
                 var text = MRF_FORM_ERROR_OTHER;
