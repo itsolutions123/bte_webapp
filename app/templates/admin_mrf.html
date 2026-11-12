@@ -74,7 +74,7 @@
                             </table>
                         </div>
                     </div>
-                    <div class="mrf-shell-note">Shell: the New form window opens and closes; Create and the rows do nothing yet.</div>
+                    <div class="mrf-shell-note">Shell: the rows do nothing yet.</div>
                 </section>
 
                 <section class="mrf-panel d-none" data-panel="users">
@@ -123,7 +123,7 @@
                 <div class="modal-body">
                     <label class="form-label" for="mrf-new-form-name">Form name</label>
                     <input type="text" class="form-control" id="mrf-new-form-name" placeholder="Form name" autocomplete="off">
-                    <div class="mrf-shell-note mt-3">Shell: Create does nothing yet.</div>
+                    <div class="text-danger small mt-3" id="mrf-new-form-error" role="alert" hidden></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -430,6 +430,8 @@
             var MRF_FORMS_NEXT_TEXT = 'Next';
             var MRF_FORMS_PAGE_WORD = 'Page';
             var MRF_FORMS_OF_WORD = 'of';
+            var MRF_FORMS_CREATE_ERROR_ACCESS = "Oops, you don't have permission to create forms.";
+            var MRF_FORMS_CREATE_ERROR_OTHER = "Oops, couldn't create this form. Please try again.";
             var formsTab = document.querySelector('.mrf-tab[data-tab="forms"]');
             var formsBody = document.getElementById('mrf-forms-body');
             var formsStatus = document.getElementById('mrf-forms-status');
@@ -544,6 +546,61 @@
                 if (formsLoaded) { return; }
                 formsLoaded = true;
                 loadForms();
+            });
+
+            // New form modal (POST /api/v1/admin/mrf/forms). The server's own text is shown for 422 and 409.
+            var newFormModal = document.getElementById('newFormModal');
+            var newFormName = document.getElementById('mrf-new-form-name');
+            var newFormCreate = document.getElementById('mrf-new-form-create');
+            var newFormError = document.getElementById('mrf-new-form-error');
+
+            function showNewFormError(text) {
+                newFormError.textContent = text;
+                newFormError.hidden = false;
+            }
+
+            function clearNewFormError() {
+                newFormError.textContent = '';
+                newFormError.hidden = true;
+            }
+
+            newFormModal.addEventListener('show.bs.modal', function () {
+                newFormName.value = '';
+                clearNewFormError();
+            });
+
+            newFormCreate.addEventListener('click', function () {
+                clearNewFormError();
+                newFormCreate.disabled = true;
+                fetch(MRF_FORMS_API, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: newFormName.value })
+                })
+                    .then(function (res) {
+                        if (res.ok) { return null; }
+                        return res.json().catch(function () { return null; }).then(function (body) {
+                            var err = new Error('request failed');
+                            err.status = res.status;
+                            err.detail = (body && typeof body.detail === 'string') ? body.detail : '';
+                            throw err;
+                        });
+                    })
+                    .then(function () {
+                        bootstrap.Modal.getInstance(newFormModal).hide();
+                        formsStatus.value = '';
+                        formsPage = 1;
+                        loadForms();
+                    })
+                    .catch(function (err) {
+                        var text = MRF_FORMS_CREATE_ERROR_OTHER;
+                        if (err.status === 401) { text = MRF_FORMS_ERROR_SESSION; }
+                        else if (err.status === 403) { text = MRF_FORMS_CREATE_ERROR_ACCESS; }
+                        else if ((err.status === 422 || err.status === 409) && err.detail) { text = err.detail; }
+                        showNewFormError(text);
+                    })
+                    .then(function () { newFormCreate.disabled = false; });
             });
         })();
     </script>
