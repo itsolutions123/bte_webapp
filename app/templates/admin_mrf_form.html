@@ -35,15 +35,16 @@
                 <div class="mrf-form-card">
                     <div class="mrf-form-head">
                         <div>
-                            <div class="mrf-form-title">Form name</div>
+                            <div class="mrf-form-title" id="mrf-form-title">Form name</div>
                             <div class="mrf-form-sub">Manpower request form</div>
-                            <span class="mrf-form-pill">Status: &mdash;</span>
+                            <span class="mrf-form-pill" id="mrf-form-status">Status: &mdash;</span>
                         </div>
                         <div class="d-flex gap-2">
                             <button type="button" class="btn btn-sm btn-outline-dark mrf-form-btn">Edit name</button>
                             <button type="button" class="btn btn-sm btn-dark mrf-form-btn">Set status</button>
                         </div>
                     </div>
+                    <div id="mrf-form-error" class="text-danger small px-4 pt-3" role="alert" hidden></div>
                     <div class="row g-0" style="min-height: 420px;">
                         <div class="col-3 border-end p-3">
                             <div class="mrf-form-label">ELEMENTS</div>
@@ -89,7 +90,7 @@
                                     <span class="mrf-form-pill mt-0">Option 3</span>
                                 </div>
                             </div>
-                            <div class="mrf-form-note">Shell: the buttons, switches and cards do nothing yet. Everything shown is placeholder text.</div>
+                            <div class="mrf-form-note">Shell: the buttons, switches and cards do nothing yet. The cards and options shown are placeholder text.</div>
                         </div>
                     </div>
                 </div>
@@ -98,5 +99,45 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/admin-sidebar.js"></script>
+    <script>
+    (function () {
+        // GET /api/v1/admin/mrf/forms/{form_id} (docs/API_CONTRACT.md, Call site, part 47 step 5.3). Header only: name and status.
+        var MRF_FORM_ERROR_SESSION = "Oops, your session has ended. Please sign in again.";
+        var MRF_FORM_ERROR_ACCESS = "Oops, you don't have permission to view this form.";
+        var MRF_FORM_ERROR_OTHER = "Oops, couldn't load this form. Please try again.";
+        var MRF_FORM_STATUS_LABELS = { ACTIVE: "Active", DRAFT: "Draft" };
+
+        var titleEl = document.getElementById("mrf-form-title");
+        var statusEl = document.getElementById("mrf-form-status");
+        var errorEl = document.getElementById("mrf-form-error");
+        var formId = window.location.pathname.split("/").filter(Boolean).pop();
+
+        errorEl.hidden = true;
+        errorEl.textContent = "";
+
+        fetch("/api/v1/admin/mrf/forms/" + encodeURIComponent(formId), { credentials: "same-origin" })
+            .then(function (res) {
+                if (res.ok) { return res.json(); }
+                return res.json().catch(function () { return null; }).then(function (body) {
+                    var err = new Error("HTTP " + res.status);
+                    err.status = res.status;
+                    err.detail = body ? body.detail : null;
+                    throw err;
+                });
+            })
+            .then(function (form) {
+                titleEl.textContent = form.name;
+                statusEl.textContent = "Status: " + (MRF_FORM_STATUS_LABELS[form.status] || form.status);
+            })
+            .catch(function (err) {
+                var text = MRF_FORM_ERROR_OTHER;
+                if (err.status === 401) { text = MRF_FORM_ERROR_SESSION; }
+                else if (err.status === 403) { text = MRF_FORM_ERROR_ACCESS; }
+                else if (err.status === 404 && typeof err.detail === "string") { text = err.detail; }
+                errorEl.textContent = text;
+                errorEl.hidden = false;
+            });
+    })();
+    </script>
 </body>
 </html>
