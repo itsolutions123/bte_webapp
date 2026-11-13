@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, UUID4, Json
+from pydantic import BaseModel, EmailStr, UUID4, Json, StrictBool
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
@@ -417,6 +417,16 @@ class MrfFormUpdate(BaseModel):
     # Both fields optional on purpose: the endpoint decides what is usable and returns its own 422 messages (docs/API_CONTRACT.md, PATCH /api/v1/admin/mrf/forms/{form_id}).
     name: Optional[str] = None
     status: Optional[str] = None
+
+
+class MrfFormQuestionCreate(BaseModel):
+    # Loose on purpose: the endpoint trims, checks and returns its own 422 messages (docs/API_CONTRACT.md, POST /api/v1/admin/mrf/forms/{form_id}/questions).
+    # StrictBool: a non-bool is_required or is_classification gets FastAPI's own list-style 422. is_required None means "use the type's default".
+    question_type: str
+    question_text: str
+    options: Optional[List[str]] = None
+    is_required: Optional[StrictBool] = None
+    is_classification: StrictBool = False
 
 
 class MrfFormQuestionItem(BaseModel):

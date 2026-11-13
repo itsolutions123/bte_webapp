@@ -1,9 +1,9 @@
 """Admin MRF endpoints (docs/API_CONTRACT.md, /api/v1/admin/mrf). Mounted in app/main.py with the session check.
 
-Summary, users list and approve, plus the forms endpoints (list, create, get one, update). Roles: SUPERADMIN and MANAGER (decided by the user 2026-11-10); RECRUITER gets 403."""
+Summary, users list and approve, plus the forms endpoints (list, create, get one, update) and the question create endpoint. Roles: SUPERADMIN and MANAGER (decided by the user 2026-11-10); RECRUITER gets 403."""
 from datetime import datetime, timezone
 from typing import Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func, or_, select
@@ -12,7 +12,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import MrfForm, MrfFormQuestion, MrfUser, User
-from app.mrf_lists import MRF_FORM_NAME_MAX_LENGTH, MRF_FORM_STATUS_ACTIVE, MRF_FORM_STATUS_DRAFT, MRF_FORM_STATUSES
+from app.mrf_lists import (
+    MRF_CLASSIFICATION_OPTIONS,
+    MRF_FORM_NAME_MAX_LENGTH,
+    MRF_FORM_STATUS_ACTIVE,
+    MRF_FORM_STATUS_DRAFT,
+    MRF_FORM_STATUSES,
+    MRF_QUESTION_TEXT_MAX_LENGTH,
+    MRF_QUESTION_TYPE_MULTIPLE_CHOICE,
+    MRF_QUESTION_TYPE_OPEN_ENDED,
+    MRF_QUESTION_TYPE_YES_NO,
+    MRF_QUESTION_TYPES,
+)
 from app.roles import ROLE_MANAGER, ROLE_SUPERADMIN
 from app.routers.auth import require_roles
 from app.schemas import (
@@ -20,6 +31,7 @@ from app.schemas import (
     MrfFormCreated,
     MrfFormDetail,
     MrfFormListItem,
+    MrfFormQuestionCreate,
     MrfFormQuestionItem,
     MrfFormListResponse,
     MrfFormUpdate,
@@ -55,6 +67,21 @@ MRF_FORM_NOT_FOUND = "Form not found."
 # Update form messages (docs/API_CONTRACT.md, PATCH /api/v1/admin/mrf/forms/{form_id}, decided by the user 2026-11-12, part 48, (r) and (s), option A each).
 MRF_FORM_UPDATE_EMPTY = "Send a name or a status to update."
 MRF_FORM_NEEDS_QUESTION = "Add at least one question before setting this form to Active."
+
+# Create question messages (docs/API_CONTRACT.md, POST /api/v1/admin/mrf/forms/{form_id}/questions, decided by the user 2026-11-13, part 50, (z1) to (z10), option A each).
+# The option messages are the same texts as the job form's create_question (admin.py), copied here on purpose (z1).
+MRF_QUESTION_TEXT_REQUIRED = "question_text must not be empty"
+MRF_QUESTION_TEXT_TOO_LONG = f"question_text must be at most {MRF_QUESTION_TEXT_MAX_LENGTH} characters"
+MRF_QUESTION_TYPE_INVALID = "question_type must be YES_NO, MULTIPLE_CHOICE or OPEN_ENDED"
+MRF_QUESTION_OPTION_EMPTY = "option labels must not be empty"
+MRF_QUESTION_YES_NO_COUNT = "YES_NO options must be exactly 2 labels"
+MRF_QUESTION_YES_NO_DISTINCT = "the two YES_NO labels must be different"
+MRF_QUESTION_MC_MIN = "MULTIPLE_CHOICE requires at least 3 options"
+MRF_QUESTION_MC_DISTINCT = "MULTIPLE_CHOICE options must be distinct"
+MRF_QUESTION_OPEN_NO_OPTIONS = "OPEN_ENDED takes no options"
+MRF_QUESTION_CLASSIFICATION_TYPE = "is_classification is only allowed on a MULTIPLE_CHOICE question"
+MRF_QUESTION_CLASSIFICATION_OPTIONS = "a Classification question must have exactly these options: " + ", ".join(MRF_CLASSIFICATION_OPTIONS)
+MRF_QUESTION_CLASSIFICATION_EXISTS = "This form already has a Classification question."
 SORT_NEWEST = "newest"
 SORT_FIRST_NAME_ASC = "first_name_asc"
 SORT_FIRST_NAME_DESC = "first_name_desc"
@@ -341,6 +368,115 @@ async def get_mrf_form(
             )
             for q in questions
         ],
+    )
+
+
+@router.post(
+    "/mrf/forms/{form_id}/questions",
+    response_model=MrfFormQuestionItem,
+    status_code=201,
+    dependencies=[Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER))],
+)
+async def create_mrf_question(
+    form_id: UUID,
+    payload: MrfFormQuestionCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Adds a question to the end of a form. Order of checks (decided 2026-11-13, (z10)): 404, the text, the type, the option rules,
+    the Classification rules, then the 409. The form's status does not matter ((z4)). A lost race on the Classification index also returns the 409."""
+    form = await db.scalar(select(MrfForm.id).where(MrfForm.id == form_id))
+    if form is None:
+        raise HTTPException(status_code=404, detail=MRF_FORM_NOT_FOUND)
+
+    text = payload.question_text.strip()
+    if not text:
+        raise HTTPException(status_code=422, detail=MRF_QUESTION_TEXT_REQUIRED)
+    if len(text) > MRF_QUESTION_TEXT_MAX_LENGTH:
+        raise HTTPException(status_code=422, detail=MRF_QUESTION_TEXT_TOO_LONG)
+
+    qtype = payload.question_type
+    if qtype not in MRF_QUESTION_TYPES:
+        raise HTTPException(status_code=422, detail=MRF_QUESTION_TYPE_INVALID)
+
+    options = None
+    if payload.options is not None:
+        options = [o.strip() for o in payload.options]
+        if any(not o for o in options):
+            raise HTTPException(status_code=422, detail=MRF_QUESTION_OPTION_EMPTY)
+
+    if qtype == MRF_QUESTION_TYPE_YES_NO:
+        if options is not None:
+            if len(options) != 2:
+                raise HTTPException(status_code=422, detail=MRF_QUESTION_YES_NO_COUNT)
+            if options[0].lower() == options[1].lower():
+                raise HTTPException(status_code=422, detail=MRF_QUESTION_YES_NO_DISTINCT)
+    elif qtype == MRF_QUESTION_TYPE_MULTIPLE_CHOICE:
+        if options is None or len(options) < 3:
+            raise HTTPException(status_code=422, detail=MRF_QUESTION_MC_MIN)
+        if len(set(o.lower() for o in options)) != len(options):
+            raise HTTPException(status_code=422, detail=MRF_QUESTION_MC_DISTINCT)
+    else:
+        if options is not None:
+            raise HTTPException(status_code=422, detail=MRF_QUESTION_OPEN_NO_OPTIONS)
+
+    if payload.is_classification:
+        if qtype != MRF_QUESTION_TYPE_MULTIPLE_CHOICE:
+            raise HTTPException(status_code=422, detail=MRF_QUESTION_CLASSIFICATION_TYPE)
+        if options != list(MRF_CLASSIFICATION_OPTIONS):
+            raise HTTPException(status_code=422, detail=MRF_QUESTION_CLASSIFICATION_OPTIONS)
+        existing = await db.scalar(
+            select(MrfFormQuestion.id)
+            .where(MrfFormQuestion.form_id == form_id, MrfFormQuestion.is_classification.is_(True))
+            .limit(1)
+        )
+        if existing is not None:
+            raise HTTPException(status_code=409, detail=MRF_QUESTION_CLASSIFICATION_EXISTS)
+
+    # (z7): a Classification question is always required, whatever was sent. Otherwise the type's default (true, true, false).
+    if payload.is_classification:
+        is_required = True
+    elif payload.is_required is not None:
+        is_required = payload.is_required
+    else:
+        is_required = qtype != MRF_QUESTION_TYPE_OPEN_ENDED
+
+    next_order = (
+        await db.scalar(
+            select(func.coalesce(func.max(MrfFormQuestion.display_order), 0)).where(MrfFormQuestion.form_id == form_id)
+        )
+    ) + 1
+
+    stored_options = options
+    if qtype == MRF_QUESTION_TYPE_MULTIPLE_CHOICE:
+        stored_options = [{"id": uuid4().hex, "text": o} for o in options]
+
+    question = MrfFormQuestion(
+        form_id=form_id,
+        question_type=qtype,
+        question_text=text,
+        options=stored_options,
+        is_required=is_required,
+        is_classification=payload.is_classification,
+        display_order=next_order,
+    )
+    db.add(question)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        if payload.is_classification:
+            raise HTTPException(status_code=409, detail=MRF_QUESTION_CLASSIFICATION_EXISTS)
+        raise
+    await db.refresh(question)
+
+    return MrfFormQuestionItem(
+        id=question.id,
+        question_type=question.question_type,
+        question_text=question.question_text,
+        options=question.options,
+        is_required=question.is_required,
+        is_classification=question.is_classification,
+        display_order=question.display_order,
     )
 
 

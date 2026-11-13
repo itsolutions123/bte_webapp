@@ -56,3 +56,6 @@ MRF_CLASSIFICATION_OPTIONS = ("Rank and File", "Supervisory", "Managerial")
 
 # Trimmed form names are at most this long (decided, option A; longer returns 422). Matches mrf_forms.name VARCHAR(100).
 MRF_FORM_NAME_MAX_LENGTH = 100
+
+# Trimmed question text is at most this long (decided, part 50, (z8) option A; longer returns 422). mrf_form_questions.question_text itself is unbounded.
+MRF_QUESTION_TEXT_MAX_LENGTH = 500
