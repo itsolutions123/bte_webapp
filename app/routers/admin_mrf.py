@@ -1,12 +1,12 @@
 """Admin MRF endpoints (docs/API_CONTRACT.md, /api/v1/admin/mrf). Mounted in app/main.py with the session check.
 
-Summary, users list and approve, plus the forms endpoints (list, create, get one, update) and the question create and update endpoints. Roles: SUPERADMIN and MANAGER (decided by the user 2026-11-10); RECRUITER gets 403."""
+Summary, users list and approve, plus the forms endpoints (list, create, get one, update) and the question create, update and delete endpoints. Roles: SUPERADMIN and MANAGER (decided by the user 2026-11-10); RECRUITER gets 403."""
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -575,6 +575,35 @@ async def update_mrf_question(
         is_classification=question.is_classification,
         display_order=question.display_order,
     )
+
+
+@router.delete(
+    "/mrf/forms/{form_id}/questions/{question_id}",
+    status_code=204,
+    dependencies=[Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER))],
+)
+async def delete_mrf_question(
+    form_id: UUID,
+    question_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Deletes a question ((d1) to (d6), decided 2026-11-13). 204 with no body. Order of checks: the form 404, then the question 404 (an unknown
+    question and a question of another form share one text, (d2)). The remaining questions keep their display_order, a gap is left ((d3)).
+    The form's status does not matter and the last question of an ACTIVE form can be deleted ((d4)). A Classification question can be deleted ((d5)).
+    One DELETE statement scoped by id and form_id; zero rows removed is the question 404, so a repeated or simultaneous delete never gives a 500."""
+    form = await db.scalar(select(MrfForm.id).where(MrfForm.id == form_id))
+    if form is None:
+        raise HTTPException(status_code=404, detail=MRF_FORM_NOT_FOUND)
+
+    result = await db.execute(
+        delete(MrfFormQuestion).where(MrfFormQuestion.id == question_id, MrfFormQuestion.form_id == form_id)
+    )
+    if result.rowcount == 0:
+        await db.rollback()
+        raise HTTPException(status_code=404, detail=MRF_QUESTION_NOT_FOUND)
+
+    await db.commit()
+    return Response(status_code=204)
 
 
 @router.post("/mrf/users/{user_id}/approve", response_model=MrfUserListItem)
