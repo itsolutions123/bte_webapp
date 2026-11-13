@@ -66,40 +66,8 @@
                         </div>
                         <div class="col-9 p-4">
                             <div class="mrf-form-label">FORM CONTENTS</div>
-                            <div class="mrf-form-q">
-                                <div class="d-flex justify-content-between align-items-center gap-3">
-                                    <div>
-                                        <div class="mrf-form-q-text">Question text</div>
-                                        <div class="mrf-form-q-type">Yes / No</div>
-                                    </div>
-                                    <div class="form-check form-switch mb-0">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="mrf-shell-req-1" checked disabled>
-                                        <label class="form-check-label small fw-bold" for="mrf-shell-req-1">Required</label>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mrf-form-q">
-                                <div class="d-flex justify-content-between align-items-center gap-3">
-                                    <div>
-                                        <div class="mrf-form-q-text">Question text</div>
-                                        <div class="mrf-form-q-type">Open ended</div>
-                                    </div>
-                                    <div class="form-check form-switch mb-0">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="mrf-shell-req-2" disabled>
-                                        <label class="form-check-label small fw-bold" for="mrf-shell-req-2">Required</label>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mrf-form-q">
-                                <div class="mrf-form-q-text">Classification</div>
-                                <div class="mrf-form-q-type mb-2">Fixed options, one per form</div>
-                                <div class="d-flex gap-2 flex-wrap">
-                                    <span class="mrf-form-pill mt-0">Option 1</span>
-                                    <span class="mrf-form-pill mt-0">Option 2</span>
-                                    <span class="mrf-form-pill mt-0">Option 3</span>
-                                </div>
-                            </div>
-                            <div class="mrf-form-note">Shell: Edit name and Set status work. The other buttons, switches and cards do nothing yet. The cards and options shown are placeholder text.</div>
+                            <div id="mrf-form-questions"></div>
+                            <div class="mrf-form-note">Shell: Edit name and Set status work. The questions above come from the form's stored questions. The Elements buttons and the Required switches do nothing yet.</div>
                         </div>
                     </div>
                 </div>
@@ -229,6 +197,65 @@
         errorEl.hidden = true;
         errorEl.textContent = "";
 
+        // Questions area: renders the questions array of the GET one response (docs/API_CONTRACT.md, Call site (questions area), part 55 step 5.4).
+        var MRF_FORM_TYPE_LABELS = { YES_NO: "Yes / No", MULTIPLE_CHOICE: "Multiple Choice", OPEN_ENDED: "Open ended" };
+        var MRF_FORM_NO_QUESTIONS = "No questions yet.";
+        var questionsEl = document.getElementById("mrf-form-questions");
+
+        function makeEl(tag, className, text) {
+            var el = document.createElement(tag);
+            if (className) { el.className = className; }
+            if (text !== undefined) { el.textContent = text; }
+            return el;
+        }
+
+        function optionLabel(o) {
+            if (o !== null && typeof o === "object") { return typeof o.text === "string" ? o.text : ""; }
+            return String(o);
+        }
+
+        function renderQuestions(questions) {
+            questionsEl.textContent = "";
+            if (!Array.isArray(questions) || questions.length === 0) {
+                questionsEl.appendChild(makeEl("div", "text-muted small", MRF_FORM_NO_QUESTIONS));
+                return;
+            }
+            for (var i = 0; i < questions.length; i++) {
+                var q = questions[i];
+                var card = makeEl("div", "mrf-form-q");
+                var row = makeEl("div", "d-flex justify-content-between align-items-center gap-3");
+                var left = makeEl("div");
+                left.appendChild(makeEl("div", "mrf-form-q-text", q.question_text));
+                var typeText = q.is_classification ? "Classification" : (MRF_FORM_TYPE_LABELS[q.question_type] || q.question_type);
+                left.appendChild(makeEl("div", "mrf-form-q-type", typeText));
+                row.appendChild(left);
+                if (!q.is_classification) {
+                    var sw = makeEl("div", "form-check form-switch mb-0");
+                    var input = document.createElement("input");
+                    input.className = "form-check-input";
+                    input.type = "checkbox";
+                    input.setAttribute("role", "switch");
+                    input.id = "mrf-req-" + i;
+                    input.checked = q.is_required === true;
+                    input.disabled = true;
+                    var lab = makeEl("label", "form-check-label small fw-bold", "Required");
+                    lab.setAttribute("for", input.id);
+                    sw.appendChild(input);
+                    sw.appendChild(lab);
+                    row.appendChild(sw);
+                }
+                card.appendChild(row);
+                if (Array.isArray(q.options) && q.question_type !== "OPEN_ENDED") {
+                    var pills = makeEl("div", "d-flex gap-2 flex-wrap mt-2");
+                    for (var k = 0; k < q.options.length; k++) {
+                        pills.appendChild(makeEl("span", "mrf-form-pill mt-0", optionLabel(q.options[k])));
+                    }
+                    card.appendChild(pills);
+                }
+                questionsEl.appendChild(card);
+            }
+        }
+
         fetch("/api/v1/admin/mrf/forms/" + encodeURIComponent(formId), { credentials: "same-origin" })
             .then(function (res) {
                 if (res.ok) { return res.json(); }
@@ -241,6 +268,7 @@
             })
             .then(function (form) {
                 renderHeader(form);
+                renderQuestions(form.questions);
             })
             .catch(function (err) {
                 var text = MRF_FORM_ERROR_OTHER;
