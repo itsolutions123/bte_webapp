@@ -1,6 +1,6 @@
 """Admin MRF endpoints (docs/API_CONTRACT.md, /api/v1/admin/mrf). Mounted in app/main.py with the session check.
 
-Summary, users list and approve, plus the forms endpoints (list, create, get one, update) and the question create endpoint. Roles: SUPERADMIN and MANAGER (decided by the user 2026-11-10); RECRUITER gets 403."""
+Summary, users list and approve, plus the forms endpoints (list, create, get one, update) and the question create and update endpoints. Roles: SUPERADMIN and MANAGER (decided by the user 2026-11-10); RECRUITER gets 403."""
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID, uuid4
@@ -33,6 +33,7 @@ from app.schemas import (
     MrfFormListItem,
     MrfFormQuestionCreate,
     MrfFormQuestionItem,
+    MrfFormQuestionUpdate,
     MrfFormListResponse,
     MrfFormUpdate,
     MrfUserListItem,
@@ -82,6 +83,12 @@ MRF_QUESTION_OPEN_NO_OPTIONS = "OPEN_ENDED takes no options"
 MRF_QUESTION_CLASSIFICATION_TYPE = "is_classification is only allowed on a MULTIPLE_CHOICE question"
 MRF_QUESTION_CLASSIFICATION_OPTIONS = "a Classification question must have exactly these options: " + ", ".join(MRF_CLASSIFICATION_OPTIONS)
 MRF_QUESTION_CLASSIFICATION_EXISTS = "This form already has a Classification question."
+
+# Update question messages (docs/API_CONTRACT.md, PATCH /api/v1/admin/mrf/forms/{form_id}/questions/{question_id}, decided by the user 2026-11-13, part 51, (p1) to (p10)).
+MRF_QUESTION_NOT_FOUND = "Question not found."
+MRF_QUESTION_UPDATE_EMPTY = "Send question_text, options or is_required to update."
+MRF_QUESTION_CLASSIFICATION_OPTIONS_LOCKED = "a Classification question's options cannot be changed"
+MRF_QUESTION_CLASSIFICATION_ALWAYS_REQUIRED = "a Classification question is always required"
 SORT_NEWEST = "newest"
 SORT_FIRST_NAME_ASC = "first_name_asc"
 SORT_FIRST_NAME_DESC = "first_name_desc"
@@ -467,6 +474,96 @@ async def create_mrf_question(
         if payload.is_classification:
             raise HTTPException(status_code=409, detail=MRF_QUESTION_CLASSIFICATION_EXISTS)
         raise
+    await db.refresh(question)
+
+    return MrfFormQuestionItem(
+        id=question.id,
+        question_type=question.question_type,
+        question_text=question.question_text,
+        options=question.options,
+        is_required=question.is_required,
+        is_classification=question.is_classification,
+        display_order=question.display_order,
+    )
+
+
+@router.patch(
+    "/mrf/forms/{form_id}/questions/{question_id}",
+    response_model=MrfFormQuestionItem,
+    dependencies=[Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER))],
+)
+async def update_mrf_question(
+    form_id: UUID,
+    question_id: UUID,
+    payload: MrfFormQuestionUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Edits a question: any of question_text, options, is_required. A field sent as null counts as not sent ((p3)).
+    Order of checks (decided 2026-11-13, (p8)): the form 404, the question 404, the empty body, the text, the Classification lock, the option rules.
+    The option rules are a second copy of the POST's on purpose ((p10)) and run against the STORED question_type. The form's status does not matter."""
+    form = await db.scalar(select(MrfForm.id).where(MrfForm.id == form_id))
+    if form is None:
+        raise HTTPException(status_code=404, detail=MRF_FORM_NOT_FOUND)
+
+    question = await db.scalar(
+        select(MrfFormQuestion).where(MrfFormQuestion.id == question_id, MrfFormQuestion.form_id == form_id)
+    )
+    if question is None:
+        raise HTTPException(status_code=404, detail=MRF_QUESTION_NOT_FOUND)
+
+    if payload.question_text is None and payload.options is None and payload.is_required is None:
+        raise HTTPException(status_code=422, detail=MRF_QUESTION_UPDATE_EMPTY)
+
+    new_text = None
+    if payload.question_text is not None:
+        new_text = payload.question_text.strip()
+        if not new_text:
+            raise HTTPException(status_code=422, detail=MRF_QUESTION_TEXT_REQUIRED)
+        if len(new_text) > MRF_QUESTION_TEXT_MAX_LENGTH:
+            raise HTTPException(status_code=422, detail=MRF_QUESTION_TEXT_TOO_LONG)
+
+    if question.is_classification:
+        if payload.options is not None:
+            raise HTTPException(status_code=422, detail=MRF_QUESTION_CLASSIFICATION_OPTIONS_LOCKED)
+        if payload.is_required is False:
+            raise HTTPException(status_code=422, detail=MRF_QUESTION_CLASSIFICATION_ALWAYS_REQUIRED)
+
+    new_options = None
+    if payload.options is not None:
+        labels = [o.strip() for o in payload.options]
+        if any(not o for o in labels):
+            raise HTTPException(status_code=422, detail=MRF_QUESTION_OPTION_EMPTY)
+        qtype = question.question_type
+        if qtype == MRF_QUESTION_TYPE_YES_NO:
+            if len(labels) != 2:
+                raise HTTPException(status_code=422, detail=MRF_QUESTION_YES_NO_COUNT)
+            if labels[0].lower() == labels[1].lower():
+                raise HTTPException(status_code=422, detail=MRF_QUESTION_YES_NO_DISTINCT)
+            new_options = labels
+        elif qtype == MRF_QUESTION_TYPE_MULTIPLE_CHOICE:
+            if len(labels) < 3:
+                raise HTTPException(status_code=422, detail=MRF_QUESTION_MC_MIN)
+            if len(set(label.lower() for label in labels)) != len(labels):
+                raise HTTPException(status_code=422, detail=MRF_QUESTION_MC_DISTINCT)
+            # (p5): a label that matches a stored label (case-insensitive, after strip) keeps that option's id; any other label gets a new id.
+            old_ids = {}
+            for o in question.options or []:
+                if isinstance(o, dict) and "id" in o and "text" in o:
+                    old_ids[str(o["text"]).strip().lower()] = o["id"]
+            new_options = []
+            for label in labels:
+                kept = old_ids.get(label.lower())
+                new_options.append({"id": kept if kept is not None else uuid4().hex, "text": label})
+        else:
+            raise HTTPException(status_code=422, detail=MRF_QUESTION_OPEN_NO_OPTIONS)
+
+    if new_text is not None:
+        question.question_text = new_text
+    if new_options is not None:
+        question.options = new_options
+    if payload.is_required is not None:
+        question.is_required = payload.is_required
+    await db.commit()
     await db.refresh(question)
 
     return MrfFormQuestionItem(

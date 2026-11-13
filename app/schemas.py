@@ -429,6 +429,14 @@ class MrfFormQuestionCreate(BaseModel):
     is_classification: StrictBool = False
 
 
+class MrfFormQuestionUpdate(BaseModel):
+    # All three fields optional on purpose: the endpoint decides what is usable and returns its own 422 messages (docs/API_CONTRACT.md, PATCH /api/v1/admin/mrf/forms/{form_id}/questions/{question_id})
+    # A field sent as null counts as not sent (p3). StrictBool: a non-bool is_required gets FastAPI's own list-style 422.
+    question_text: Optional[str] = None
+    options: Optional[List[str]] = None
+    is_required: Optional[StrictBool] = None
+
+
 class MrfFormQuestionItem(BaseModel):
     id: UUID4
     question_type: str
