@@ -61,13 +61,13 @@
                                 <button type="button" class="btn btn-outline-secondary mrf-form-element" data-question-type="YES_NO">Yes / No Question</button>
                                 <button type="button" class="btn btn-outline-secondary mrf-form-element" data-question-type="OPEN_ENDED">Open ended</button>
                                 <button type="button" class="btn btn-outline-secondary mrf-form-element" data-question-type="MULTIPLE_CHOICE">Multiple Choice</button>
-                                <button type="button" class="btn btn-outline-secondary mrf-form-element">Classification</button>
+                                <button type="button" class="btn btn-outline-secondary mrf-form-element" data-question-type="CLASSIFICATION">Classification</button>
                             </div>
                         </div>
                         <div class="col-9 p-4">
                             <div class="mrf-form-label">FORM CONTENTS</div>
                             <div id="mrf-form-questions"></div>
-                            <div class="mrf-form-note">Shell: Edit name and Set status work. The questions above come from the form's stored questions. The Yes / No Question, Open ended and Multiple Choice buttons add a question. The Classification button and the Required switches do nothing yet.</div>
+                            <div class="mrf-form-note">Shell: Edit name and Set status work. The questions above come from the form's stored questions. The Yes / No Question, Open ended, Multiple Choice and Classification buttons add a question. The Required switches do nothing yet.</div>
                         </div>
                     </div>
                 </div>
@@ -282,6 +282,7 @@
 
         // POST /api/v1/admin/mrf/forms/{form_id}/questions (docs/API_CONTRACT.md, Call site (add question), part 57 step 5.4).
         var MRF_Q_YES_NO_OPTIONS = ["Yes", "No"];
+        var MRF_Q_CLASSIFICATION_OPTIONS = ["Rank and File", "Supervisory", "Managerial"];
         var MRF_Q_MIN_OPTIONS = 3;
         var questionList = [];
         var questionsLoaded = false;
@@ -323,7 +324,7 @@
         function openQuestionModal(type) {
             clearError();
             qType = type;
-            qTitleEl.textContent = "Add question: " + (MRF_FORM_TYPE_LABELS[type] || type);
+            qTitleEl.textContent = "Add question: " + (type === "CLASSIFICATION" ? "Classification" : (MRF_FORM_TYPE_LABELS[type] || type));
             qErrorEl.hidden = true;
             qErrorEl.textContent = "";
             qTextEl.value = "";
@@ -346,6 +347,10 @@
                 var inputs = qOptionsEl.querySelectorAll("input");
                 body.options = [];
                 for (var j = 0; j < inputs.length; j++) { body.options.push(inputs[j].value); }
+            } else if (qType === "CLASSIFICATION") {
+                body.question_type = "MULTIPLE_CHOICE";
+                body.options = MRF_Q_CLASSIFICATION_OPTIONS.slice();
+                body.is_classification = true;
             }
             qErrorEl.hidden = true;
             qErrorEl.textContent = "";
