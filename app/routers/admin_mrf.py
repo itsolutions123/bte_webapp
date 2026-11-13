@@ -6,7 +6,7 @@ from typing import Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,6 +36,8 @@ from app.schemas import (
     MrfFormQuestionUpdate,
     MrfFormListResponse,
     MrfFormUpdate,
+    MrfQuestionReorder,
+    MrfQuestionReorderResponse,
     MrfUserListItem,
     MrfUserListResponse,
 )
@@ -89,6 +91,9 @@ MRF_QUESTION_NOT_FOUND = "Question not found."
 MRF_QUESTION_UPDATE_EMPTY = "Send question_text, options or is_required to update."
 MRF_QUESTION_CLASSIFICATION_OPTIONS_LOCKED = "a Classification question's options cannot be changed"
 MRF_QUESTION_CLASSIFICATION_ALWAYS_REQUIRED = "a Classification question is always required"
+
+# Reorder question message (docs/API_CONTRACT.md, POST /api/v1/admin/mrf/forms/{form_id}/questions/reorder, decided by the user 2026-11-13, part 54, (r1) to (r10), option A each).
+MRF_QUESTION_REORDER_MISMATCH = "ordered_ids must list every question of this form exactly once."
 SORT_NEWEST = "newest"
 SORT_FIRST_NAME_ASC = "first_name_asc"
 SORT_FIRST_NAME_DESC = "first_name_desc"
@@ -604,6 +609,62 @@ async def delete_mrf_question(
 
     await db.commit()
     return Response(status_code=204)
+
+
+@router.post(
+    "/mrf/forms/{form_id}/questions/reorder",
+    response_model=MrfQuestionReorderResponse,
+    dependencies=[Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER))],
+)
+async def reorder_mrf_question(
+    form_id: UUID,
+    body: MrfQuestionReorder,
+    db: AsyncSession = Depends(get_db),
+):
+    """Reorders the questions of one form ((r1) to (r10), decided 2026-11-13). Order of checks: malformed form_id or body (FastAPI's list-style 422),
+    the form 404, then the id list (422, one plain-string text for a missing, repeated, unknown or other-form id). The form row is locked first, so two
+    reorders run one after the other. display_order is renumbered 1 to n in the order of ordered_ids. The form's status does not matter. Returns the
+    form's questions in the new order. No Cache-Control header."""
+    form = await db.scalar(select(MrfForm.id).where(MrfForm.id == form_id).with_for_update())
+    if form is None:
+        raise HTTPException(status_code=404, detail=MRF_FORM_NOT_FOUND)
+
+    current_ids = (
+        await db.execute(select(MrfFormQuestion.id).where(MrfFormQuestion.form_id == form_id))
+    ).scalars().all()
+    if len(body.ordered_ids) != len(current_ids) or set(body.ordered_ids) != set(current_ids):
+        await db.rollback()
+        raise HTTPException(status_code=422, detail=MRF_QUESTION_REORDER_MISMATCH)
+
+    for position, question_id in enumerate(body.ordered_ids, start=1):
+        await db.execute(
+            update(MrfFormQuestion)
+            .where(MrfFormQuestion.id == question_id, MrfFormQuestion.form_id == form_id)
+            .values(display_order=position)
+        )
+    await db.commit()
+
+    questions = (
+        await db.execute(
+            select(MrfFormQuestion)
+            .where(MrfFormQuestion.form_id == form_id)
+            .order_by(MrfFormQuestion.display_order, MrfFormQuestion.id)
+        )
+    ).scalars().all()
+    return MrfQuestionReorderResponse(
+        questions=[
+            MrfFormQuestionItem(
+                id=q.id,
+                question_type=q.question_type,
+                question_text=q.question_text,
+                options=q.options,
+                is_required=q.is_required,
+                is_classification=q.is_classification,
+                display_order=q.display_order,
+            )
+            for q in questions
+        ]
+    )
 
 
 @router.post("/mrf/users/{user_id}/approve", response_model=MrfUserListItem)

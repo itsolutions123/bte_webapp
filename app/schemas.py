@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr, UUID4, Json, StrictBool
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+from uuid import UUID
 
 # --- Public Schemas ---
 class PublicJob(BaseModel):
@@ -452,4 +453,13 @@ class MrfFormDetail(BaseModel):
     name: str
     status: str
     created_at: datetime
+    questions: List[MrfFormQuestionItem]
+
+
+class MrfQuestionReorder(BaseModel):
+    # Plain UUID on purpose, not UUID4: a valid id that is not v4 must reach the id-list check and get the plain-string 422 (r2).
+    ordered_ids: List[UUID]
+
+
+class MrfQuestionReorderResponse(BaseModel):
     questions: List[MrfFormQuestionItem]
