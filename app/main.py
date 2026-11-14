@@ -47,7 +47,7 @@ from app.database import get_db
 
 from app.roles import ROLE_SUPERADMIN, ROLE_MANAGER
 from app.password_rules import RULES_LEAD_IN, RULE_PHRASES, PASSWORD_MIN_BYTES, PASSWORD_MAX_BYTES
-from app.mrf_lists import DEPARTMENTS, POSITIONS
+from app.mrf_lists import DEPARTMENTS, MRF_ASSIGNMENTS, POSITIONS
 
 NO_STORE = {"Cache-Control": "no-store"}
 
@@ -197,7 +197,8 @@ for _mrf_tab in MRF_ADMIN_TABS:
 # Same guard as the tab addresses above. Registered here, above the /admin catch-alls.
 @app.get("/admin/mrf/forms/{form_id}", include_in_schema=False, dependencies=[Depends(require_page_session), Depends(require_page_roles(ROLE_SUPERADMIN, ROLE_MANAGER))])
 async def serve_admin_mrf_form(request: Request, form_id: str):
-    return templates.TemplateResponse(request=request, name="admin_mrf_form.html", headers=NO_STORE)
+    # The Set assignment dropdown items are rendered from MRF_ASSIGNMENTS (part 59, pD-1 option B), so the page holds no copy of the names.
+    return templates.TemplateResponse(request=request, name="admin_mrf_form.html", context={"assignments": MRF_ASSIGNMENTS}, headers=NO_STORE)
 
 @app.get("/admin", include_in_schema=False, dependencies=[Depends(require_page_session)])
 @app.get("/admin/{rest:path}", include_in_schema=False, dependencies=[Depends(require_page_session)])

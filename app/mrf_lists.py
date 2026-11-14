@@ -41,6 +41,11 @@ MRF_FORM_STATUS_ACTIVE = "ACTIVE"
 MRF_FORM_STATUS_DRAFT = "DRAFT"
 MRF_FORM_STATUSES = (MRF_FORM_STATUS_ACTIVE, MRF_FORM_STATUS_DRAFT)
 
+# Form Assignment (migration 023, DECIDED part 59, docs/API_CONTRACT.md PATCH /api/v1/admin/mrf/forms/{form_id}).
+# A separate MRF-only list, not business_units. Order is the order shown in the Set assignment dropdown.
+# Also enforced by the CHECK ck_mrf_forms_assignment on mrf_forms.assignment: keep the two in step.
+MRF_ASSIGNMENTS = ("Store Operations", "Head Office", "Commissary", "Cali Beach")
+
 MRF_QUESTION_TYPE_YES_NO = "YES_NO"
 MRF_QUESTION_TYPE_MULTIPLE_CHOICE = "MULTIPLE_CHOICE"
 MRF_QUESTION_TYPE_OPEN_ENDED = "OPEN_ENDED"

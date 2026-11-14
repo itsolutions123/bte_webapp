@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import MrfForm, MrfFormQuestion, MrfUser, User
 from app.mrf_lists import (
+    MRF_ASSIGNMENTS,
     MRF_CLASSIFICATION_OPTIONS,
     MRF_FORM_NAME_MAX_LENGTH,
     MRF_FORM_STATUS_ACTIVE,
@@ -68,8 +69,11 @@ MRF_FORM_NAME_TAKEN = "A form with this name already exists."
 MRF_FORM_NOT_FOUND = "Form not found."
 
 # Update form messages (docs/API_CONTRACT.md, PATCH /api/v1/admin/mrf/forms/{form_id}, decided by the user 2026-11-12, part 48, (r) and (s), option A each).
-MRF_FORM_UPDATE_EMPTY = "Send a name or a status to update."
+MRF_FORM_UPDATE_EMPTY = "Send a name, a status or an assignment to update."
 MRF_FORM_NEEDS_QUESTION = "Add at least one question before setting this form to Active."
+# Assignment messages (part 59, (pC-2) and (pC-3), option A each). The invalid text is built from MRF_ASSIGNMENTS so the names have one copy here.
+MRF_FORM_ASSIGNMENT_INVALID = f"assignment must be {', '.join(MRF_ASSIGNMENTS[:-1])} or {MRF_ASSIGNMENTS[-1]}"
+MRF_FORM_NEEDS_ASSIGNMENT = "Set an assignment before setting this form to Active."
 
 # Create question messages (docs/API_CONTRACT.md, POST /api/v1/admin/mrf/forms/{form_id}/questions, decided by the user 2026-11-13, part 50, (z1) to (z10), option A each).
 # The option messages are the same texts as the job form's create_question (admin.py), copied here on purpose (z1).
@@ -288,12 +292,12 @@ async def update_mrf_form(
     payload: MrfFormUpdate,
     db: AsyncSession = Depends(get_db),
 ):
-    """Renames a form and/or sets its status. Order of checks: 404, then the 422s, then the 409. A lost race on the name also returns the 409."""
+    """Renames a form and/or sets its status and/or its assignment. Order of checks: 404, then the 422s (nothing to update, name, status value, assignment value, ACTIVE needs a question, ACTIVE needs an assignment), then the 409. A lost race on the name also returns the 409."""
     form = await db.scalar(select(MrfForm).where(MrfForm.id == form_id))
     if form is None:
         raise HTTPException(status_code=404, detail=MRF_FORM_NOT_FOUND)
 
-    if payload.name is None and payload.status is None:
+    if payload.name is None and payload.status is None and payload.assignment is None:
         raise HTTPException(status_code=422, detail=MRF_FORM_UPDATE_EMPTY)
 
     name = None
@@ -304,15 +308,22 @@ async def update_mrf_form(
         if len(name) > MRF_FORM_NAME_MAX_LENGTH:
             raise HTTPException(status_code=422, detail=MRF_FORM_NAME_TOO_LONG)
 
-    if payload.status is not None:
-        if payload.status not in MRF_FORM_STATUSES:
-            raise HTTPException(status_code=422, detail=MRF_FORM_STATUS_INVALID)
-        if payload.status == MRF_FORM_STATUS_ACTIVE:
-            question_count = await db.scalar(
-                select(func.count()).select_from(MrfFormQuestion).where(MrfFormQuestion.form_id == form.id)
-            )
-            if not question_count:
-                raise HTTPException(status_code=422, detail=MRF_FORM_NEEDS_QUESTION)
+    if payload.status is not None and payload.status not in MRF_FORM_STATUSES:
+        raise HTTPException(status_code=422, detail=MRF_FORM_STATUS_INVALID)
+
+    if payload.assignment is not None and payload.assignment not in MRF_ASSIGNMENTS:
+        raise HTTPException(status_code=422, detail=MRF_FORM_ASSIGNMENT_INVALID)
+
+    if payload.status == MRF_FORM_STATUS_ACTIVE:
+        question_count = await db.scalar(
+            select(func.count()).select_from(MrfFormQuestion).where(MrfFormQuestion.form_id == form.id)
+        )
+        if not question_count:
+            raise HTTPException(status_code=422, detail=MRF_FORM_NEEDS_QUESTION)
+        # An assignment sent in the same request counts as set (pC-2).
+        effective_assignment = payload.assignment if payload.assignment is not None else form.assignment
+        if effective_assignment is None:
+            raise HTTPException(status_code=422, detail=MRF_FORM_NEEDS_ASSIGNMENT)
 
     if name is not None:
         taken = await db.scalar(
@@ -323,6 +334,8 @@ async def update_mrf_form(
         form.name = name
     if payload.status is not None:
         form.status = payload.status
+    if payload.assignment is not None:
+        form.assignment = payload.assignment
 
     try:
         await db.commit()
@@ -336,6 +349,7 @@ async def update_mrf_form(
         name=form.name,
         status=form.status,
         created_at=to_app_tz(form.created_at),
+        assignment=form.assignment,
     )
 
 
@@ -368,6 +382,7 @@ async def get_mrf_form(
         name=form.name,
         status=form.status,
         created_at=to_app_tz(form.created_at),
+        assignment=form.assignment,
         questions=[
             MrfFormQuestionItem(
                 id=q.id,

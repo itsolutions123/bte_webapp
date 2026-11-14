@@ -226,6 +226,8 @@ class MrfForm(Base):
     name = Column(String(MRF_FORM_NAME_MAX_LENGTH), nullable=False)
     status = Column(String, nullable=False, default=MRF_FORM_STATUS_DRAFT, server_default=MRF_FORM_STATUS_DRAFT)
     created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    # Migration 023. Null until set from the form header; one of MRF_ASSIGNMENTS (the database CHECK enforces it).
+    assignment = Column(String, nullable=True)
 
     __table_args__ = (
         Index("idx_mrf_forms_name_lower", func.lower(name), unique=True),

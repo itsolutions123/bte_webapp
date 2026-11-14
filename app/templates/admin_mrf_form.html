@@ -39,6 +39,7 @@
                             <input type="text" class="form-control form-control-sm" id="mrf-form-name-input" maxlength="100" aria-label="Form name" style="max-width: 24rem;" hidden>
                             <div class="mrf-form-sub">Manpower request form</div>
                             <span class="mrf-form-pill" id="mrf-form-status">Status: &mdash;</span>
+                            <span class="mrf-form-pill ms-2" id="mrf-form-assignment">Assignment: &mdash;</span>
                         </div>
                         <div class="d-flex gap-2">
                             <button type="button" class="btn btn-sm btn-outline-dark mrf-form-btn" id="mrf-form-edit">Edit name</button>
@@ -49,6 +50,14 @@
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li><button type="button" class="dropdown-item" data-status="ACTIVE">Active</button></li>
                                     <li><button type="button" class="dropdown-item" data-status="DRAFT">Draft</button></li>
+                                </ul>
+                            </div>
+                            <div class="dropdown">
+                                <button type="button" class="btn btn-sm btn-dark mrf-form-btn dropdown-toggle" id="mrf-form-assignment-btn" data-bs-toggle="dropdown" aria-expanded="false">Set assignment</button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    {% for a in assignments %}
+                                    <li><button type="button" class="dropdown-item" data-assignment="{{ a }}">{{ a }}</button></li>
+                                    {% endfor %}
                                 </ul>
                             </div>
                         </div>
@@ -67,7 +76,7 @@
                         <div class="col-9 p-4">
                             <div class="mrf-form-label">FORM CONTENTS</div>
                             <div id="mrf-form-questions"></div>
-                            <div class="mrf-form-note">Shell: Edit name and Set status work. The questions above come from the form's stored questions. The Yes / No Question, Open ended, Multiple Choice and Classification buttons add a question. The Required switches do nothing yet.</div>
+                            <div class="mrf-form-note">Shell: Edit name, Set status and Set assignment work. The questions above come from the form's stored questions. The Yes / No Question, Open ended, Multiple Choice and Classification buttons add a question. The Required switches do nothing yet.</div>
                         </div>
                     </div>
                 </div>
@@ -122,8 +131,12 @@
         var cancelBtn = document.getElementById("mrf-form-cancel");
         var statusBtn = document.getElementById("mrf-form-status-btn");
         var statusItems = document.querySelectorAll("[data-status]");
+        var assignmentEl = document.getElementById("mrf-form-assignment");
+        var assignmentBtn = document.getElementById("mrf-form-assignment-btn");
+        var assignmentItems = document.querySelectorAll("[data-assignment]");
         var currentName = "";
         var currentStatus = "";
+        var currentAssignment = "";
         var saving = false;
 
         function renderHeader(form) {
@@ -133,6 +146,11 @@
             statusEl.textContent = "Status: " + (MRF_FORM_STATUS_LABELS[form.status] || form.status);
             for (var i = 0; i < statusItems.length; i++) {
                 statusItems[i].classList.toggle("active", statusItems[i].getAttribute("data-status") === form.status);
+            }
+            currentAssignment = typeof form.assignment === "string" ? form.assignment : "";
+            assignmentEl.textContent = "Assignment: " + (currentAssignment || "\u2014");
+            for (var j = 0; j < assignmentItems.length; j++) {
+                assignmentItems[j].classList.toggle("active", assignmentItems[j].getAttribute("data-assignment") === currentAssignment);
             }
         }
 
@@ -147,6 +165,8 @@
             cancelBtn.disabled = on;
             statusBtn.disabled = on;
             for (var i = 0; i < statusItems.length; i++) { statusItems[i].disabled = on; }
+            assignmentBtn.disabled = on;
+            for (var k = 0; k < assignmentItems.length; k++) { assignmentItems[k].disabled = on; }
         }
 
         function openEdit() {
@@ -215,6 +235,13 @@
                 var chosen = e.currentTarget.getAttribute("data-status");
                 if (chosen === currentStatus) { return; }
                 saveChange({ status: chosen }, function () {});
+            });
+        }
+        for (var ai = 0; ai < assignmentItems.length; ai++) {
+            assignmentItems[ai].addEventListener("click", function (e) {
+                var chosenAssignment = e.currentTarget.getAttribute("data-assignment");
+                if (chosenAssignment === currentAssignment) { return; }
+                saveChange({ assignment: chosenAssignment }, function () {});
             });
         }
 

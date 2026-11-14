@@ -412,12 +412,14 @@ class MrfFormCreated(BaseModel):
     name: str
     status: str
     created_at: datetime
+    assignment: Optional[str] = None
 
 
 class MrfFormUpdate(BaseModel):
-    # Both fields optional on purpose: the endpoint decides what is usable and returns its own 422 messages (docs/API_CONTRACT.md, PATCH /api/v1/admin/mrf/forms/{form_id}).
+    # All three fields optional on purpose: the endpoint decides what is usable and returns its own 422 messages (docs/API_CONTRACT.md, PATCH /api/v1/admin/mrf/forms/{form_id}).
     name: Optional[str] = None
     status: Optional[str] = None
+    assignment: Optional[str] = None
 
 
 class MrfFormQuestionCreate(BaseModel):
@@ -453,6 +455,7 @@ class MrfFormDetail(BaseModel):
     name: str
     status: str
     created_at: datetime
+    assignment: Optional[str] = None
     questions: List[MrfFormQuestionItem]
 
 
