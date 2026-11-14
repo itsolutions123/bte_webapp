@@ -8,18 +8,18 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, List
 
 from email_validator import validate_email, EmailNotValidError
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import MrfSession, MrfUser
-from app.mrf_lists import ALLOWED_EMAIL_DOMAINS, DEPARTMENTS, POSITIONS
+from app.models import MrfForm, MrfSession, MrfUser
+from app.mrf_lists import ALLOWED_EMAIL_DOMAINS, DEPARTMENTS, MRF_FORM_STATUS_ACTIVE, POSITIONS
 from app.password_rules import validate_sign_up_password
 from app.routers.auth import DUMMY_HASH, pwd_context
-from app.schemas import MrfLoginRequest, MrfSignupRequest
+from app.schemas import MrfLoginRequest, MrfPortalFormListResponse, MrfSignupRequest
 
 router = APIRouter()
 
@@ -238,3 +238,38 @@ async def me(response: Response, user: MrfUser = Depends(get_current_mrf_user)):
     """Name for the portal footer. No email, id, position, department or status (contract)."""
     response.headers["Cache-Control"] = "no-store"
     return {"first_name": user.first_name, "last_name": user.last_name}
+
+
+# Portal Forms list (docs/API_CONTRACT.md, GET /api/v1/mrf/forms, DECIDED part 61).
+# Portal-local copies of the admin Forms list limits (decision A, part 61); the portal router does not import admin_mrf.
+MRF_PORTAL_FORMS_DEFAULT_PAGE_SIZE = 10
+MRF_PORTAL_FORMS_MAX_PAGE_SIZE = 50
+
+
+@router.get("/forms", response_model=MrfPortalFormListResponse)
+async def list_portal_forms(
+    response: Response,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(MRF_PORTAL_FORMS_DEFAULT_PAGE_SIZE, ge=1, le=MRF_PORTAL_FORMS_MAX_PAGE_SIZE),
+    _user: MrfUser = Depends(get_current_mrf_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # ACTIVE forms only, newest first. Rows carry id, name and assignment (no status: every row is Active).
+    response.headers["Cache-Control"] = "no-store"
+    flt = (MrfForm.status == MRF_FORM_STATUS_ACTIVE,)
+    total = (await db.execute(select(func.count()).select_from(MrfForm).where(*flt))).scalar_one()
+    forms = (
+        await db.execute(
+            select(MrfForm)
+            .where(*flt)
+            .order_by(MrfForm.created_at.desc(), MrfForm.id)
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+    ).scalars().all()
+    return {
+        "data": [{"id": f.id, "name": f.name, "assignment": f.assignment} for f in forms],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }

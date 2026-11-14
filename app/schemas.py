@@ -402,6 +402,18 @@ class MrfFormListResponse(BaseModel):
     page_size: int
 
 
+class MrfPortalFormListItem(BaseModel):
+    # GET /api/v1/mrf/forms row (docs/API_CONTRACT.md, part 61): ACTIVE forms only, so no status field.
+    id: UUID4
+    name: str
+    assignment: Optional[str] = None
+
+class MrfPortalFormListResponse(BaseModel):
+    data: List[MrfPortalFormListItem]
+    total: int
+    page: int
+    page_size: int
+
 class MrfFormCreate(BaseModel):
     # No length limit here on purpose: the endpoint trims first, then returns its own 422 messages (docs/API_CONTRACT.md, POST /api/v1/admin/mrf/forms).
     name: str

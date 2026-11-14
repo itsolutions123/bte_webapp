@@ -48,6 +48,7 @@ from app.database import get_db
 from app.roles import ROLE_SUPERADMIN, ROLE_MANAGER
 from app.password_rules import RULES_LEAD_IN, RULE_PHRASES, PASSWORD_MIN_BYTES, PASSWORD_MAX_BYTES
 from app.mrf_lists import DEPARTMENTS, MRF_ASSIGNMENTS, POSITIONS
+from app.routers.mrf import get_current_mrf_user
 
 NO_STORE = {"Cache-Control": "no-store"}
 
@@ -65,6 +66,23 @@ async def require_page_session(request: Request, db: AsyncSession = Depends(get_
         request.state.user = await get_current_user(request, db)
     except HTTPException:
         raise LoginRedirect()
+
+class MrfLoginRedirect(Exception):
+    # Raised by require_mrf_page_session when an /mrf page is requested without a valid portal session.
+    pass
+
+@app.exception_handler(MrfLoginRedirect)
+async def mrf_login_redirect_handler(request: Request, exc: MrfLoginRedirect):
+    return RedirectResponse(url="/mrf/login", status_code=302, headers=NO_STORE)
+
+async def require_mrf_page_session(request: Request, db: AsyncSession = Depends(get_db)):
+    # Portal page guard (docs/API_CONTRACT.md, part 61): same check as the portal API (get_current_mrf_user,
+    # mrf_session_id cookie only); pages redirect to /mrf/login instead of returning 401 JSON.
+    # get_current_mrf_user keeps the signed-in user on request.state.mrf_user.
+    try:
+        await get_current_mrf_user(request, db)
+    except HTTPException:
+        raise MrfLoginRedirect()
 
 def require_page_roles(*allowed_roles):
     """Page-route role check. List it AFTER require_page_session in a route's dependencies.
@@ -118,10 +136,10 @@ async def serve_mrf_login_page(request: Request):
     # Separate from /admin: the portal has its own layout and, once wired, its own mrf_session_id cookie.
     return templates.TemplateResponse(request=request, name="mrf/login.html", headers=NO_STORE)
 
-@app.get("/mrf/requests", include_in_schema=False)
+@app.get("/mrf/requests", include_in_schema=False, dependencies=[Depends(require_mrf_page_session)])
 async def serve_mrf_requests_page(request: Request):
     # MRF portal My Requests, SHELL only (section 8): static page with placeholder content.
-    # No session check yet; the portal session guard is added at the wiring step.
+    # Requires a valid portal session (require_mrf_page_session); otherwise redirects to /mrf/login.
     return templates.TemplateResponse(request=request, name="mrf/requests.html", headers=NO_STORE)
 
 @app.get("/mrf/signup", include_in_schema=False)
@@ -135,10 +153,10 @@ async def serve_mrf_signup_page(request: Request):
         headers=NO_STORE,
     )
 
-@app.get("/mrf/forms", include_in_schema=False)
+@app.get("/mrf/forms", include_in_schema=False, dependencies=[Depends(require_mrf_page_session)])
 async def serve_mrf_forms_page(request: Request):
     # MRF portal Forms list, SHELL only (section 8): static page with placeholder rows.
-    # No session check yet; the portal session guard is added at the wiring step.
+    # Requires a valid portal session (require_mrf_page_session); otherwise redirects to /mrf/login.
     return templates.TemplateResponse(request=request, name="mrf/forms.html", headers=NO_STORE)
 
 @app.get("/admin/home", include_in_schema=False, dependencies=[Depends(require_page_session)])

@@ -100,6 +100,7 @@ body.mrf-app-body {
 .mrf-form-icon { width: 32px; height: 32px; border-radius: 8px; background: #fdf1dc; display: flex; align-items: center; justify-content: center; flex: none; }
 .mrf-form-icon svg { width: 16px; height: 16px; fill: none; stroke: var(--mrf-gold); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .mrf-form-name { flex: 1; min-width: 0; font-size: 0.9rem; font-weight: 600; }
+.mrf-form-assignment { font-size: 0.78rem; font-weight: 400; color: var(--mrf-muted); margin-top: 0.1rem; }
 .mrf-btn-start { height: 32px; padding: 0 0.9rem; border: 1px solid var(--mrf-border); border-radius: 8px; background: #fff; color: var(--mrf-gold); font-size: 0.8rem; font-weight: 700; cursor: not-allowed; }
 @media (max-width: 760px) {
     body.mrf-app-body { grid-template-columns: 1fr; }

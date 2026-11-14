@@ -7,7 +7,7 @@
     <link href="/static/mrf-portal.css" rel="stylesheet">
 </head>
 <body class="mrf-app-body">
-    <!-- SHELL (section 8): static, placeholder rows only. No session check, no data, no wiring. Start, logout and the user chip do nothing yet. -->
+    <!-- Forms list: requires a portal session (require_mrf_page_session) and renders from GET /api/v1/mrf/forms (ACTIVE forms only). Start, logout and the user chip do nothing yet. -->
     <aside class="mrf-side">
         <div class="mrf-brand">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18v2H3zM3 6l4.5 4L12 4l4.5 6L21 6l-2 10H5z"/></svg>
@@ -35,23 +35,86 @@
                 <p class="mrf-page-sub">Pick a form to start a new Manpower Request.</p>
             </div>
         </div>
-        <div class="mrf-table-card">
-            <div class="mrf-form-row">
-                <div class="mrf-form-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><polyline points="14 3 14 8 19 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg></div>
-                <div class="mrf-form-name">Form name</div>
-                <button type="button" class="mrf-btn-start" title="Not active">Start</button>
-            </div>
-            <div class="mrf-form-row">
-                <div class="mrf-form-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><polyline points="14 3 14 8 19 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg></div>
-                <div class="mrf-form-name">Form name</div>
-                <button type="button" class="mrf-btn-start" title="Not active">Start</button>
-            </div>
-            <div class="mrf-form-row">
-                <div class="mrf-form-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><polyline points="14 3 14 8 19 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg></div>
-                <div class="mrf-form-name">Form name</div>
-                <button type="button" class="mrf-btn-start" title="Not active">Start</button>
-            </div>
+        <div class="mrf-table-card" id="mrf-forms-list">
+            <div class="mrf-empty">Loading forms...</div>
         </div>
     </main>
+    <script>
+        (function () {
+            var FORMS_URL = "/api/v1/mrf/forms?page_size=50";
+            var LOGIN_PAGE = "/mrf/login";
+            var ICON_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><polyline points="14 3 14 8 19 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>';
+            var list = document.getElementById("mrf-forms-list");
+
+            function showMessage(text) {
+                list.innerHTML = "";
+                var el = document.createElement("div");
+                el.className = "mrf-empty";
+                el.textContent = text;
+                list.appendChild(el);
+            }
+
+            function buildRow(form) {
+                var row = document.createElement("div");
+                row.className = "mrf-form-row";
+
+                var icon = document.createElement("div");
+                icon.className = "mrf-form-icon";
+                icon.innerHTML = ICON_SVG;
+
+                var nameBox = document.createElement("div");
+                nameBox.className = "mrf-form-name";
+                var nameText = document.createElement("span");
+                nameText.textContent = form.name;
+                var sub = document.createElement("div");
+                sub.className = "mrf-form-assignment";
+                sub.textContent = form.assignment ? form.assignment : "\u2014";
+                nameBox.appendChild(nameText);
+                nameBox.appendChild(sub);
+
+                var start = document.createElement("button");
+                start.type = "button";
+                start.className = "mrf-btn-start";
+                start.title = "Not active";
+                start.textContent = "Start";
+
+                row.appendChild(icon);
+                row.appendChild(nameBox);
+                row.appendChild(start);
+                return row;
+            }
+
+            async function loadForms() {
+                try {
+                    var response = await fetch(FORMS_URL);
+                    if (response.status === 401) {
+                        window.location.href = LOGIN_PAGE;
+                        return;
+                    }
+                    if (!response.ok) {
+                        showMessage("Could not load forms.");
+                        return;
+                    }
+                    var body = await response.json();
+                    if (!body.data || body.data.length === 0) {
+                        showMessage("No forms are available yet.");
+                        return;
+                    }
+                    list.innerHTML = "";
+                    body.data.forEach(function (form) { list.appendChild(buildRow(form)); });
+                    if (body.total > body.data.length) {
+                        var note = document.createElement("p");
+                        note.className = "mrf-page-sub";
+                        note.textContent = "Showing " + body.data.length + " of " + body.total + " forms.";
+                        list.insertAdjacentElement("afterend", note);
+                    }
+                } catch (err) {
+                    showMessage("Could not load forms.");
+                }
+            }
+
+            loadForms();
+        })();
+    </script>
 </body>
 </html>
