@@ -2057,3 +2057,27 @@ Hardcodes: none new beyond what part 59 already introduced (MRF_ASSIGNMENTS in t
 Docs needing an update: docs/API_CONTRACT.md (done, this step) and docs/SCHEMA.md (done, this step) -- both flipped from DECIDED/NOT built to BUILT and VERIFIED; this PROJECT_STATE.md section itself (done, this step); the next docs commit should record this commit's hash once code is committed (step 5.5, not yet done).
 
 5.5 code commit DONE: ca780cc (7 files, 82 insertions, 16 deletions), pushed 4393ab6..ca780cc. NEXT: the docs commit (API_CONTRACT.md, SCHEMA.md, PROJECT_STATE.md) with the code hash ca780cc now recorded in the line 2 front entry, push. After that: 5.6 (Required toggle, delete/reorder call sites, Forms tab Assignment column, or the deferred recruiter-scoring table pending Commissary/Cali Beach numbers), and the still-OPEN part 41 items 5.8 (page guard), 5.9 (end-to-end run), 5.10 (saves).
+
+
+STEP part 61 (MRF portal Forms list wired to GET /api/v1/mrf/forms, plus the portal page guard on /mrf/forms and /mrf/requests):
+
+Contract was written first as DECIDED, NOT built (17.2), then the guard, the endpoint and the page were built one piece at a time, then the contract was flipped to BUILT and VERIFIED LIVE. Code commit 62d687a (5 files, 155 insertions, 26 deletions): app/main.py, app/routers/mrf.py, app/schemas.py, app/templates/mrf/forms.html, app/static/mrf-portal.css.
+
+DECIDED (by the user): the page guard covers both /mrf/forms and /mrf/requests; the assignment shows as a muted subheading under the form name; (page size) option A, portal-local constants 10 and 50 in app/routers/mrf.py, no import from admin_mrf.py. PROPOSED by Claude: the guard reuses get_current_mrf_user and turns its 401 into a 302 to /mrf/login (new MrfLoginRedirect and handler); empty text "No forms are available yet."; the page requests page_size=50 and shows "Showing X of N forms." if total is higher (no pager yet).
+
+SEEN: signed out, /mrf/forms and /mrf/requests return 302 to /mrf/login with cache-control no-store (curl), /mrf/forms in a private window landed on /mrf/login, /mrf/login and /mrf/signup stay 200; signed in, both pages 200 (server log, incl. hard reloads); GET /api/v1/mrf/forms signed out 401, signed in 200 with the empty list, page_size=51 gives the FastAPI 422; throwaway form ZZ test 103 (Head Office) set to Active showed on /mrf/forms with the name and the muted assignment line, console clean, and disappeared when set back to Draft.
+
+NOT tested: the raw JSON of a row with data (shape rests on the response_model), paging, more than 50 forms, the "Showing X of N" line, Cache-Control on the wire, a pending-account or expired session, a narrow window, other browsers. The "Set an assignment before setting this form to Active." red line is still unseen (needs a never-assigned throwaway form).
+
+Cleanup: ZZ test 103 and its 1 question deleted by id in one transaction, questions first, after explicit confirmation (the FK mrf_form_questions.form_id has no ON DELETE CASCADE and it is the only FK to mrf_forms; the admin UI has no form delete). Read-back forms 0, questions 0.
+
+HARDCODES: page_size=50 in the fetch URL in forms.html; portal-local MRF_PORTAL_FORMS_DEFAULT_PAGE_SIZE 10 and MRF_PORTAL_FORMS_MAX_PAGE_SIZE 50 (copies of the admin values, by decision); the /mrf/login redirect path in the handler; UI strings (loading, empty, error). Removed: the three placeholder rows in forms.html.
+
+DOCS: docs/API_CONTRACT.md flipped (GET /api/v1/mrf/forms Status, Notes and Call site; the portal page routes bullet and its two stale "NOT implemented" notes; line 2 Last verified) in the docs commit that records 62d687a. docs/SCHEMA.md needs no change (no migration). Note for SCHEMA.md when admin form delete is built: the questions FK has no cascade.
+
+Work mode: feature-wiring step (page guard, endpoint, page wiring) plus documentation.
+What changed: backend (main.py, mrf.py, schemas.py) + frontend (forms.html, mrf-portal.css); admin panel: no change.
+
+OPEN ITEMS: footer on /mrf/forms still shows "Signed-in user" and "--" (no GET /api/v1/mrf/me call there, unlike /mrf/requests); admin form delete (not built; the questions FK has no cascade); Required toggle (question PATCH); delete/reorder call sites; Forms tab Assignment column; recruiter-scoring table (needs point values); part 41 items 5.9 and 5.10; sign-up link and forgot-password questions; untracked package-lock.json (not ours, left unstaged).
+
+NEXT: docs commit (API_CONTRACT.md and PROJECT_STATE.md, named paths) recording 62d687a, then one push for both commits.
