@@ -136,11 +136,32 @@ async def serve_mrf_login_page(request: Request):
     # Separate from /admin: the portal has its own layout and, once wired, its own mrf_session_id cookie.
     return templates.TemplateResponse(request=request, name="mrf/login.html", headers=NO_STORE)
 
+def mrf_footer_context(request: Request) -> dict:
+    # Portal footer name and initials (API_CONTRACT.md, part 62).
+    # Reads request.state.mrf_user, set by get_current_mrf_user
+    # inside require_mrf_page_session. Empty name keeps placeholders.
+    user = getattr(request.state, "mrf_user", None)
+    first = str(getattr(user, "first_name", "") or "").strip()
+    last = str(getattr(user, "last_name", "") or "").strip()
+    full_name = (first + " " + last).strip()
+    if full_name == "":
+        return {"footer_name": "Signed-in user", "footer_initials": "--"}
+    initials = (first[:1] + last[:1]).upper()
+    return {
+        "footer_name": full_name,
+        "footer_initials": initials or "--",
+    }
+
 @app.get("/mrf/requests", include_in_schema=False, dependencies=[Depends(require_mrf_page_session)])
 async def serve_mrf_requests_page(request: Request):
     # MRF portal My Requests, SHELL only (section 8): static page with placeholder content.
     # Requires a valid portal session (require_mrf_page_session); otherwise redirects to /mrf/login.
-    return templates.TemplateResponse(request=request, name="mrf/requests.html", headers=NO_STORE)
+    return templates.TemplateResponse(
+        request=request,
+        name="mrf/requests.html",
+        context=mrf_footer_context(request),
+        headers=NO_STORE,
+    )
 
 @app.get("/mrf/signup", include_in_schema=False)
 async def serve_mrf_signup_page(request: Request):
@@ -157,7 +178,12 @@ async def serve_mrf_signup_page(request: Request):
 async def serve_mrf_forms_page(request: Request):
     # MRF portal Forms list, SHELL only (section 8): static page with placeholder rows.
     # Requires a valid portal session (require_mrf_page_session); otherwise redirects to /mrf/login.
-    return templates.TemplateResponse(request=request, name="mrf/forms.html", headers=NO_STORE)
+    return templates.TemplateResponse(
+        request=request,
+        name="mrf/forms.html",
+        context=mrf_footer_context(request),
+        headers=NO_STORE,
+    )
 
 @app.get("/admin/home", include_in_schema=False, dependencies=[Depends(require_page_session)])
 async def serve_admin_dashboard(request: Request):

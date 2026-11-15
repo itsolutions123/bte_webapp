@@ -21,8 +21,8 @@
             <a href="/mrf/forms">Forms</a>
         </nav>
         <div class="mrf-user">
-            <div class="mrf-avatar" aria-hidden="true">--</div>
-            <div class="mrf-user-name">Signed-in user</div>
+            <div class="mrf-avatar" aria-hidden="true">{{ footer_initials }}</div>
+            <div class="mrf-user-name">{{ footer_name }}</div>
             <button type="button" id="mrf-logout" class="mrf-icon-btn" aria-label="Log out" title="Log out">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             </button>
@@ -63,7 +63,6 @@
         var LOGOUT_URL = "/api/v1/mrf/logout";
         var AFTER_LOGOUT_URL = "/mrf/login";
         var FAILED_MESSAGE = "Could not log out. Try again.";
-        var ME_URL = "/api/v1/mrf/me";
 
         var button = document.getElementById("mrf-logout");
         var message = document.getElementById("mrf-logout-message");
@@ -85,28 +84,6 @@
             message.hidden = false;
             button.disabled = false;
         });
-
-        var avatar = document.querySelector(".mrf-user .mrf-avatar");
-        var userName = document.querySelector(".mrf-user .mrf-user-name");
-
-        // Fill the footer name and avatar. On any failure the placeholders stay (decided, option A).
-        async function loadUser() {
-            try {
-                var response = await fetch(ME_URL);
-                if (!response.ok) { return; }
-                var data = await response.json();
-                var first = String(data.first_name || "").trim();
-                var last = String(data.last_name || "").trim();
-                var fullName = (first + " " + last).trim();
-                if (fullName === "") { return; }
-                userName.textContent = fullName;
-                var initials = (first.charAt(0) + last.charAt(0)).toUpperCase();
-                if (initials !== "") { avatar.textContent = initials; }
-            } catch (err) {
-                // network failure: keep the placeholders
-            }
-        }
-        loadUser();
     })();
     </script>
 </body>
