@@ -2081,3 +2081,27 @@ What changed: backend (main.py, mrf.py, schemas.py) + frontend (forms.html, mrf-
 OPEN ITEMS: footer on /mrf/forms still shows "Signed-in user" and "--" (no GET /api/v1/mrf/me call there, unlike /mrf/requests); admin form delete (not built; the questions FK has no cascade); Required toggle (question PATCH); delete/reorder call sites; Forms tab Assignment column; recruiter-scoring table (needs point values); part 41 items 5.9 and 5.10; sign-up link and forgot-password questions; untracked package-lock.json (not ours, left unstaged).
 
 NEXT: docs commit (API_CONTRACT.md and PROJECT_STATE.md, named paths) recording 62d687a, then one push for both commits.
+
+
+STEP part 62 (MRF portal footer name and initials server-rendered on /mrf/forms and /mrf/requests, replacing the client-side GET /api/v1/mrf/me call site):
+
+The /mrf/forms footer still showed "Signed-in user" and "--" (open item from part 61). A client-side loadUser (copy of the /mrf/requests one) was first added to forms.html and the user saw it work in the browser. The user then asked why the footer visibly reloads (placeholder flash before /me answers) and chose option A: render the name on the server with Jinja. The contract was rewritten first (17.2, PLANNED), then the code, then the contract was flipped to BUILT. Code commit 2349054 (3 files, 32 insertions, 29 deletions), committed locally, pushed together with the docs commit.
+
+DECIDED (by the user): option A, server-rendered footer, no client-side /me call on these two pages. Helper mrf_footer_context(request) in app/main.py reads request.state.mrf_user (set by get_current_mrf_user inside require_mrf_page_session) and passes footer_name (first + last, trimmed) and footer_initials (first letters, uppercased) as template context. Empty name keeps "Signed-in user" and "--". No change to the /me endpoint or to the guard. The forms.html loadUser was never committed.
+
+SEEN: after each main.py edit the web logs showed a clean reload (no traceback). grep showed no ME_URL, loadUser, var avatar or var userName left in forms.html or requests.html. Diff stats matched. The user confirmed in the browser that the real name shows on /mrf/forms and /mrf/requests ("awesome").
+
+NOT tested: the empty-name fallback; the Network tab showing no /api/v1/mrf/me request on either page; the logout button on /mrf/requests after the change; a pending-account or expired session; narrow window; other browsers.
+
+Cleanup: none, no test data was created. package-lock.json is still untracked and never staged.
+
+HARDCODES: the "Signed-in user" and "--" fallbacks now live only in mrf_footer_context (removed from both template markups). ME_URL and the /me fetch are removed from both templates.
+
+DOCS: docs/API_CONTRACT.md: footer bullet under GET /api/v1/mrf/me flipped to BUILT with 2349054; the /me Status line got an UPDATE note (no portal page calls /me now, endpoint unchanged); line 2 Last verified has the part 62 entry. Recorded in the docs commit.
+
+Work mode: feature-wiring step (server-rendered footer) plus documentation.
+What changed: backend (app/main.py: mrf_footer_context, both page handlers pass context) + frontend (forms.html, requests.html: server-rendered footer, client-side /me code removed); admin panel: no change.
+
+OPEN ITEMS: /admin sidebar reload (the user reports that clicking the sidebar reloads everything; cause UNVERIFIED, admin templates not inspected; likely each click is a full page navigation and parts of the sidebar are filled after load by app/static/admin-sidebar.js); Log out button on /mrf/forms is inert (title="Not active"); empty-name fallback and Network-tab check not seen; admin form delete (not built; the questions FK has no cascade); "Set an assignment before setting this form to Active." red line never seen live; Required toggle, delete/reorder call sites in the admin form builder; Forms tab Assignment column (admin side); Start button / one-question-at-a-time wizard for MRF forms (route NOT decided); recruiter-scoring table (deferred); part 41 items 5.9 and 5.10; sign-up link and forgot-password on the MRF login page; pager on /mrf/forms if more than 50 Active forms ever exist; open naming item business_units vs MRF Assignment; the 401 from the guard carries no no-store header.
+
+NEXT: docs commit (API_CONTRACT.md and PROJECT_STATE.md, named paths) recording 2349054, then one push for both commits, then inspect the /admin sidebar reload (read-only first).
