@@ -2129,3 +2129,66 @@ What changed: backend (app/main.py: admin_sidebar_context helper, 9 handler call
 OPEN ITEMS: /admin sidebar reload remainder -- business-unit/brand list and forms list still fetched client-side from GET /api/v1/admin/metadata/sidebar on every navigation (shows "Loading..." briefly); MRF pending badge still has a first-load flash before its 60s poll (GET /api/v1/admin/mrf/summary); both explicitly deferred by the user's choice this session, not started. Log out button on /mrf/forms is inert (title="Not active"); the one on /mrf/requests works. Admin form delete (not built; the questions FK has no cascade). "Set an assignment before setting this form to Active." red line never seen live. Required toggle, delete/reorder call sites in the admin form builder. Forms tab Assignment column (admin side). Start button / one-question-at-a-time wizard for MRF forms (route NOT decided). Recruiter-scoring table (deferred). Part 41 items 5.9 and 5.10. Sign-up link and forgot-password on the MRF login page. Pager on /mrf/forms if more than 50 Active forms ever exist. Open naming item business_units vs MRF Assignment. The 401 from the guard carries no no-store header. Empty-name fallback and Network-tab check for the MRF footer (part 62) never seen.
 
 NEXT: docs commit (API_CONTRACT.md and PROJECT_STATE.md, named paths) recording ece2a85, then one push for the docs commit; then start the /admin/mrf/forms publish -> /mrf/forms requestor-side reflection task.
+
+STEP part 64 (MRF request flow: decisions and contract, docs only):
+
+DECIDED by the user 2026-11-17, lettered, one question per message, option A each:
+(1) Flow: requestor signs up, is approved, fills a form, HR reviews in the
+admin dashboard and marks Approved or Rejected with remarks, the status and
+remarks show on /mrf/requests, a rejected requestor submits a NEW form (no
+edit or resubmit). Job posting stays manual on the business-unit side, no
+link between an MRF request and a job; the rule 'MRF forms never attach to
+jobs' stands.
+(2) Statuses: Pending, Approved, Rejected (On Review and Denied dropped).
+(3) Remarks required on Rejected, optional on Approved.
+(4) A decision is final; a second decision is 409.
+(5) A form needs a Classification question to go Active; submit guards it too.
+(6) Submit is ONE POST at the end of the wizard, no server drafts.
+(7) My Requests columns: FORM, ASSIGNMENT, DATE, STATUS; assignment is copied
+from the form at submit. JOB POSITION is dropped (parked item closed).
+(8) Autosave in the requestor's BROWSER (keyed by account and form, cleared on
+201 and on logout, removed questions dropped on load, 'Draft saved' note).
+(9) Wizard route GET /mrf/forms/{form_id}; non-200 shows 'This form is no
+longer available'.
+(10) mrf_request_answers.answer stores the label text (YES_NO, MULTIPLE_CHOICE,
+single answer, ASSUMED not corrected) or the typed text (OPEN_ENDED).
+(11) Question DELETE on an ACTIVE form: 409 for its last question or its
+Classification question (amends d4 and d5; Draft forms unrestricted).
+(12) Submit is POST /api/v1/mrf/requests with { form_id, answers[] }.
+(13) GET /api/v1/mrf/forms/{form_id}: 404 for unknown AND Draft forms.
+(14) My Requests is list only, no requestor detail view.
+(15) HR decision: POST /api/v1/admin/mrf/requests/{request_id}/decision.
+
+SEEN: portal GET /api/v1/mrf/forms and admin PATCH match the contract (no
+mismatch). mrf_forms is EMPTY on the live DB (0 rows), so the new Active rule
+breaks nothing. The user confirmed new forms reflect on /mrf/forms.
+
+NOT tested: nothing built; every new entry is contract only.
+
+Cleanup: none, no test data created.
+
+HARDCODES: none found. Status names go in one constant in app/mrf_lists.py
+when built; the browser draft key prefix is one named constant when built.
+
+DOCS: docs/SCHEMA.md section 7 (mrf_requests, mrf_request_answers, stale Still
+open line). docs/API_CONTRACT.md: POST and GET /api/v1/mrf/requests, GET
+/api/v1/mrf/forms/{form_id}, admin list, admin get-one, decision, form PATCH
+classification 422 (and assignment in Body and Response), question DELETE
+Active-form 409; line 2 Last verified updated. No migration, no code.
+
+Work mode: documentation (contract-first), after decision gathering.
+What changed: backend no change, frontend no change, admin panel no change;
+docs only.
+
+OPEN ITEMS: PROPOSED, not decided: all new error texts, remarks cap 500,
+OPEN_ENDED answer max length, page_size and id tiebreak defaults, admin list q
+fields and date boundaries, GET admin get-one endpoint, unique (request_id,
+question_id), and whether the empty-PATCH 422 text 'Send a name or a status to
+update.' still reads correctly now that assignment is a field. Still open:
+admin-created accounts pre-approved or not. The earlier open items list still
+stands (admin sidebar remainder, MRF Log out inert, form delete, etc.).
+
+NEXT, one per step: docs commit (named paths docs/API_CONTRACT.md,
+docs/SCHEMA.md, PROJECT_STATE.md); migration 024 (mrf_requests,
+mrf_request_answers); then code, one endpoint per step, starting with the
+Active-rule guards and POST /api/v1/mrf/requests.

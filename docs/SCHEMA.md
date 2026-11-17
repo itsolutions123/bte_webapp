@@ -245,13 +245,22 @@ DECIDED 2026-11-12 (user, part 42). Same question shape as the job forms; the ea
 - A question that has answers cannot be deleted (409). That check arrives with the migration that creates mrf_request_answers.
 
 ### mrf_requests
-- id UUID PK, form_id FK, user_id FK mrf_users.id, created_at timestamptz
-- classification String (copied from the flagged answer at submit), department String (copied from the submitter at submit)
-- status String NOT NULL default 'Pending' (wireframe: Pending, On Review, Approved, Denied; transitions not answered)
+DECIDED 2026-11-17 (user, part 64). NOT migrated yet.
+- id UUID PK, form_id FK mrf_forms.id, user_id FK mrf_users.id, created_at timestamptz
+- classification String NOT NULL (copied from the classification answer at submit)
+- department String (copied from the submitter at submit)
+- assignment String NOT NULL (copied from the form at submit)
+- status String NOT NULL default 'Pending'. Values Pending, Approved, Rejected
+  (one constant in app/mrf_lists.py, CHECK in the DB). A decision is final.
+- remarks Text NULL (PROPOSED max 500). Required on Rejected, optional on Approved.
+- decided_by_user_id UUID NULL FK users.id; decided_at timestamptz NULL (both NULL while Pending)
 - Indexes (rule 18.1): status, classification, department, created_at, user_id
 
 ### mrf_request_answers
 - id UUID PK, request_id FK mrf_requests.id (indexed), question_id FK mrf_form_questions.id, answer Text
+- answer stores the label text for YES_NO and MULTIPLE_CHOICE (single answer),
+  the typed text for OPEN_ENDED (DECIDED 2026-11-17).
+- Unique (request_id, question_id) (PROPOSED).
 
 ### Fixed lists (confirmed by user; one documented constant, app/mrf_lists.py, validated server-side)
 - Position: Head, OIC, Manager
@@ -260,4 +269,5 @@ DECIDED 2026-11-12 (user, part 42). Same question shape as the job forms; the ea
 
 ### Open (not answered, not built)
 - Answered 2026-11-10 (part 28, recorded in docs/API_CONTRACT.md): SUPERADMIN and MANAGER approve MRF accounts; the sidebar MRF item and the Users tab carry a badge that counts pending accounts only; the Users tab pending group is contracted (PROPOSED, not built).
-- Still open: who changes request status; who counts as HR; Assignment column; admin-created accounts pre-approved or not; status transitions.
+- DECIDED 2026-11-17 (user, part 64): SUPERADMIN and MANAGER change request status (they count as HR for MRF) through POST /api/v1/admin/mrf/requests/{request_id}/decision; transitions are Pending to Approved or Rejected, once, final; the Assignment column is mrf_requests.assignment, copied from the form at submit.
+- Still open: admin-created accounts pre-approved or not.
