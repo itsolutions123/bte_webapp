@@ -207,7 +207,7 @@ Columns below are verified against `app/models.py` (lines 140-165) on 2026-10-30
 
 ## 7. MRF (Manpower Request Form) -- PARTLY APPLIED (mrf_users, mrf_sessions, mrf_forms, mrf_form_questions); rest PROPOSED
 
-Status: PARTLY APPLIED (section first PROPOSED 2026-11-10, updated 2026-11-12). `mrf_users` and `mrf_sessions` APPLIED and VERIFIED by read-back 2026-11-10 (migration 021, migrations/021_create_mrf_users_sessions.sql; 16 columns, indexes idx_mrf_users_email unique, idx_mrf_users_status, idx_mrf_sessions_user_id, idx_mrf_sessions_expires_at). All other mrf_* tables below are still PROPOSED, no migration written, except mrf_forms and mrf_form_questions: migration 022 (migrations/022_create_mrf_forms_questions.sql) APPLIED and VERIFIED by read-back 2026-11-12 (part 42); mrf_requests and mrf_request_answers below stay PROPOSED. Next migration number: 024.
+Status: PARTLY APPLIED (section first PROPOSED 2026-11-10, updated 2026-11-12). `mrf_users` and `mrf_sessions` APPLIED and VERIFIED by read-back 2026-11-10 (migration 021, migrations/021_create_mrf_users_sessions.sql; 16 columns, indexes idx_mrf_users_email unique, idx_mrf_users_status, idx_mrf_sessions_user_id, idx_mrf_sessions_expires_at). All other mrf_* tables below are still PROPOSED, no migration written, except mrf_forms and mrf_form_questions: migration 022 (migrations/022_create_mrf_forms_questions.sql) APPLIED and VERIFIED by read-back 2026-11-12 (part 42); mrf_requests and mrf_request_answers APPLIED and VERIFIED by read-back 2026-11-17 (migration 024, migrations/024_create_mrf_requests_answers.sql, part 66). Next migration number: 025.
 
 **Confirmed (user, 2026-11-10):** MRF is a separate service with its own users, sessions, forms and requests. Option A: separate `mrf_*` tables; nothing reuses `users`, `sessions`, `forms` or `job_questions`. No business unit, brand or job link. Scoring: DECIDED none (user, 2026-11-12, part 42): MRF forms have no answer_points, no correct_answer and no hard requirement.
 
@@ -242,10 +242,10 @@ DECIDED 2026-11-12 (user, part 42). Same question shape as the job forms; the ea
 - No scoring columns (no answer_points, correct_answer or hard requirement).
 - Partial unique index on form_id where is_classification: at most one classification question per form (the API returns 409 on a second).
 - Classification question: MULTIPLE_CHOICE, required, options exactly Rank and File, Supervisory, Managerial from one constant in app/mrf_lists.py; its options and flag are locked.
-- A question that has answers cannot be deleted (409). That check arrives with the migration that creates mrf_request_answers.
+- A question that has answers cannot be deleted (409). That check is IMPLEMENTED (part 66, 2026-11-17): the foreign key mrf_request_answers.question_id (no ON DELETE) blocks the delete and the handler returns 409, see docs/API_CONTRACT.md.
 
 ### mrf_requests
-DECIDED 2026-11-17 (user, part 64). NOT migrated yet.
+DECIDED 2026-11-17 (user, part 64). APPLIED and VERIFIED by read-back 2026-11-17 (migration 024, migrations/024_create_mrf_requests_answers.sql, 0 rows). department is NULLABLE (user, part 66, option A).
 - id UUID PK, form_id FK mrf_forms.id, user_id FK mrf_users.id, created_at timestamptz
 - classification String NOT NULL (copied from the classification answer at submit)
 - department String (copied from the submitter at submit)
@@ -257,6 +257,7 @@ DECIDED 2026-11-17 (user, part 64). NOT migrated yet.
 - Indexes (rule 18.1): status, classification, department, created_at, user_id
 
 ### mrf_request_answers
+APPLIED and VERIFIED by read-back 2026-11-17 (migration 024, 0 rows). answer is NOT NULL (user, part 66, option A).
 - id UUID PK, request_id FK mrf_requests.id (covered by the unique index below), question_id FK mrf_form_questions.id (indexed), answer Text
 - answer stores the label text for YES_NO and MULTIPLE_CHOICE (single answer),
   the typed text for OPEN_ENDED, trimmed, at most 1000 characters (DECIDED 2026-11-17, part 65 sign-off (b); constant MRF_ANSWER_MAX_LENGTH).
