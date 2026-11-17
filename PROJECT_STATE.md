@@ -2368,3 +2368,4 @@ decisions from part 70 (autosave key, Log out clearing the draft, destination af
 asked before steps 5d and 5e; the not-tested items above. All earlier open items unchanged.
 NEXT: step 5b, the Start button on /mrf/forms links to /mrf/forms/{form_id} (contract first, one UI
 piece), then 5c (questions, Previous/Next, Review screen).
+Commits (part 71): code 85f5def, docs 387102a. The push e5af88a..(this hash commit) is recorded in the part 72 section.
