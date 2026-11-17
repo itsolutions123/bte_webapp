@@ -98,6 +98,10 @@ MRF_QUESTION_CLASSIFICATION_ALWAYS_REQUIRED = "a Classification question is alwa
 
 # Reorder question message (docs/API_CONTRACT.md, POST /api/v1/admin/mrf/forms/{form_id}/questions/reorder, decided by the user 2026-11-13, part 54, (r1) to (r10), option A each).
 MRF_QUESTION_REORDER_MISMATCH = "ordered_ids must list every question of this form exactly once."
+
+# Delete question message (docs/API_CONTRACT.md, DELETE .../questions/{question_id}, part 65 sign-off (c5), option A).
+# One text for a question that has rows in mrf_request_answers. Checked last, after the two 404s and the Active-form 409.
+MRF_QUESTION_ANSWERED = "This question has been answered in a request and cannot be deleted."
 SORT_NEWEST = "newest"
 SORT_FIRST_NAME_ASC = "first_name_asc"
 SORT_FIRST_NAME_DESC = "first_name_desc"
@@ -610,14 +614,21 @@ async def delete_mrf_question(
     """Deletes a question ((d1) to (d6), decided 2026-11-13). 204 with no body. Order of checks: the form 404, then the question 404 (an unknown
     question and a question of another form share one text, (d2)). The remaining questions keep their display_order, a gap is left ((d3)).
     The form's status does not matter and the last question of an ACTIVE form can be deleted ((d4)). A Classification question can be deleted ((d5)).
-    One DELETE statement scoped by id and form_id; zero rows removed is the question 404, so a repeated or simultaneous delete never gives a 500."""
+    One DELETE statement scoped by id and form_id; zero rows removed is the question 404, so a repeated or simultaneous delete never gives a 500.
+    A question with rows in mrf_request_answers is refused with 409 (part 65 sign-off (c5)): the foreign key blocks the DELETE and that is mapped here."""
     form = await db.scalar(select(MrfForm.id).where(MrfForm.id == form_id))
     if form is None:
         raise HTTPException(status_code=404, detail=MRF_FORM_NOT_FOUND)
 
-    result = await db.execute(
-        delete(MrfFormQuestion).where(MrfFormQuestion.id == question_id, MrfFormQuestion.form_id == form_id)
-    )
+    try:
+        result = await db.execute(
+            delete(MrfFormQuestion).where(MrfFormQuestion.id == question_id, MrfFormQuestion.form_id == form_id)
+        )
+    except IntegrityError:
+        # mrf_request_answers.question_id references this question with no ON DELETE (migration 024), so the
+        # database refuses the delete when an answer exists. That is the answered-question 409 ((c5)).
+        await db.rollback()
+        raise HTTPException(status_code=409, detail=MRF_QUESTION_ANSWERED)
     if result.rowcount == 0:
         await db.rollback()
         raise HTTPException(status_code=404, detail=MRF_QUESTION_NOT_FOUND)

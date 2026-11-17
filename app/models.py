@@ -4,7 +4,11 @@ from sqlalchemy import Column, String, Text, Integer, Boolean, ForeignKey, DateT
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from .database import Base
-from .mrf_lists import MRF_FORM_NAME_MAX_LENGTH, MRF_FORM_STATUS_DRAFT
+from .mrf_lists import (
+    MRF_FORM_NAME_MAX_LENGTH,
+    MRF_FORM_STATUS_DRAFT,
+    MRF_REQUEST_STATUS_PENDING,
+)
 
 def utc_now():
     return datetime.now(timezone.utc)
@@ -251,4 +255,52 @@ class MrfFormQuestion(Base):
     __table_args__ = (
         Index("idx_mrf_form_questions_form_id", "form_id"),
         Index("idx_mrf_form_questions_one_classification", "form_id", unique=True, postgresql_where=is_classification),
+    )
+
+
+class MrfRequest(Base):
+    # MRF request submitted by an MRF portal user (migration 024, table already live). One row per submitted form.
+    # classification and assignment are copied at submit time (DECIDED part 64). department is the submitter's department.
+    # Status is one of MRF_REQUEST_STATUSES (app/mrf_lists.py); the database CHECK ck_mrf_requests_status enforces it.
+    # A decision is final: decided_by_user_id (admin users table) and decided_at are set once with the status.
+    __tablename__ = "mrf_requests"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    form_id = Column(UUID(as_uuid=True), ForeignKey("mrf_forms.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("mrf_users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    classification = Column(String, nullable=False)
+    department = Column(String, nullable=True)
+    assignment = Column(String, nullable=False)
+    status = Column(
+        String,
+        nullable=False,
+        default=MRF_REQUEST_STATUS_PENDING,
+        server_default=MRF_REQUEST_STATUS_PENDING,
+    )
+    remarks = Column(Text, nullable=True)
+    decided_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    decided_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("idx_mrf_requests_status", "status"),
+        Index("idx_mrf_requests_classification", "classification"),
+        Index("idx_mrf_requests_department", "department"),
+        Index("idx_mrf_requests_created_at", "created_at"),
+        Index("idx_mrf_requests_user_id", "user_id"),
+    )
+
+
+class MrfRequestAnswer(Base):
+    # One answer per answered question of an MRF request (migration 024, table already live).
+    # answer is label text (YES_NO, MULTIPLE_CHOICE) or typed text (OPEN_ENDED); unanswered questions are not stored.
+    # Unique (request_id, question_id); no ON DELETE on the foreign keys.
+    __tablename__ = "mrf_request_answers"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    request_id = Column(UUID(as_uuid=True), ForeignKey("mrf_requests.id"), nullable=False)
+    question_id = Column(UUID(as_uuid=True), ForeignKey("mrf_form_questions.id"), nullable=False)
+    answer = Column(Text, nullable=False)
+
+    __table_args__ = (
+        Index("idx_mrf_request_answers_request_question", "request_id", "question_id", unique=True),
+        Index("idx_mrf_request_answers_question_id", "question_id"),
     )

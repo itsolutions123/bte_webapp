@@ -64,3 +64,15 @@ MRF_FORM_NAME_MAX_LENGTH = 100
 
 # Trimmed question text is at most this long (decided, part 50, (z8) option A; longer returns 422). mrf_form_questions.question_text itself is unbounded.
 MRF_QUESTION_TEXT_MAX_LENGTH = 500
+
+# MRF request status (migration 024, DECIDED part 64, docs/API_CONTRACT.md).
+# A new request starts Pending; HR sets Approved or Rejected once (a decision is final).
+# Also enforced by the CHECK ck_mrf_requests_status on mrf_requests.status: keep the two in step.
+MRF_REQUEST_STATUS_PENDING = "Pending"
+MRF_REQUEST_STATUS_APPROVED = "Approved"
+MRF_REQUEST_STATUS_REJECTED = "Rejected"
+MRF_REQUEST_STATUSES = (
+    MRF_REQUEST_STATUS_PENDING,
+    MRF_REQUEST_STATUS_APPROVED,
+    MRF_REQUEST_STATUS_REJECTED,
+)
