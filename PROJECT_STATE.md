@@ -2369,3 +2369,32 @@ asked before steps 5d and 5e; the not-tested items above. All earlier open items
 NEXT: step 5b, the Start button on /mrf/forms links to /mrf/forms/{form_id} (contract first, one UI
 piece), then 5c (questions, Previous/Next, Review screen).
 Commits (part 71): code 85f5def, docs 387102a. The push e5af88a..(this hash commit) is recorded in the part 72 section.
+STEP part 72 (step 5b, the Start button on /mrf/forms links to the wizard):
+DECIDED: no new decision. The part 64 decision stands: the Start button on /mrf/forms links to
+/mrf/forms/{form_id}. The contract edit (Call site of GET /api/v1/mrf/forms) was written first, then the
+page edit. The part 71 push e5af88a..1544e89 is recorded here (the part 71 section is not amended).
+SEEN: user-confirmed in the browser (signed in, Ctrl+F5 after the CSS change) with a throwaway Active
+form ZZ test start, assignment Head Office: /mrf/forms shows the row with the assignment and a Start
+link styled like the old button (gold text, border, no underline); clicking it opens the wizard in the
+same tab at /mrf/forms/<id> and the wizard header shows the name and Head Office. The question and
+review panels are still the static placeholders (step 5c).
+NOT tested: the pointer cursor (not visible in a screenshot), narrow screens (below 760px), middle-click
+or new-tab open, a form deleted or switched to Draft after the list loaded (the wizard would show
+"This form is no longer available" by the part 71 behaviour, not re-run here).
+Cleanup: throwaway form ZZ test start deleted by the guarded block (1 form, 0 questions, 0 requests,
+0 answers matched); read-back of the four mrf tables: 0, 0, 0, 0.
+HARDCODES: the fixed path "/mrf/forms/" in forms.html buildRow (matches the contracted wizard route);
+no other new hardcodes.
+DOCS: API_CONTRACT.md: Call site of GET /api/v1/mrf/forms now records the Start link and the browser
+check; line 2 "Last verified" prefix added (part 72, code 45598ff).
+Work mode: feature-wiring step.
+What changed: frontend only: app/templates/mrf/forms.html (Start control is an <a> with href
+/mrf/forms/ + encodeURIComponent(form.id), "Not active" title and type removed, header comment
+updated), app/static/mrf-portal.css (.mrf-btn-start: cursor pointer, inline-flex, align-items center,
+no text-decoration). Backend and admin panel no change. Contract edited.
+OPEN ITEMS: the not-tested items above; the three wizard decisions (autosave key, Log out clearing the
+draft, destination after submit) must be asked before steps 5d and 5e; portal get-one Status line
+wording still says the wizard is not built; Log out on /mrf/forms and the wizard is still inert. All
+earlier open items unchanged.
+NEXT: step 5c, render the questions in the wizard (one per screen, real progress bar, Previous/Next,
+required check, Review screen; ask the zero-question wording first).
