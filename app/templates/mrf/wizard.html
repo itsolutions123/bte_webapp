@@ -7,7 +7,7 @@
     <link href="/static/mrf-portal.css" rel="stylesheet">
 </head>
 <body class="mrf-app-body">
-    <!-- Wizard SHELL (step 5): static, obviously fake placeholders, nothing fetched. Requires a portal session (require_mrf_page_session). The two panels below (question screen, review screen) are shown together only for review; the wired page shows one at a time. -->
+    <!-- Wizard SHELL (step 5): obviously fake placeholders; step 5a fetches only the form name and assignment (GET /api/v1/mrf/forms/{form_id}). Requires a portal session (require_mrf_page_session). The two panels below (question screen, review screen) are shown together only for review; the wired page shows one at a time. -->
     <aside class="mrf-side">
         <div class="mrf-brand">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18v2H3zM3 6l4.5 4L12 4l4.5 6L21 6l-2 10H5z"/></svg>
@@ -29,10 +29,12 @@
         </div>
     </aside>
     <main class="mrf-main">
+        <div id="mrf-wizard-message" class="mrf-empty">Loading form...</div>
+        <div id="mrf-wizard-body" hidden>
         <div class="mrf-page-head">
             <div>
-                <h1>Form Name</h1>
-                <p class="mrf-page-sub">Assignment (placeholder)</p>
+                <h1 id="mrf-wizard-title">Form Name</h1>
+                <p class="mrf-page-sub" id="mrf-wizard-assignment">Assignment (placeholder)</p>
             </div>
         </div>
         <div class="mrf-wizard-label">QUESTION SCREEN (PLACEHOLDER)</div>
@@ -75,6 +77,57 @@
                 <button type="button" class="mrf-btn mrf-btn-primary" disabled>Submit</button>
             </div>
         </div>
+        </div>
     </main>
+    <script>
+        (function () {
+            var FORM_URL_PREFIX = "/api/v1/mrf/forms/";
+            var LOGIN_PAGE = "/mrf/login";
+            var UNAVAILABLE_TEXT = "This form is no longer available";
+            var title = document.getElementById("mrf-wizard-title");
+            var assignment = document.getElementById("mrf-wizard-assignment");
+            var body = document.getElementById("mrf-wizard-body");
+            var message = document.getElementById("mrf-wizard-message");
+
+            function showUnavailable() {
+                body.hidden = true;
+                message.textContent = UNAVAILABLE_TEXT;
+                message.hidden = false;
+            }
+
+            function formIdFromPath() {
+                var parts = window.location.pathname.split("/").filter(function (s) { return s !== ""; });
+                return parts[parts.length - 1] || "";
+            }
+
+            async function loadForm() {
+                var formId = formIdFromPath();
+                if (formId === "") {
+                    showUnavailable();
+                    return;
+                }
+                try {
+                    var response = await fetch(FORM_URL_PREFIX + encodeURIComponent(formId));
+                    if (response.status === 401) {
+                        window.location.href = LOGIN_PAGE;
+                        return;
+                    }
+                    if (!response.ok) {
+                        showUnavailable();
+                        return;
+                    }
+                    var form = await response.json();
+                    title.textContent = form.name;
+                    assignment.textContent = form.assignment ? form.assignment : "\u2014";
+                    message.hidden = true;
+                    body.hidden = false;
+                } catch (err) {
+                    showUnavailable();
+                }
+            }
+
+            loadForm();
+        })();
+    </script>
 </body>
 </html>
