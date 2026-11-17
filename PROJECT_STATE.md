@@ -2264,3 +2264,24 @@ Work mode: feature-wiring step (two backend guards), then documentation.
 What changed: backend (app/routers/admin_mrf.py); database no change; frontend no change; admin panel no change.
 OPEN ITEMS: all part 66 open items are unchanged except the delete_mrf_question docstring fix, which is done. New: the Classification rule bullet in API_CONTRACT.md (lines 714-715) says "one count over idx_mrf_form_questions_form_id, only when status is ACTIVE", but the code uses an existence select on is_classification with limit 1 (wording difference, not edited); the role guard (401/403) on the form PATCH and the question DELETE has not been re-tested since parts 48 and 52.
 NEXT: record the docs commit hash in a follow-up docs commit; push after git branch --show-current and status; then step 3: GET /api/v1/mrf/forms/{form_id} (portal get-one, contract entry already decided in part 64), starting with the read-only check of app/routers/mrf.py and the contract entry.
+
+STEP part 68 (portal get-one GET /api/v1/mrf/forms/{form_id}, step 3 of the MRF request flow):
+Start: branch main, HEAD = origin/main = e9c7868. The part 67 push result e3e0260..e9c7868 is recorded here (the part 67 section is not amended).
+
+DECIDED: the portal get-one returns question options exactly as stored (user, option A, 2026-11-17): YES_NO two label strings, MULTIPLE_CHOICE [{id, text}], OPEN_ENDED null. Earlier decisions (part 64, option A): 404 for unknown AND Draft form, no-store, wizard route and browser autosave (call site not built).
+
+SEEN: handler get_portal_form called directly inside the web container, 10 of 10 PASS: unknown form 404 "Form not found."; Draft form the same 404; ACTIVE form with no questions gives questions []; questions in display_order 1, 2, 3 although inserted 3, 1, 2; options as stored; response keys exactly id, name, assignment, questions and question keys exactly the seven contract fields (no status, no created_at); result validates against MrfPortalFormDetail; Cache-Control no-store on the 200; another form's questions never included; assignment passes through (Head Office, and null).
+
+NOT tested: the cookie guard (signed out 401; the direct call passes _user=None and skips it), any curl call, any call site (the wizard is not built), Cache-Control on the 404 and on FastAPI's 422, a malformed id (FastAPI's own 422), a request racing a form switched to Draft.
+
+Cleanup: throwaway data removed with a guarded DO block in one transaction (4 forms "ZZ test portal A to D" and their 5 questions; notice "Deleted 5 questions and 4 forms"). Read-back: mrf_forms 0, mrf_form_questions 0, mrf_requests 0, mrf_request_answers 0. No mrf_users, requests or answers were created.
+
+HARDCODES: MRF_PORTAL_FORM_NOT_FOUND = "Form not found." in app/routers/mrf.py duplicates MRF_FORM_NOT_FOUND in admin_mrf.py (portal-local constant, same pattern as MRF_STATUS_APPROVED). MRF_REMARKS_MAX_LENGTH and MRF_ANSWER_MAX_LENGTH are not created yet (steps 9 and 4).
+
+DOCS: docs/API_CONTRACT.md: portal get-one Status flipped to IMPLEMENTED and TESTED, Last verified prefix updated, options sentence added to the Response bullet. SCHEMA.md and SECURITY.md: no change. The code commit hash is recorded in the follow-up docs commit.
+
+Work mode: feature-wiring step (backend endpoint, one feature) plus documentation.
+What changed: backend: app/routers/mrf.py (route GET /forms/{form_id}, get_portal_form, MRF_PORTAL_FORM_NOT_FOUND), app/schemas.py (MrfPortalFormDetail); frontend: no change; admin panel: no change; database: no migration, throwaway rows added and removed.
+
+OPEN ITEMS: carried from part 67, plus: MRF_PORTAL_FORM_NOT_FOUND duplicate of MRF_FORM_NOT_FOUND; cookie guard, curl and Cache-Control on 404/422 untested for the portal get-one; MRF_REMARKS_MAX_LENGTH and MRF_ANSWER_MAX_LENGTH not created yet.
+NEXT: commit step 3 (code commit app/routers/mrf.py and app/schemas.py, docs commit docs/API_CONTRACT.md and PROJECT_STATE.md, follow-up hash commit, push), then step 4: POST /api/v1/mrf/requests (submit), contract entry read first.
