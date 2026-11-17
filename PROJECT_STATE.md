@@ -2218,7 +2218,7 @@ SEEN: git log/status at the start (HEAD c2c74d9, only package-lock.json untracke
 NOT tested: nothing. No endpoint is built; every decision above is contract only.
 Cleanup: none (no test data, no code, no migration).
 HARDCODES: none seen. Constants to create when built: MRF_REMARKS_MAX_LENGTH and MRF_ANSWER_MAX_LENGTH (app/mrf_lists.py), MRF_REQUEST_STATUSES (app/mrf_lists.py), MRF_PORTAL_REQUESTS_* (app/routers/mrf.py), MRF_REQUESTS_* (app/routers/admin_mrf.py), the q limit 100, and one named constant per error text.
-DOCS: docs/API_CONTRACT.md (request-flow entries marked DECIDED, question DELETE Notes amended, Last verified line updated) and docs/SCHEMA.md section 7 (remarks cap, answer cap, unique pair and question_id index marked DECIDED). Docs commit hash is recorded in a small follow-up docs commit, as in part 64.
+DOCS: docs/API_CONTRACT.md (request-flow entries marked DECIDED, question DELETE Notes amended, Last verified line updated) and docs/SCHEMA.md section 7 (remarks cap, answer cap, unique pair and question_id index marked DECIDED). Docs commit 9eca7f0 (this section, API_CONTRACT.md and SCHEMA.md); this hash is recorded in a small follow-up docs commit, as in part 64.
 
 Work mode: documentation (sign-off, no code)
 What changed: backend no change, frontend no change, admin panel no change; docs only (docs/API_CONTRACT.md, docs/SCHEMA.md, this section).
