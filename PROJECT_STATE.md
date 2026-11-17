@@ -2308,3 +2308,32 @@ What changed: backend: app/mrf_lists.py (MRF_ANSWER_MAX_LENGTH), app/schemas.py 
 OPEN ITEMS: carried from part 68, plus: MRF_SUBMIT_* constants are portal-local duplicates; cookie guard, curl, Cache-Control on errors and the concurrent Draft or question-delete case untested for submit; MRF_REMARKS_MAX_LENGTH not created yet.
 NEXT: commit step 4 (code commit app/mrf_lists.py, app/routers/mrf.py, app/schemas.py; docs commit docs/API_CONTRACT.md and PROJECT_STATE.md; follow-up hash commit; push), then step 5: wizard page /mrf/forms/{form_id} + Start button + browser autosave.
 Commits (part 69): code 6d43d1d (app/mrf_lists.py, app/routers/mrf.py, app/schemas.py); docs 6fc5f99 (docs/API_CONTRACT.md, PROJECT_STATE.md); this follow-up docs commit records both hashes. Push result is recorded in part 70.
+STEP part 70 (step 5 shell, MRF wizard page GET /mrf/forms/{form_id}):
+DECIDED: (user, option A, part 70) the wizard shows one question per screen with a progress bar "X of N",
+Previous and Next buttons, the question centered beside the .mrf-side sidebar, and a final Review screen
+that lists every answer with a Submit button. The user confirmed the static shell in the browser.
+No API endpoint was added or changed.
+SEEN: start of part 70: branch main, HEAD = origin/main = bfbf287, tree clean except package-lock.json,
+PROJECT_STATE.md 2310 lines. The part 69 push b34c6d3..bfbf287 is recorded here (the part 69 section
+is not amended). No portal /mrf/forms/{form_id} route existed (only the admin one). Code commit d240aaa,
+3 files, 113 insertions. The first browser view showed the new rules unstyled; Ctrl+F5 fixed it, so the
+cause was the browser's cached mrf-portal.css (the page is no-store, the stylesheet is not).
+NOT tested: signed-out redirect to /mrf/login for the new route; narrow screen (below 760px); a
+non-existent or malformed form id (the shell ignores it); anything fetched (the shell fetches nothing).
+Cleanup: none needed. No throwaway data, database untouched, no .bak files created.
+HARDCODES: placeholder text only ("Form Name", "1 of 0", "Question text", "Option A", "Answer text" ...)
+plus the shell copy line "A submitted request cannot be edited."; CSS layout widths 680px and 420px;
+form_id accepted but unused. The Log out button on the wizard shell is inert (title "Not active").
+DOCS: PROJECT_STATE.md only. API_CONTRACT.md unchanged (a page route is not an API endpoint); the "Call
+site" lines of get-one and submit flip only as the wiring pieces land.
+Work mode: shell.
+What changed: frontend and page route only: app/main.py (serve_mrf_wizard_page, GET /mrf/forms/{form_id},
+same guard, mrf_footer_context and NO_STORE as /mrf/forms), app/templates/mrf/wizard.html (80 lines, no
+script), app/static/mrf-portal.css (115 to 136 lines). Backend API no change; admin panel no change.
+OPEN ITEMS: decisions to raise before the wiring pieces that need them: (1) autosave key (/me returns no
+account id: A add a field to /me, B inject the user id through the page route, C key by form only and
+clear on logout); (2) wiring Log out on the wizard (and /mrf/forms) so it clears the draft; (3) where the
+wizard goes after a successful submit (recommendation /mrf/requests). All earlier open items unchanged.
+NEXT: step 5a, render the form on the wizard page from GET /api/v1/mrf/forms/{form_id} (any non-200
+shows "This form is no longer available"; 401 goes to /mrf/login): contract "Call site" edit first, then
+the page code, then a browser check with a throwaway form.
