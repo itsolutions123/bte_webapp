@@ -2307,3 +2307,4 @@ What changed: backend: app/mrf_lists.py (MRF_ANSWER_MAX_LENGTH), app/schemas.py 
 
 OPEN ITEMS: carried from part 68, plus: MRF_SUBMIT_* constants are portal-local duplicates; cookie guard, curl, Cache-Control on errors and the concurrent Draft or question-delete case untested for submit; MRF_REMARKS_MAX_LENGTH not created yet.
 NEXT: commit step 4 (code commit app/mrf_lists.py, app/routers/mrf.py, app/schemas.py; docs commit docs/API_CONTRACT.md and PROJECT_STATE.md; follow-up hash commit; push), then step 5: wizard page /mrf/forms/{form_id} + Start button + browser autosave.
+Commits (part 69): code 6d43d1d (app/mrf_lists.py, app/routers/mrf.py, app/schemas.py); docs 6fc5f99 (docs/API_CONTRACT.md, PROJECT_STATE.md); this follow-up docs commit records both hashes. Push result is recorded in part 70.
