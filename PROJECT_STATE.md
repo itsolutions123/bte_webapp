@@ -2188,7 +2188,9 @@ update.' still reads correctly now that assignment is a field. Still open:
 admin-created accounts pre-approved or not. The earlier open items list still
 stands (admin sidebar remainder, MRF Log out inert, form delete, etc.).
 
-NEXT, one per step: docs commit (named paths docs/API_CONTRACT.md,
-docs/SCHEMA.md, PROJECT_STATE.md); migration 024 (mrf_requests,
+DOCS COMMIT: c105519 (pushed, main = origin/main), docs only, no code commit.
+
+NEXT, one per step: sign-off on the PROPOSED items (one question per
+message); migration 024 (mrf_requests,
 mrf_request_answers); then code, one endpoint per step, starting with the
 Active-rule guards and POST /api/v1/mrf/requests.
