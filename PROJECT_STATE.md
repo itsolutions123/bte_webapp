@@ -2285,3 +2285,4 @@ What changed: backend: app/routers/mrf.py (route GET /forms/{form_id}, get_porta
 
 OPEN ITEMS: carried from part 67, plus: MRF_PORTAL_FORM_NOT_FOUND duplicate of MRF_FORM_NOT_FOUND; cookie guard, curl and Cache-Control on 404/422 untested for the portal get-one; MRF_REMARKS_MAX_LENGTH and MRF_ANSWER_MAX_LENGTH not created yet.
 NEXT: commit step 3 (code commit app/routers/mrf.py and app/schemas.py, docs commit docs/API_CONTRACT.md and PROJECT_STATE.md, follow-up hash commit, push), then step 4: POST /api/v1/mrf/requests (submit), contract entry read first.
+Commits (part 68): code fa45eaf (app/routers/mrf.py, app/schemas.py); docs d1d17c0 (docs/API_CONTRACT.md, PROJECT_STATE.md); this follow-up docs commit records both hashes. Push result is recorded in part 69.
