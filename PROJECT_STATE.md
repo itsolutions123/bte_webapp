@@ -2286,3 +2286,24 @@ What changed: backend: app/routers/mrf.py (route GET /forms/{form_id}, get_porta
 OPEN ITEMS: carried from part 67, plus: MRF_PORTAL_FORM_NOT_FOUND duplicate of MRF_FORM_NOT_FOUND; cookie guard, curl and Cache-Control on 404/422 untested for the portal get-one; MRF_REMARKS_MAX_LENGTH and MRF_ANSWER_MAX_LENGTH not created yet.
 NEXT: commit step 3 (code commit app/routers/mrf.py and app/schemas.py, docs commit docs/API_CONTRACT.md and PROJECT_STATE.md, follow-up hash commit, push), then step 4: POST /api/v1/mrf/requests (submit), contract entry read first.
 Commits (part 68): code fa45eaf (app/routers/mrf.py, app/schemas.py); docs d1d17c0 (docs/API_CONTRACT.md, PROJECT_STATE.md); this follow-up docs commit records both hashes. Push result is recorded in part 69.
+
+STEP part 69 (submit POST /api/v1/mrf/requests, step 4 of the MRF request flow):
+Start: branch main, HEAD = origin/main = b34c6d3. The part 68 push result e9c7868..b34c6d3 is recorded here (the part 68 section is not amended).
+
+DECIDED: a blank answer (empty or whitespace-only after trimming, any question type) counts as not answered: nothing is stored, it fails a required question with "Answer every required question.", it is accepted on an optional question (user, option A, 2026-11-17). Part 69 implementation rules, recorded in the contract before the code, not lettered sign-offs: YES_NO and MULTIPLE_CHOICE labels are compared exactly (case-sensitive, untrimmed; MULTIPLE_CHOICE uses the option text); an Active form with no assignment gets the 409 "This form is no longer available." so the NOT NULL mrf_requests.assignment never raises a 500; an IntegrityError during the insert rolls back and also answers that 409. The Classification question is treated as required even if is_required were false. Earlier decisions (parts 64 and 65) are unchanged.
+
+SEEN: handler submit_request called directly inside the web container with a real MrfUser row, 15 of 15 PASS: unknown form 404; Draft form 409 before any 422; Active form without assignment 409; Active form without Classification question 409; unknown question 422; duplicate question 422; missing Classification answer 422; blank required answer 422; label case mismatch 422; open answer over 1000 characters 422; option error before length error; nothing stored after all failures; success returns the list-row shape (status Pending, remarks null, Cache-Control no-store), copies classification, department and assignment, trims the OPEN_ENDED answer, stores no row for a blank optional answer; 1000 characters after trimming accepted with 4 answers stored (Managerial copied); totals 2 requests and 7 answers.
+
+NOT tested: the cookie guard (signed out 401; the direct call passes a real user and skips it), any curl call, any call site (the wizard is not built), Cache-Control on error responses, a form switched to Draft or a question deleted during the submit (the IntegrityError rollback 409 is not exercised), a malformed id (FastAPI's own 422).
+
+Cleanup: throwaway data removed with a guarded DO block in one transaction (1 user zz-test-submit@example.invalid, 4 forms "ZZ test submit ...", 7 questions, 2 requests, 7 answers; notice "Deleted 7 answers, 2 requests, 7 questions, 4 forms, 1 user"). Read-back: mrf_forms 0, mrf_form_questions 0, mrf_requests 0, mrf_request_answers 0, zz users 0.
+
+HARDCODES: the MRF_SUBMIT_* message constants in app/routers/mrf.py are portal-local duplicates of the contract wording; MRF_PORTAL_FORM_NOT_FOUND is reused for the submit 404. MRF_ANSWER_MAX_LENGTH (1000) is now a named constant in app/mrf_lists.py. MRF_REMARKS_MAX_LENGTH is not created yet (step 9).
+
+DOCS: docs/API_CONTRACT.md: submit Status flipped to IMPLEMENTED and TESTED, blank-answer, exact-label and null-assignment rules, rollback 409 sentence, Last verified prefix. SCHEMA.md already names MRF_ANSWER_MAX_LENGTH (line 263): no change. SECURITY.md: no change. The code commit hash is recorded in the follow-up docs commit.
+
+Work mode: feature-wiring step (backend endpoint, one feature) plus documentation.
+What changed: backend: app/mrf_lists.py (MRF_ANSWER_MAX_LENGTH), app/schemas.py (MrfRequestAnswerIn, MrfRequestCreate, MrfRequestListItem), app/routers/mrf.py (MRF_SUBMIT_* constants, question_labels, route POST /requests, submit_request); frontend: no change; admin panel: no change; database: no migration, throwaway rows added and removed.
+
+OPEN ITEMS: carried from part 68, plus: MRF_SUBMIT_* constants are portal-local duplicates; cookie guard, curl, Cache-Control on errors and the concurrent Draft or question-delete case untested for submit; MRF_REMARKS_MAX_LENGTH not created yet.
+NEXT: commit step 4 (code commit app/mrf_lists.py, app/routers/mrf.py, app/schemas.py; docs commit docs/API_CONTRACT.md and PROJECT_STATE.md; follow-up hash commit; push), then step 5: wizard page /mrf/forms/{form_id} + Start button + browser autosave.
