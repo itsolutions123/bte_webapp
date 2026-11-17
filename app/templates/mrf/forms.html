@@ -7,7 +7,7 @@
     <link href="/static/mrf-portal.css" rel="stylesheet">
 </head>
 <body class="mrf-app-body">
-    <!-- Forms list: requires a portal session (require_mrf_page_session) and renders from GET /api/v1/mrf/forms (ACTIVE forms only). Start, logout and the user chip do nothing yet. -->
+    <!-- Forms list: requires a portal session (require_mrf_page_session) and renders from GET /api/v1/mrf/forms (ACTIVE forms only). Each Start link goes to /mrf/forms/{form_id}. Logout and the user chip do nothing yet. -->
     <aside class="mrf-side">
         <div class="mrf-brand">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18v2H3zM3 6l4.5 4L12 4l4.5 6L21 6l-2 10H5z"/></svg>
@@ -72,10 +72,9 @@
                 nameBox.appendChild(nameText);
                 nameBox.appendChild(sub);
 
-                var start = document.createElement("button");
-                start.type = "button";
+                var start = document.createElement("a");
+                start.href = "/mrf/forms/" + encodeURIComponent(form.id);
                 start.className = "mrf-btn-start";
-                start.title = "Not active";
                 start.textContent = "Start";
 
                 row.appendChild(icon);
