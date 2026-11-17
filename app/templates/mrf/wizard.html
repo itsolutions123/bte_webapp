@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MRF Portal - Form</title>
+    <link href="/static/mrf-portal.css" rel="stylesheet">
+</head>
+<body class="mrf-app-body">
+    <!-- Wizard SHELL (step 5): static, obviously fake placeholders, nothing fetched. Requires a portal session (require_mrf_page_session). The two panels below (question screen, review screen) are shown together only for review; the wired page shows one at a time. -->
+    <aside class="mrf-side">
+        <div class="mrf-brand">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18v2H3zM3 6l4.5 4L12 4l4.5 6L21 6l-2 10H5z"/></svg>
+            <div>
+                <div class="mrf-brand-name">BIGTIME EMPIRE</div>
+                <div class="mrf-brand-sub">MRF PORTAL</div>
+            </div>
+        </div>
+        <nav class="mrf-nav" aria-label="Portal">
+            <a href="/mrf/requests">My Requests</a>
+            <a href="/mrf/forms" class="active" aria-current="page">Forms</a>
+        </nav>
+        <div class="mrf-user">
+            <div class="mrf-avatar" aria-hidden="true">{{ footer_initials }}</div>
+            <div class="mrf-user-name">{{ footer_name }}</div>
+            <button type="button" class="mrf-icon-btn" aria-label="Log out" title="Not active">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            </button>
+        </div>
+    </aside>
+    <main class="mrf-main">
+        <div class="mrf-page-head">
+            <div>
+                <h1>Form Name</h1>
+                <p class="mrf-page-sub">Assignment (placeholder)</p>
+            </div>
+        </div>
+        <div class="mrf-wizard-label">QUESTION SCREEN (PLACEHOLDER)</div>
+        <div class="mrf-wizard-card">
+            <div class="mrf-progress-meta">
+                <span>1 of 0</span>
+                <span class="mrf-draft-note">Draft saved (placeholder)</span>
+            </div>
+            <div class="mrf-progress"><div class="mrf-progress-bar" style="width: 0%"></div></div>
+            <div class="mrf-question">
+                <p class="mrf-question-text">Question text</p>
+                <p class="mrf-question-hint">Required (placeholder)</p>
+                <div class="mrf-options">
+                    <div class="mrf-option"><span class="mrf-option-dot"></span>Option A</div>
+                    <div class="mrf-option"><span class="mrf-option-dot"></span>Option B</div>
+                    <div class="mrf-option"><span class="mrf-option-dot"></span>Option C</div>
+                </div>
+            </div>
+            <div class="mrf-wizard-nav">
+                <button type="button" class="mrf-btn" disabled>Previous</button>
+                <button type="button" class="mrf-btn mrf-btn-primary" disabled>Next</button>
+            </div>
+        </div>
+        <div class="mrf-wizard-label">REVIEW SCREEN (PLACEHOLDER, SHOWN AFTER THE LAST QUESTION)</div>
+        <div class="mrf-wizard-card">
+            <h2 class="mrf-review-title">Review your answers</h2>
+            <p class="mrf-page-sub">Check everything before you submit. A submitted request cannot be edited.</p>
+            <div class="mrf-review-list">
+                <div class="mrf-review-item">
+                    <p class="mrf-review-q">Question text</p>
+                    <p class="mrf-review-a">Answer text</p>
+                </div>
+                <div class="mrf-review-item">
+                    <p class="mrf-review-q">Question text</p>
+                    <p class="mrf-review-a">Answer text</p>
+                </div>
+            </div>
+            <div class="mrf-wizard-nav">
+                <button type="button" class="mrf-btn" disabled>Back</button>
+                <button type="button" class="mrf-btn mrf-btn-primary" disabled>Submit</button>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

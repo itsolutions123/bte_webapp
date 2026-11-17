@@ -113,3 +113,24 @@ body.mrf-app-body {
 .mrf-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .mrf-btn-primary:disabled:hover { background: var(--mrf-gold); }
 .mrf-field input.mrf-invalid, .mrf-field select.mrf-invalid { border-color: #c0392b; box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.15); }
+/* MRF wizard shell (step 5): static placeholder layout, nothing wired yet. */
+.mrf-wizard-card { max-width: 680px; margin: 0 auto 1.5rem; background: var(--mrf-card); border: 1px solid var(--mrf-border); border-radius: 14px; padding: 1.5rem 1.75rem; }
+.mrf-wizard-label { max-width: 680px; margin: 0 auto 0.4rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; color: var(--mrf-muted); }
+.mrf-progress-meta { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.8rem; font-weight: 600; color: #5c5c58; margin-bottom: 0.5rem; }
+.mrf-draft-note { font-weight: 400; color: var(--mrf-muted); }
+.mrf-progress { height: 8px; border-radius: 999px; background: #efefeb; overflow: hidden; }
+.mrf-progress-bar { height: 100%; background: var(--mrf-gold); border-radius: 999px; }
+.mrf-question { text-align: center; padding: 2.5rem 0 1.75rem; }
+.mrf-question-text { font-size: 1.15rem; font-weight: 700; margin: 0 0 0.35rem; }
+.mrf-question-hint { font-size: 0.78rem; color: var(--mrf-muted); margin: 0 0 1.5rem; }
+.mrf-options { display: flex; flex-direction: column; gap: 0.6rem; max-width: 420px; margin: 0 auto; text-align: left; }
+.mrf-option { display: flex; align-items: center; gap: 0.7rem; padding: 0.75rem 0.9rem; border: 1px solid var(--mrf-border); border-radius: 10px; background: #fff; font-size: 0.92rem; }
+.mrf-option-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--mrf-border); flex: none; }
+.mrf-wizard-nav { display: flex; justify-content: space-between; gap: 0.75rem; }
+.mrf-wizard-nav .mrf-btn { min-width: 120px; padding: 0 1.2rem; }
+.mrf-review-title { font-size: 1.05rem; font-weight: 700; margin: 0 0 0.25rem; }
+.mrf-review-list { margin: 1rem 0 1.5rem; }
+.mrf-review-item { padding: 0.7rem 0; border-bottom: 1px solid var(--mrf-border); }
+.mrf-review-item:last-child { border-bottom: 0; }
+.mrf-review-q { font-size: 0.78rem; font-weight: 600; color: var(--mrf-muted); margin: 0 0 0.2rem; }
+.mrf-review-a { font-size: 0.92rem; margin: 0; overflow-wrap: anywhere; }

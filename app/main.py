@@ -208,6 +208,18 @@ async def serve_mrf_forms_page(request: Request):
         headers=NO_STORE,
     )
 
+@app.get("/mrf/forms/{form_id}", include_in_schema=False, dependencies=[Depends(require_mrf_page_session)])
+async def serve_mrf_wizard_page(request: Request, form_id: str):
+    # MRF portal request wizard, SHELL only (section 8): static page with placeholder content.
+    # form_id is not used yet; the wiring step fetches GET /api/v1/mrf/forms/{form_id} client-side.
+    # Requires a valid portal session (require_mrf_page_session); otherwise redirects to /mrf/login.
+    return templates.TemplateResponse(
+        request=request,
+        name="mrf/wizard.html",
+        context=mrf_footer_context(request),
+        headers=NO_STORE,
+    )
+
 @app.get("/admin/home", include_in_schema=False, dependencies=[Depends(require_page_session)])
 async def serve_admin_dashboard(request: Request):
     return templates.TemplateResponse(request=request, name="admin.html", context=admin_sidebar_context(request), headers=NO_STORE)
