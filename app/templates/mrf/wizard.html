@@ -23,12 +23,13 @@
         <div class="mrf-user">
             <div class="mrf-avatar" aria-hidden="true">{{ footer_initials }}</div>
             <div class="mrf-user-name">{{ footer_name }}</div>
-            <button type="button" class="mrf-icon-btn" aria-label="Log out" title="Not active">
+            <button type="button" id="mrf-logout" class="mrf-icon-btn" aria-label="Log out" title="Log out">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             </button>
         </div>
     </aside>
     <main class="mrf-main">
+        <div class="mrf-alert" id="mrf-logout-message" role="alert" hidden></div>
         <div id="mrf-wizard-message" class="mrf-empty">Loading form...</div>
         <div id="mrf-wizard-body" hidden>
         <div class="mrf-page-head">
@@ -323,6 +324,42 @@
                     showUnavailable();
                 }
             }
+
+            var LOGOUT_URL = "/api/v1/mrf/logout";
+            var LOGOUT_FAILED_TEXT = "Could not log out. Try again.";
+            var logoutButton = document.getElementById("mrf-logout");
+            var logoutMessage = document.getElementById("mrf-logout-message");
+
+            function clearDraft() {
+                var key = draftKey();
+                if (key === "") {
+                    return;
+                }
+                try {
+                    window.localStorage.removeItem(key);
+                } catch (err) {
+                    /* storage blocked: nothing to clear */
+                }
+            }
+
+            logoutButton.addEventListener("click", async function () {
+                logoutMessage.hidden = true;
+                logoutMessage.textContent = "";
+                logoutButton.disabled = true;
+                try {
+                    var response = await fetch(LOGOUT_URL, { method: "POST" });
+                    if (response.status === 204) {
+                        clearDraft();
+                        window.location.replace(LOGIN_PAGE);
+                        return;
+                    }
+                } catch (err) {
+                    /* network failure: fall through to the message below */
+                }
+                logoutMessage.textContent = LOGOUT_FAILED_TEXT;
+                logoutMessage.hidden = false;
+                logoutButton.disabled = false;
+            });
 
             loadForm();
         })();
