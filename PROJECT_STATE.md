@@ -2399,3 +2399,40 @@ earlier open items unchanged.
 NEXT: step 5c, render the questions in the wizard (one per screen, real progress bar, Previous/Next,
 required check, Review screen; ask the zero-question wording first).
 Commits (part 72): code 45598ff, docs fd710e0. The push 1544e89..(this hash commit) is recorded in the part 73 section.
+STEP part 73 (step 5c-1, wizard question screen; same session as part 72, the contract says part 72):
+DECIDED: (user, option A each) a form whose 200 carries no questions shows "This form is no longer
+available" (no new wording); step 5c is split into 5c-1 (question screen) and 5c-2 (Review wired).
+The required-question message reuses the contracted submit text "Answer every required question."
+(my proposal, not objected to). Both decisions were recorded in the contract before the code. The
+part 72 push 1544e89..572c3ae is recorded here (the part 72 section is not amended).
+SEEN: browser, signed in, throwaway Active forms ZZ test wizard Q (4 questions: Classification,
+required YES_NO, optional MULTIPLE_CHOICE, optional OPEN_ENDED) and ZZ test wizard empty. Seen in
+screenshots: "1 of 4" with a quarter-wide bar, the Required hint, three options, Previous disabled,
+and the Review placeholder after the last question. User-confirmed (all nine checks): required error
+on Next, selected style, Previous keeps answers, optional questions skippable, text box stops at 1000,
+keyboard selection with focus ring, empty form shows "This form is no longer available".
+NOT tested: narrow screens (below 760px), Cache-Control on the API call, a form switched to Draft
+while open, a MULTIPLE_CHOICE with two options of the same text (answers are keyed by label text, both
+would show selected), a reload (answers are lost by design until 5d).
+Cleanup: guarded block matched 2 forms, 4 questions, 0 requests, 0 answers and deleted them; read-back
+of the four mrf tables: 0, 0, 0, 0.
+HARDCODES: page constants ANSWER_MAX_LENGTH = 1000 (duplicates MRF_ANSWER_MAX_LENGTH) and
+REQUIRED_TEXT (duplicates the submit message); hint words "Required"/"Optional"; CSS colours #b42318
+and #fdf6ea (no variable exists); "Draft saved (placeholder)" until 5d; the Review panel is still the
+static placeholder, hidden until the last Next.
+DOCS: API_CONTRACT.md: Call site of GET /api/v1/mrf/forms/{form_id} records 5c-1 and the zero-question
+rule as BUILT with the test result, opening reworded (no longer "NOT rendered"); line 2 prefix added
+(part 72, code f837555).
+SLIPS (mine, no harm): a first contract block had a quoting error (SyntaxError, nothing written, a
+corrected block was run); a stray </div> claim was wrong (two sed ranges overlapped on line 60); the
+contract line was called 579 and 590, the real lines are 585 and 586; a diff count was predicted
+wrongly (3 and 3, not 4 and 4).
+Work mode: feature-wiring step.
+What changed: frontend only: app/templates/mrf/wizard.html (question panel ids, review panel hidden at
+load, script: state, renderQuestion, startWizard, Previous/Next, zero-question rule) and
+app/static/mrf-portal.css (6 rules). Backend and admin panel no change. Contract edited.
+OPEN ITEMS: the not-tested items above; Back and Submit on the Review placeholder are inert until
+5c-2/5e; the three wizard decisions (autosave key, Log out clearing the draft, destination after
+submit) must be asked before 5d and 5e; Log out on /mrf/forms and the wizard is inert. All earlier
+open items unchanged.
+NEXT: step 5c-2, the Review screen wired to the real answers (contract first; Back works, Submit inert).
