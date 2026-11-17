@@ -2337,3 +2337,4 @@ wizard goes after a successful submit (recommendation /mrf/requests). All earlie
 NEXT: step 5a, render the form on the wizard page from GET /api/v1/mrf/forms/{form_id} (any non-200
 shows "This form is no longer available"; 401 goes to /mrf/login): contract "Call site" edit first, then
 the page code, then a browser check with a throwaway form.
+Commits (part 70): code d240aaa, docs 9ea1a84. The push bfbf287..(this hash commit) is recorded in the part 71 section.
