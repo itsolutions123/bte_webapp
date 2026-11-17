@@ -152,6 +152,29 @@ def mrf_footer_context(request: Request) -> dict:
         "footer_initials": initials or "--",
     }
 
+def admin_sidebar_context(request: Request) -> dict:
+    # Admin sidebar profile pill, server-rendered (API_CONTRACT.md, GET /api/v1/admin/me
+    # Call site, part 63). Reads request.state.user, set by get_current_user inside
+    # require_page_session. Initials: first letters of the first and last words of
+    # full_name (same rule GET /api/v1/admin/me documents); email shown as the name
+    # and its first letter as the initial when full_name is empty/null.
+    user = getattr(request.state, "user", None)
+    full_name = str(getattr(user, "full_name", "") or "").strip()
+    email = str(getattr(user, "email", "") or "").strip()
+    role = str(getattr(user, "role", "") or "")
+    if full_name:
+        words = full_name.split()
+        pill_name = full_name
+        pill_initials = (words[0][:1] + words[-1][:1]).upper()
+    else:
+        pill_name = email
+        pill_initials = email[:1].upper() if email else ""
+    return {
+        "pill_name": pill_name,
+        "pill_initials": pill_initials,
+        "pill_role": role,
+    }
+
 @app.get("/mrf/requests", include_in_schema=False, dependencies=[Depends(require_mrf_page_session)])
 async def serve_mrf_requests_page(request: Request):
     # MRF portal My Requests, SHELL only (section 8): static page with placeholder content.
@@ -187,37 +210,37 @@ async def serve_mrf_forms_page(request: Request):
 
 @app.get("/admin/home", include_in_schema=False, dependencies=[Depends(require_page_session)])
 async def serve_admin_dashboard(request: Request):
-    return templates.TemplateResponse(request=request, name="admin.html", headers=NO_STORE)
+    return templates.TemplateResponse(request=request, name="admin.html", context=admin_sidebar_context(request), headers=NO_STORE)
 
 @app.get("/admin/archive", include_in_schema=False, dependencies=[Depends(require_page_session)])
 async def serve_admin_archive(request: Request):
-    return templates.TemplateResponse(request=request, name="archive.html", headers=NO_STORE)
+    return templates.TemplateResponse(request=request, name="archive.html", context=admin_sidebar_context(request), headers=NO_STORE)
 
 @app.get("/admin/applicants", include_in_schema=False, dependencies=[Depends(require_page_session)])
 async def serve_admin_applicants(request: Request):
     # Shell only (section 8): no data is fetched yet.
-    return templates.TemplateResponse(request=request, name="admin_applicants.html", headers=NO_STORE)
+    return templates.TemplateResponse(request=request, name="admin_applicants.html", context=admin_sidebar_context(request), headers=NO_STORE)
 
 @app.get("/admin/forms/{form_id}", include_in_schema=False, dependencies=[Depends(require_page_session)])
 async def serve_admin_form_detail(request: Request, form_id: str):
     # Shell only (section 8): form_id is accepted but not used to fetch data yet.
-    return templates.TemplateResponse(request=request, name="admin_form_detail.html", headers=NO_STORE)
+    return templates.TemplateResponse(request=request, name="admin_form_detail.html", context=admin_sidebar_context(request), headers=NO_STORE)
 
 @app.get("/admin/brands/{brand_id}", include_in_schema=False, dependencies=[Depends(require_page_session)])
 async def serve_admin_brand_detail(request: Request, brand_id: str):
     # Shell only (section 8): brand_id is accepted but not used to fetch data yet.
-    return templates.TemplateResponse(request=request, name="admin_brand_detail.html", headers=NO_STORE)
+    return templates.TemplateResponse(request=request, name="admin_brand_detail.html", context=admin_sidebar_context(request), headers=NO_STORE)
 
 @app.get("/admin/users", include_in_schema=False, dependencies=[Depends(require_page_session), Depends(require_page_roles(ROLE_SUPERADMIN, ROLE_MANAGER))])
 async def serve_admin_users(request: Request):
     # Shell only (section 8): no data is fetched yet. Role check: SUPERADMIN and MANAGER allowed, RECRUITER gets 403 (API_CONTRACT.md).
-    return templates.TemplateResponse(request=request, name="admin_users.html", headers=NO_STORE)
+    return templates.TemplateResponse(request=request, name="admin_users.html", context=admin_sidebar_context(request), headers=NO_STORE)
 
 @app.get("/admin/mrf", include_in_schema=False, dependencies=[Depends(require_page_session), Depends(require_page_roles(ROLE_SUPERADMIN, ROLE_MANAGER))])
 async def serve_admin_mrf(request: Request):
     # Admin MRF section, SHELL only (section 8): static page with placeholder rows, no data fetched yet.
     # Role check: SUPERADMIN and MANAGER allowed, RECRUITER gets 403 (API_CONTRACT.md section 5).
-    return templates.TemplateResponse(request=request, name="admin_mrf.html", headers=NO_STORE)
+    return templates.TemplateResponse(request=request, name="admin_mrf.html", context=admin_sidebar_context(request), headers=NO_STORE)
 
 # MRF admin tab addresses (DECIDED 2026-11-12, part 42): each opens the same page with that tab selected.
 # Same guard as /admin/mrf (SUPERADMIN and MANAGER, RECRUITER gets 403). Registered here, above the /admin catch-alls.
@@ -225,7 +248,7 @@ MRF_ADMIN_TABS = ("submissions", "forms", "users")
 
 def _make_mrf_tab_page(tab: str):
     async def serve_admin_mrf_tab(request: Request):
-        return templates.TemplateResponse(request=request, name="admin_mrf.html", context={"initial_tab": tab}, headers=NO_STORE)
+        return templates.TemplateResponse(request=request, name="admin_mrf.html", context={"initial_tab": tab, **admin_sidebar_context(request)}, headers=NO_STORE)
     return serve_admin_mrf_tab
 
 for _mrf_tab in MRF_ADMIN_TABS:
@@ -242,7 +265,7 @@ for _mrf_tab in MRF_ADMIN_TABS:
 @app.get("/admin/mrf/forms/{form_id}", include_in_schema=False, dependencies=[Depends(require_page_session), Depends(require_page_roles(ROLE_SUPERADMIN, ROLE_MANAGER))])
 async def serve_admin_mrf_form(request: Request, form_id: str):
     # The Set assignment dropdown items are rendered from MRF_ASSIGNMENTS (part 59, pD-1 option B), so the page holds no copy of the names.
-    return templates.TemplateResponse(request=request, name="admin_mrf_form.html", context={"assignments": MRF_ASSIGNMENTS}, headers=NO_STORE)
+    return templates.TemplateResponse(request=request, name="admin_mrf_form.html", context={"assignments": MRF_ASSIGNMENTS, **admin_sidebar_context(request)}, headers=NO_STORE)
 
 @app.get("/admin", include_in_schema=False, dependencies=[Depends(require_page_session)])
 @app.get("/admin/{rest:path}", include_in_schema=False, dependencies=[Depends(require_page_session)])
