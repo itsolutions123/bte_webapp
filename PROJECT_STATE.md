@@ -2436,3 +2436,4 @@ OPEN ITEMS: the not-tested items above; Back and Submit on the Review placeholde
 submit) must be asked before 5d and 5e; Log out on /mrf/forms and the wizard is inert. All earlier
 open items unchanged.
 NEXT: step 5c-2, the Review screen wired to the real answers (contract first; Back works, Submit inert).
+Commits (part 73): code f837555, docs 5ad6983. The push 572c3ae..(this hash commit) is recorded in the part 74 section.
