@@ -40,7 +40,7 @@
         <div id="mrf-question-panel" class="mrf-wizard-card">
             <div class="mrf-progress-meta">
                 <span id="mrf-progress-text">1 of 0</span>
-                <span class="mrf-draft-note">Draft saved (placeholder)</span>
+                <span id="mrf-draft-note" class="mrf-draft-note" hidden>Draft saved</span>
             </div>
             <div class="mrf-progress"><div id="mrf-progress-bar" class="mrf-progress-bar" style="width: 0%"></div></div>
             <div class="mrf-question">
@@ -70,6 +70,8 @@
             var FORM_URL_PREFIX = "/api/v1/mrf/forms/";
             var LOGIN_PAGE = "/mrf/login";
             var UNAVAILABLE_TEXT = "This form is no longer available";
+            var USER_ID = {{ mrf_user_id|tojson }};
+            var DRAFT_KEY_PREFIX = "mrf-draft";
             var title = document.getElementById("mrf-wizard-title");
             var assignment = document.getElementById("mrf-wizard-assignment");
             var body = document.getElementById("mrf-wizard-body");
@@ -122,6 +124,63 @@
                 return [];
             }
 
+            var draftNote = document.getElementById("mrf-draft-note");
+
+            function draftKey() {
+                var formId = formIdFromPath();
+                if (USER_ID === "" || formId === "") {
+                    return "";
+                }
+                return DRAFT_KEY_PREFIX + ":" + USER_ID + ":" + formId;
+            }
+
+            function saveDraft() {
+                var key = draftKey();
+                if (key === "") {
+                    return;
+                }
+                try {
+                    window.localStorage.setItem(key, JSON.stringify(answers));
+                    draftNote.hidden = false;
+                } catch (err) {
+                    /* storage blocked or full: autosave stays silently off */
+                }
+            }
+
+            function loadDraft() {
+                var key = draftKey();
+                var kept = {};
+                if (key === "") {
+                    return kept;
+                }
+                var saved;
+                try {
+                    saved = JSON.parse(window.localStorage.getItem(key));
+                } catch (err) {
+                    return kept;
+                }
+                if (saved === null || typeof saved !== "object" || Array.isArray(saved)) {
+                    return kept;
+                }
+                questions.forEach(function (q) {
+                    if (!Object.prototype.hasOwnProperty.call(saved, q.id)) {
+                        return;
+                    }
+                    var value = saved[q.id];
+                    if (typeof value !== "string") {
+                        return;
+                    }
+                    if (q.question_type === "OPEN_ENDED") {
+                        if (value.length <= ANSWER_MAX_LENGTH) {
+                            kept[q.id] = value;
+                        }
+                    } else if (optionLabels(q).indexOf(value) !== -1) {
+                        kept[q.id] = value;
+                    }
+                });
+                return kept;
+            }
+
             function renderQuestion() {
                 var q = questions[current];
                 var total = questions.length;
@@ -136,7 +195,10 @@
                     box.className = "mrf-textbox";
                     box.maxLength = ANSWER_MAX_LENGTH;
                     box.value = answers[q.id] || "";
-                    box.addEventListener("input", function () { answers[q.id] = box.value; });
+                    box.addEventListener("input", function () {
+                        answers[q.id] = box.value;
+                        saveDraft();
+                    });
                     optionsBox.appendChild(box);
                 } else {
                     optionLabels(q).forEach(function (label) {
@@ -151,6 +213,7 @@
                         opt.setAttribute("aria-checked", answers[q.id] === label ? "true" : "false");
                         function choose() {
                             answers[q.id] = label;
+                            saveDraft();
                             qError.hidden = true;
                             Array.prototype.forEach.call(optionsBox.children, function (el) {
                                 el.classList.remove("selected");
@@ -194,6 +257,7 @@
             function startWizard(list) {
                 questions = list;
                 answers = {};
+                answers = loadDraft();
                 current = 0;
                 renderQuestion();
             }
