@@ -2194,3 +2194,50 @@ NEXT, one per step: sign-off on the PROPOSED items (one question per
 message); migration 024 (mrf_requests,
 mrf_request_answers); then code, one endpoint per step, starting with the
 Active-rule guards and POST /api/v1/mrf/requests.
+
+STEP part 65 (MRF request flow: sign-off of the PROPOSED items, docs only):
+Starting HEAD c2c74d9 (main = origin/main, verified by git log at the start of the session; package-lock.json untracked, never staged). Part 65 is DOCS ONLY: no code, no migration, nothing built. Latest migration applied is still 023; next is 024.
+
+DECIDED (user, one lettered question per message, option A each, 2026-11-17):
+(a) decision remarks: trimmed, at most 500 characters (constant MRF_REMARKS_MAX_LENGTH).
+(b) OPEN_ENDED answer: trimmed, at most 1000 characters (constant MRF_ANSWER_MAX_LENGTH).
+(c1) POST /api/v1/mrf/requests errors, in order: 404 "Form not found."; 409 "This form is no longer available."; then 422 "Unknown question.", "Each question can be answered only once.", "Answer every required question.", "Choose one of the listed options.", "Answers must be 1000 characters or fewer."
+(c2) decision endpoint errors, in order: 404 "Request not found."; 409 "This request has already been decided." (row locked FOR UPDATE); then 422 "Choose Approved or Rejected.", "Add remarks to reject a request.", "Remarks must be 500 characters or fewer."
+(c3) form PATCH 422 for Active without a Classification question keeps "Add a Classification question before setting this form to Active." The portal get-one 404 "Form not found." and the admin get-one 404 "Request not found." are decided by reuse of the (c1) and (c2) texts (the user did not object).
+(c4) question DELETE on an ACTIVE form, one 409 text for both cases: "Set the form to Draft before deleting its last question or its Classification question."
+(c5) question DELETE of an answered question, 409: "This question has been answered in a request and cannot be deleted." Checked last.
+(d) both request lists: page_size default 10, cap 50, minimum 1; order created_at descending then id. Portal constants MRF_PORTAL_REQUESTS_*, admin constants MRF_REQUESTS_* in admin_mrf.py.
+(e1) admin list q: case-insensitive contains on submitter first name, last name, combined "first last" name and form name; trimmed, blank means no search, % and _ escaped, at most 100 characters, 422 "Search must be 100 characters or fewer." above.
+(e2) admin list date_from and date_to: optional plain dates YYYY-MM-DD, inclusive of both whole days, read in the app timezone (+08:00), either may be sent alone; date_from after date_to is 422 "Start date must not be after end date."
+(f) GET /api/v1/admin/mrf/requests/{request_id} signed off as proposed: list-row fields plus answers in display_order, current question wording, answered questions only.
+(g) mrf_request_answers: unique (request_id, question_id) plus a plain index on question_id (no separate request_id index).
+(h) MULTIPLE_CHOICE is a single answer, stored as the label text.
+(i) the contract follows the code for the empty form PATCH 422: "Send a name, a status or an assignment to update." (MRF_FORM_UPDATE_EMPTY, app/routers/admin_mrf.py line 72, raised at line 301). Docs-only fix.
+
+SEEN: git log/status at the start (HEAD c2c74d9, only package-lock.json untracked); migrations up to 023_mrf_forms_assignment.sql; MRF_FORM_UPDATE_EMPTY text in the code; docs/API_CONTRACT.md lines 560-780 and docs/SCHEMA.md lines 243-275 read before each edit; every edit confirmed by git diff or grep after it ran. Found and fixed a stale contradiction: the question DELETE Notes bullet still said deleting the last or Classification question on an ACTIVE form is allowed (d4, d5); it now says AMENDED 2026-11-17 and points to the Active-form rule.
+NOT tested: nothing. No endpoint is built; every decision above is contract only.
+Cleanup: none (no test data, no code, no migration).
+HARDCODES: none seen. Constants to create when built: MRF_REMARKS_MAX_LENGTH and MRF_ANSWER_MAX_LENGTH (app/mrf_lists.py), MRF_REQUEST_STATUSES (app/mrf_lists.py), MRF_PORTAL_REQUESTS_* (app/routers/mrf.py), MRF_REQUESTS_* (app/routers/admin_mrf.py), the q limit 100, and one named constant per error text.
+DOCS: docs/API_CONTRACT.md (request-flow entries marked DECIDED, question DELETE Notes amended, Last verified line updated) and docs/SCHEMA.md section 7 (remarks cap, answer cap, unique pair and question_id index marked DECIDED). Docs commit hash is recorded in a small follow-up docs commit, as in part 64.
+
+Work mode: documentation (sign-off, no code)
+What changed: backend no change, frontend no change, admin panel no change; docs only (docs/API_CONTRACT.md, docs/SCHEMA.md, this section).
+
+OPEN ITEMS (not started, none blocking):
+- Admin-created accounts pre-approved or not (SCHEMA.md section 7 Still open; Add user button is inert).
+- /admin sidebar remainder: business-unit/brand list and forms list still fetched client-side on every navigation; MRF pending badge first-load flash (deferred by the user, part 63).
+- Log out button on /mrf/forms is inert (title="Not active"); the one on /mrf/requests works.
+- Admin form delete (not built; note in SCHEMA.md that the questions FK has no cascade when built).
+- "Set an assignment before setting this form to Active." red line never seen live.
+- Required toggle (question PATCH), delete/reorder call sites in the admin form builder.
+- Forms tab Assignment column (admin side).
+- Recruiter-scoring table (deferred; needs Commissary/Cali Beach point values from the user).
+- Part 41 items 5.9 (end-to-end run) and 5.10 (saves).
+- Sign-up link and forgot-password questions on the MRF login page.
+- Pager on /mrf/forms if more than 50 Active forms ever exist.
+- Open naming item: business_units vs MRF Assignment.
+- The 401 from the guard carries no no-store header (HTTPException); same as /me. Recorded in the contract Notes, not treated as a defect.
+- Optional follow-ups: empty-name fallback and Network-tab check for the MRF footer (part 62); second account/role, empty full_name fallback and narrow screens for the admin profile pill (part 63).
+- Form PATCH Body bullet still says the absent-or-null rule is PROPOSED, not lettered (older wording, not part of this sign-off).
+
+NEXT: docs commit for part 65, then step 1: migration 024 (mrf_requests, mrf_request_answers, status CHECK, indexes per rule 18.1, unique (request_id, question_id), index on question_id) as migrations/024_*.sql; apply and verify by read-back; models in app/models.py; MRF_REQUEST_STATUSES in app/mrf_lists.py; the answered-question 409 on question DELETE lands in the same step. Then one step each: Active-rule guards; portal get-one form; submit; wizard page with Start button and browser autosave; requestor list and /mrf/requests table; admin list and Submissions tab; admin get-one and review panel; decision endpoint and panel buttons.

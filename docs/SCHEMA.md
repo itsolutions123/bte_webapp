@@ -252,15 +252,18 @@ DECIDED 2026-11-17 (user, part 64). NOT migrated yet.
 - assignment String NOT NULL (copied from the form at submit)
 - status String NOT NULL default 'Pending'. Values Pending, Approved, Rejected
   (one constant in app/mrf_lists.py, CHECK in the DB). A decision is final.
-- remarks Text NULL (PROPOSED max 500). Required on Rejected, optional on Approved.
+- remarks Text NULL (trimmed, max 500, DECIDED 2026-11-17, part 65 sign-off (a); constant MRF_REMARKS_MAX_LENGTH). Required on Rejected, optional on Approved.
 - decided_by_user_id UUID NULL FK users.id; decided_at timestamptz NULL (both NULL while Pending)
 - Indexes (rule 18.1): status, classification, department, created_at, user_id
 
 ### mrf_request_answers
-- id UUID PK, request_id FK mrf_requests.id (indexed), question_id FK mrf_form_questions.id, answer Text
+- id UUID PK, request_id FK mrf_requests.id (covered by the unique index below), question_id FK mrf_form_questions.id (indexed), answer Text
 - answer stores the label text for YES_NO and MULTIPLE_CHOICE (single answer),
-  the typed text for OPEN_ENDED (DECIDED 2026-11-17).
-- Unique (request_id, question_id) (PROPOSED).
+  the typed text for OPEN_ENDED, trimmed, at most 1000 characters (DECIDED 2026-11-17, part 65 sign-off (b); constant MRF_ANSWER_MAX_LENGTH).
+- Unique (request_id, question_id) (DECIDED 2026-11-17, part 65 sign-off (g), option A). Its leading column
+  request_id serves the admin get-one lookup, so there is no separate request_id index.
+- Index on question_id (DECIDED, part 65 sign-off (g), option A, rule 18.1): serves the answered-question
+  DELETE 409 check.
 
 ### Fixed lists (confirmed by user; one documented constant, app/mrf_lists.py, validated server-side)
 - Position: Head, OIC, Manager
