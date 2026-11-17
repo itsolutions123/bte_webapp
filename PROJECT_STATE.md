@@ -2398,3 +2398,4 @@ wording still says the wizard is not built; Log out on /mrf/forms and the wizard
 earlier open items unchanged.
 NEXT: step 5c, render the questions in the wizard (one per screen, real progress bar, Previous/Next,
 required check, Review screen; ask the zero-question wording first).
+Commits (part 72): code 45598ff, docs fd710e0. The push 1544e89..(this hash commit) is recorded in the part 73 section.
