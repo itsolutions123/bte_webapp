@@ -462,6 +462,14 @@ class MrfFormQuestionItem(BaseModel):
     display_order: int
 
 
+class MrfPortalFormDetail(BaseModel):
+    # GET /api/v1/mrf/forms/{form_id} (docs/API_CONTRACT.md, part 68): ACTIVE forms only, so no status field.
+    id: UUID4
+    name: str
+    assignment: Optional[str] = None
+    questions: List[MrfFormQuestionItem]
+
+
 class MrfFormDetail(BaseModel):
     id: UUID4
     name: str

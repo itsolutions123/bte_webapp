@@ -6,6 +6,7 @@ import secrets
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List
+from uuid import UUID
 
 from email_validator import validate_email, EmailNotValidError
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -15,11 +16,16 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import MrfForm, MrfSession, MrfUser
+from app.models import MrfForm, MrfFormQuestion, MrfSession, MrfUser
 from app.mrf_lists import ALLOWED_EMAIL_DOMAINS, DEPARTMENTS, MRF_FORM_STATUS_ACTIVE, POSITIONS
 from app.password_rules import validate_sign_up_password
 from app.routers.auth import DUMMY_HASH, pwd_context
-from app.schemas import MrfLoginRequest, MrfPortalFormListResponse, MrfSignupRequest
+from app.schemas import (
+    MrfLoginRequest,
+    MrfPortalFormDetail,
+    MrfPortalFormListResponse,
+    MrfSignupRequest,
+)
 
 router = APIRouter()
 
@@ -244,6 +250,8 @@ async def me(response: Response, user: MrfUser = Depends(get_current_mrf_user)):
 # Portal-local copies of the admin Forms list limits (decision A, part 61); the portal router does not import admin_mrf.
 MRF_PORTAL_FORMS_DEFAULT_PAGE_SIZE = 10
 MRF_PORTAL_FORMS_MAX_PAGE_SIZE = 50
+# Same text as MRF_FORM_NOT_FOUND in app/routers/admin_mrf.py (contract, part 65 sign-off (c3)); kept portal-local like MRF_STATUS_APPROVED.
+MRF_PORTAL_FORM_NOT_FOUND = "Form not found."
 
 
 @router.get("/forms", response_model=MrfPortalFormListResponse)
@@ -272,4 +280,45 @@ async def list_portal_forms(
         "total": total,
         "page": page,
         "page_size": page_size,
+    }
+
+
+@router.get("/forms/{form_id}", response_model=MrfPortalFormDetail)
+async def get_portal_form(
+    form_id: UUID,
+    response: Response,
+    _user: MrfUser = Depends(get_current_mrf_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # ACTIVE forms only: an unknown form and a Draft form share one 404, so a requestor cannot tell them apart (contract, part 64).
+    # Questions in display_order, ties by id. Options are returned as stored (part 68, option A).
+    response.headers["Cache-Control"] = "no-store"
+    form = await db.scalar(
+        select(MrfForm).where(MrfForm.id == form_id, MrfForm.status == MRF_FORM_STATUS_ACTIVE)
+    )
+    if form is None:
+        raise HTTPException(status_code=404, detail=MRF_PORTAL_FORM_NOT_FOUND)
+    questions = (
+        await db.execute(
+            select(MrfFormQuestion)
+            .where(MrfFormQuestion.form_id == form.id)
+            .order_by(MrfFormQuestion.display_order, MrfFormQuestion.id)
+        )
+    ).scalars().all()
+    return {
+        "id": form.id,
+        "name": form.name,
+        "assignment": form.assignment,
+        "questions": [
+            {
+                "id": q.id,
+                "question_type": q.question_type,
+                "question_text": q.question_text,
+                "options": q.options,
+                "is_required": q.is_required,
+                "is_classification": q.is_classification,
+                "display_order": q.display_order,
+            }
+            for q in questions
+        ],
     }
