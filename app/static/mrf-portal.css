@@ -135,3 +135,9 @@ body.mrf-app-body {
 .mrf-review-item:last-child { border-bottom: 0; }
 .mrf-review-q { font-size: 0.78rem; font-weight: 600; color: var(--mrf-muted); margin: 0 0 0.2rem; }
 .mrf-review-a { font-size: 0.92rem; margin: 0; overflow-wrap: anywhere; }
+.mrf-option { cursor: pointer; }
+.mrf-option.selected { border-color: var(--mrf-gold); background: #fdf6ea; }
+.mrf-option.selected .mrf-option-dot { border-color: var(--mrf-gold); background: var(--mrf-gold); box-shadow: inset 0 0 0 2px #fff; }
+.mrf-option:focus-visible { outline: 2px solid var(--mrf-gold); outline-offset: 2px; }
+.mrf-textbox { width: 100%; max-width: 420px; min-height: 110px; padding: 0.75rem 0.9rem; border: 1px solid var(--mrf-border); border-radius: 10px; font: inherit; font-size: 0.92rem; resize: vertical; text-align: left; }
+.mrf-error { color: #b42318; font-size: 0.82rem; margin: 1rem 0 0; }

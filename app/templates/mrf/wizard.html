@@ -37,29 +37,25 @@
                 <p class="mrf-page-sub" id="mrf-wizard-assignment">Assignment (placeholder)</p>
             </div>
         </div>
-        <div class="mrf-wizard-label">QUESTION SCREEN (PLACEHOLDER)</div>
-        <div class="mrf-wizard-card">
+        <div id="mrf-question-panel" class="mrf-wizard-card">
             <div class="mrf-progress-meta">
-                <span>1 of 0</span>
+                <span id="mrf-progress-text">1 of 0</span>
                 <span class="mrf-draft-note">Draft saved (placeholder)</span>
             </div>
-            <div class="mrf-progress"><div class="mrf-progress-bar" style="width: 0%"></div></div>
+            <div class="mrf-progress"><div id="mrf-progress-bar" class="mrf-progress-bar" style="width: 0%"></div></div>
             <div class="mrf-question">
-                <p class="mrf-question-text">Question text</p>
-                <p class="mrf-question-hint">Required (placeholder)</p>
-                <div class="mrf-options">
-                    <div class="mrf-option"><span class="mrf-option-dot"></span>Option A</div>
-                    <div class="mrf-option"><span class="mrf-option-dot"></span>Option B</div>
-                    <div class="mrf-option"><span class="mrf-option-dot"></span>Option C</div>
-                </div>
+                <p id="mrf-question-text" class="mrf-question-text"></p>
+                <p id="mrf-question-hint" class="mrf-question-hint"></p>
+                <div id="mrf-options" class="mrf-options"></div>
+                <p id="mrf-question-error" class="mrf-error" hidden></p>
             </div>
             <div class="mrf-wizard-nav">
-                <button type="button" class="mrf-btn" disabled>Previous</button>
-                <button type="button" class="mrf-btn mrf-btn-primary" disabled>Next</button>
+                <button type="button" id="mrf-prev" class="mrf-btn" disabled>Previous</button>
+                <button type="button" id="mrf-next" class="mrf-btn mrf-btn-primary">Next</button>
             </div>
         </div>
-        <div class="mrf-wizard-label">REVIEW SCREEN (PLACEHOLDER, SHOWN AFTER THE LAST QUESTION)</div>
-        <div class="mrf-wizard-card">
+        <div id="mrf-review-label" class="mrf-wizard-label" hidden>REVIEW SCREEN (PLACEHOLDER, SHOWN AFTER THE LAST QUESTION)</div>
+        <div id="mrf-review-panel" class="mrf-wizard-card" hidden>
             <h2 class="mrf-review-title">Review your answers</h2>
             <p class="mrf-page-sub">Check everything before you submit. A submitted request cannot be edited.</p>
             <div class="mrf-review-list">
@@ -100,6 +96,122 @@
                 return parts[parts.length - 1] || "";
             }
 
+            var ANSWER_MAX_LENGTH = 1000;
+            var REQUIRED_TEXT = "Answer every required question.";
+            var questionPanel = document.getElementById("mrf-question-panel");
+            var reviewLabel = document.getElementById("mrf-review-label");
+            var reviewPanel = document.getElementById("mrf-review-panel");
+            var progressText = document.getElementById("mrf-progress-text");
+            var progressBar = document.getElementById("mrf-progress-bar");
+            var qText = document.getElementById("mrf-question-text");
+            var qHint = document.getElementById("mrf-question-hint");
+            var qError = document.getElementById("mrf-question-error");
+            var optionsBox = document.getElementById("mrf-options");
+            var prevBtn = document.getElementById("mrf-prev");
+            var nextBtn = document.getElementById("mrf-next");
+            var questions = [];
+            var answers = {};
+            var current = 0;
+
+            function isRequired(q) {
+                return q.is_required === true || q.is_classification === true;
+            }
+
+            function isBlank(v) {
+                return v === undefined || v === null || String(v).trim() === "";
+            }
+
+            function optionLabels(q) {
+                if (q.question_type === "MULTIPLE_CHOICE") {
+                    return (q.options || []).map(function (o) { return o.text; });
+                }
+                if (q.question_type === "YES_NO") {
+                    return q.options || [];
+                }
+                return [];
+            }
+
+            function renderQuestion() {
+                var q = questions[current];
+                var total = questions.length;
+                progressText.textContent = (current + 1) + " of " + total;
+                progressBar.style.width = ((current + 1) / total * 100) + "%";
+                qText.textContent = q.question_text;
+                qHint.textContent = isRequired(q) ? "Required" : "Optional";
+                qError.hidden = true;
+                optionsBox.textContent = "";
+                if (q.question_type === "OPEN_ENDED") {
+                    var box = document.createElement("textarea");
+                    box.className = "mrf-textbox";
+                    box.maxLength = ANSWER_MAX_LENGTH;
+                    box.value = answers[q.id] || "";
+                    box.addEventListener("input", function () { answers[q.id] = box.value; });
+                    optionsBox.appendChild(box);
+                } else {
+                    optionLabels(q).forEach(function (label) {
+                        var opt = document.createElement("div");
+                        var dot = document.createElement("span");
+                        dot.className = "mrf-option-dot";
+                        opt.appendChild(dot);
+                        opt.appendChild(document.createTextNode(label));
+                        opt.tabIndex = 0;
+                        opt.setAttribute("role", "radio");
+                        opt.className = "mrf-option" + (answers[q.id] === label ? " selected" : "");
+                        opt.setAttribute("aria-checked", answers[q.id] === label ? "true" : "false");
+                        function choose() {
+                            answers[q.id] = label;
+                            qError.hidden = true;
+                            Array.prototype.forEach.call(optionsBox.children, function (el) {
+                                el.classList.remove("selected");
+                                el.setAttribute("aria-checked", "false");
+                            });
+                            opt.classList.add("selected");
+                            opt.setAttribute("aria-checked", "true");
+                        }
+                        opt.addEventListener("click", choose);
+                        opt.addEventListener("keydown", function (ev) {
+                            if (ev.key === "Enter" || ev.key === " ") {
+                                ev.preventDefault();
+                                choose();
+                            }
+                        });
+                        optionsBox.appendChild(opt);
+                    });
+                }
+                prevBtn.disabled = current === 0;
+            }
+
+            function startWizard(list) {
+                questions = list;
+                answers = {};
+                current = 0;
+                renderQuestion();
+            }
+
+            prevBtn.addEventListener("click", function () {
+                if (current > 0) {
+                    current -= 1;
+                    renderQuestion();
+                }
+            });
+
+            nextBtn.addEventListener("click", function () {
+                var q = questions[current];
+                if (isRequired(q) && isBlank(answers[q.id])) {
+                    qError.textContent = REQUIRED_TEXT;
+                    qError.hidden = false;
+                    return;
+                }
+                if (current < questions.length - 1) {
+                    current += 1;
+                    renderQuestion();
+                } else {
+                    questionPanel.hidden = true;
+                    reviewLabel.hidden = false;
+                    reviewPanel.hidden = false;
+                }
+            });
+
             async function loadForm() {
                 var formId = formIdFromPath();
                 if (formId === "") {
@@ -119,6 +231,11 @@
                     var form = await response.json();
                     title.textContent = form.name;
                     assignment.textContent = form.assignment ? form.assignment : "\u2014";
+                    if (!Array.isArray(form.questions) || form.questions.length === 0) {
+                        showUnavailable();
+                        return;
+                    }
+                    startWizard(form.questions);
                     message.hidden = true;
                     body.hidden = false;
                 } catch (err) {
