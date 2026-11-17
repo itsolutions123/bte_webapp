@@ -74,6 +74,10 @@ MRF_FORM_NEEDS_QUESTION = "Add at least one question before setting this form to
 # Assignment messages (part 59, (pC-2) and (pC-3), option A each). The invalid text is built from MRF_ASSIGNMENTS so the names have one copy here.
 MRF_FORM_ASSIGNMENT_INVALID = f"assignment must be {', '.join(MRF_ASSIGNMENTS[:-1])} or {MRF_ASSIGNMENTS[-1]}"
 MRF_FORM_NEEDS_ASSIGNMENT = "Set an assignment before setting this form to Active."
+MRF_FORM_NEEDS_CLASSIFICATION = (
+    "Add a Classification question before "
+    "setting this form to Active."
+)
 
 # Create question messages (docs/API_CONTRACT.md, POST /api/v1/admin/mrf/forms/{form_id}/questions, decided by the user 2026-11-13, part 50, (z1) to (z10), option A each).
 # The option messages are the same texts as the job form's create_question (admin.py), copied here on purpose (z1).
@@ -102,6 +106,10 @@ MRF_QUESTION_REORDER_MISMATCH = "ordered_ids must list every question of this fo
 # Delete question message (docs/API_CONTRACT.md, DELETE .../questions/{question_id}, part 65 sign-off (c5), option A).
 # One text for a question that has rows in mrf_request_answers. Checked last, after the two 404s and the Active-form 409.
 MRF_QUESTION_ANSWERED = "This question has been answered in a request and cannot be deleted."
+MRF_QUESTION_ACTIVE_FORM = (
+    "Set the form to Draft before deleting its last "
+    "question or its Classification question."
+)
 SORT_NEWEST = "newest"
 SORT_FIRST_NAME_ASC = "first_name_asc"
 SORT_FIRST_NAME_DESC = "first_name_desc"
@@ -296,7 +304,7 @@ async def update_mrf_form(
     payload: MrfFormUpdate,
     db: AsyncSession = Depends(get_db),
 ):
-    """Renames a form and/or sets its status and/or its assignment. Order of checks: 404, then the 422s (nothing to update, name, status value, assignment value, ACTIVE needs a question, ACTIVE needs an assignment), then the 409. A lost race on the name also returns the 409."""
+    """Renames a form and/or sets its status and/or its assignment. Order of checks: 404, then the 422s (nothing to update, name, status value, assignment value, ACTIVE needs a question, ACTIVE needs an assignment, ACTIVE needs a Classification question), then the 409. A lost race on the name also returns the 409."""
     form = await db.scalar(select(MrfForm).where(MrfForm.id == form_id))
     if form is None:
         raise HTTPException(status_code=404, detail=MRF_FORM_NOT_FOUND)
@@ -328,6 +336,16 @@ async def update_mrf_form(
         effective_assignment = payload.assignment if payload.assignment is not None else form.assignment
         if effective_assignment is None:
             raise HTTPException(status_code=422, detail=MRF_FORM_NEEDS_ASSIGNMENT)
+        has_classification = await db.scalar(
+            select(MrfFormQuestion.id)
+            .where(
+                MrfFormQuestion.form_id == form.id,
+                MrfFormQuestion.is_classification.is_(True),
+            )
+            .limit(1)
+        )
+        if has_classification is None:
+            raise HTTPException(status_code=422, detail=MRF_FORM_NEEDS_CLASSIFICATION)
 
     if name is not None:
         taken = await db.scalar(
@@ -613,12 +631,39 @@ async def delete_mrf_question(
 ):
     """Deletes a question ((d1) to (d6), decided 2026-11-13). 204 with no body. Order of checks: the form 404, then the question 404 (an unknown
     question and a question of another form share one text, (d2)). The remaining questions keep their display_order, a gap is left ((d3)).
-    The form's status does not matter and the last question of an ACTIVE form can be deleted ((d4)). A Classification question can be deleted ((d5)).
+    A Draft form is unrestricted ((d4), (d5)). On an ACTIVE form the last question and the Classification question are refused with 409 (part 64, part 65 sign-off (c4)), checked after the two 404s and before the answered-question 409.
     One DELETE statement scoped by id and form_id; zero rows removed is the question 404, so a repeated or simultaneous delete never gives a 500.
     A question with rows in mrf_request_answers is refused with 409 (part 65 sign-off (c5)): the foreign key blocks the DELETE and that is mapped here."""
-    form = await db.scalar(select(MrfForm.id).where(MrfForm.id == form_id))
-    if form is None:
+    form_row = (
+        await db.execute(
+            select(MrfForm.id, MrfForm.status).where(MrfForm.id == form_id)
+        )
+    ).first()
+    if form_row is None:
         raise HTTPException(status_code=404, detail=MRF_FORM_NOT_FOUND)
+
+    question_row = (
+        await db.execute(
+            select(MrfFormQuestion.is_classification).where(
+                MrfFormQuestion.id == question_id,
+                MrfFormQuestion.form_id == form_id,
+            )
+        )
+    ).first()
+    if question_row is None:
+        raise HTTPException(status_code=404, detail=MRF_QUESTION_NOT_FOUND)
+
+    # (c4): on an ACTIVE form the last question and the Classification question stay.
+    if form_row.status == MRF_FORM_STATUS_ACTIVE:
+        blocked = question_row.is_classification
+        if not blocked:
+            question_count = await db.scalar(
+                select(func.count()).select_from(MrfFormQuestion)
+                .where(MrfFormQuestion.form_id == form_id)
+            )
+            blocked = question_count <= 1
+        if blocked:
+            raise HTTPException(status_code=409, detail=MRF_QUESTION_ACTIVE_FORM)
 
     try:
         result = await db.execute(
