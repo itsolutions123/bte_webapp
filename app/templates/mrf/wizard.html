@@ -7,7 +7,7 @@
     <link href="/static/mrf-portal.css" rel="stylesheet">
 </head>
 <body class="mrf-app-body">
-    <!-- Wizard SHELL (step 5): obviously fake placeholders; step 5a fetches only the form name and assignment (GET /api/v1/mrf/forms/{form_id}). Requires a portal session (require_mrf_page_session). The two panels below (question screen, review screen) are shown together only for review; the wired page shows one at a time. -->
+    <!-- Wizard SHELL (step 5): obviously fake placeholders; step 5a fetches only the form name and assignment (GET /api/v1/mrf/forms/{form_id}). Requires a portal session (require_mrf_page_session). The question panel and the Review panel are shown one at a time. The Review screen lists the real answers (step 5c-2); Submit is inert until step 5e. -->
     <aside class="mrf-side">
         <div class="mrf-brand">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18v2H3zM3 6l4.5 4L12 4l4.5 6L21 6l-2 10H5z"/></svg>
@@ -54,22 +54,12 @@
                 <button type="button" id="mrf-next" class="mrf-btn mrf-btn-primary">Next</button>
             </div>
         </div>
-        <div id="mrf-review-label" class="mrf-wizard-label" hidden>REVIEW SCREEN (PLACEHOLDER, SHOWN AFTER THE LAST QUESTION)</div>
         <div id="mrf-review-panel" class="mrf-wizard-card" hidden>
             <h2 class="mrf-review-title">Review your answers</h2>
             <p class="mrf-page-sub">Check everything before you submit. A submitted request cannot be edited.</p>
-            <div class="mrf-review-list">
-                <div class="mrf-review-item">
-                    <p class="mrf-review-q">Question text</p>
-                    <p class="mrf-review-a">Answer text</p>
-                </div>
-                <div class="mrf-review-item">
-                    <p class="mrf-review-q">Question text</p>
-                    <p class="mrf-review-a">Answer text</p>
-                </div>
-            </div>
+            <div id="mrf-review-list" class="mrf-review-list"></div>
             <div class="mrf-wizard-nav">
-                <button type="button" class="mrf-btn" disabled>Back</button>
+                <button type="button" id="mrf-review-back" class="mrf-btn">Back</button>
                 <button type="button" class="mrf-btn mrf-btn-primary" disabled>Submit</button>
             </div>
         </div>
@@ -99,8 +89,9 @@
             var ANSWER_MAX_LENGTH = 1000;
             var REQUIRED_TEXT = "Answer every required question.";
             var questionPanel = document.getElementById("mrf-question-panel");
-            var reviewLabel = document.getElementById("mrf-review-label");
             var reviewPanel = document.getElementById("mrf-review-panel");
+            var reviewList = document.getElementById("mrf-review-list");
+            var reviewBack = document.getElementById("mrf-review-back");
             var progressText = document.getElementById("mrf-progress-text");
             var progressBar = document.getElementById("mrf-progress-bar");
             var qText = document.getElementById("mrf-question-text");
@@ -181,6 +172,25 @@
                 prevBtn.disabled = current === 0;
             }
 
+            function renderReview() {
+                reviewList.textContent = "";
+                questions.forEach(function (q) {
+                    var item = document.createElement("div");
+                    item.className = "mrf-review-item";
+                    var qp = document.createElement("p");
+                    qp.className = "mrf-review-q";
+                    qp.textContent = q.question_text;
+                    var ap = document.createElement("p");
+                    ap.className = "mrf-review-a";
+                    ap.style.whiteSpace = "pre-wrap";
+                    var value = answers[q.id];
+                    ap.textContent = isBlank(value) ? "\u2014" : String(value).trim();
+                    item.appendChild(qp);
+                    item.appendChild(ap);
+                    reviewList.appendChild(item);
+                });
+            }
+
             function startWizard(list) {
                 questions = list;
                 answers = {};
@@ -206,10 +216,17 @@
                     current += 1;
                     renderQuestion();
                 } else {
+                    renderReview();
                     questionPanel.hidden = true;
-                    reviewLabel.hidden = false;
                     reviewPanel.hidden = false;
                 }
+            });
+
+            reviewBack.addEventListener("click", function () {
+                reviewPanel.hidden = true;
+                questionPanel.hidden = false;
+                current = questions.length - 1;
+                renderQuestion();
             });
 
             async function loadForm() {
