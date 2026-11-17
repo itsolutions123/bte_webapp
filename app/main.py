@@ -213,10 +213,15 @@ async def serve_mrf_wizard_page(request: Request, form_id: str):
     # MRF portal request wizard, SHELL only (section 8): static page with placeholder content.
     # form_id is not used yet; the wiring step fetches GET /api/v1/mrf/forms/{form_id} client-side.
     # Requires a valid portal session (require_mrf_page_session); otherwise redirects to /mrf/login.
+    # mrf_user_id (API_CONTRACT.md, wizard page context key, part 75): the signed-in user's own id as text,
+    # from request.state.mrf_user (set by the session guard). Empty string if there is no user.
+    context = mrf_footer_context(request)
+    mrf_user = getattr(request.state, "mrf_user", None)
+    context["mrf_user_id"] = str(mrf_user.id) if mrf_user is not None else ""
     return templates.TemplateResponse(
         request=request,
         name="mrf/wizard.html",
-        context=mrf_footer_context(request),
+        context=context,
         headers=NO_STORE,
     )
 
