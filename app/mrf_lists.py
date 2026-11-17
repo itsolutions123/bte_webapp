@@ -76,3 +76,7 @@ MRF_REQUEST_STATUSES = (
     MRF_REQUEST_STATUS_APPROVED,
     MRF_REQUEST_STATUS_REJECTED,
 )
+
+# Trimmed OPEN_ENDED answers on a submitted MRF request are at most this long (DECIDED part 65 sign-off (b), option A;
+# longer returns 422 "Answers must be 1000 characters or fewer."). mrf_request_answers.answer itself is unbounded Text.
+MRF_ANSWER_MAX_LENGTH = 1000

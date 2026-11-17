@@ -16,14 +16,32 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import MrfForm, MrfFormQuestion, MrfSession, MrfUser
-from app.mrf_lists import ALLOWED_EMAIL_DOMAINS, DEPARTMENTS, MRF_FORM_STATUS_ACTIVE, POSITIONS
+from app.models import (
+    MrfForm,
+    MrfFormQuestion,
+    MrfRequest,
+    MrfRequestAnswer,
+    MrfSession,
+    MrfUser,
+)
+from app.mrf_lists import (
+    ALLOWED_EMAIL_DOMAINS,
+    DEPARTMENTS,
+    MRF_ANSWER_MAX_LENGTH,
+    MRF_FORM_STATUS_ACTIVE,
+    MRF_QUESTION_TYPE_OPEN_ENDED,
+    MRF_QUESTION_TYPE_YES_NO,
+    MRF_REQUEST_STATUS_PENDING,
+    POSITIONS,
+)
 from app.password_rules import validate_sign_up_password
 from app.routers.auth import DUMMY_HASH, pwd_context
 from app.schemas import (
     MrfLoginRequest,
     MrfPortalFormDetail,
     MrfPortalFormListResponse,
+    MrfRequestCreate,
+    MrfRequestListItem,
     MrfSignupRequest,
 )
 
@@ -321,4 +339,104 @@ async def get_portal_form(
             }
             for q in questions
         ],
+    }
+
+
+# Submit (docs/API_CONTRACT.md, POST /api/v1/mrf/requests; DECIDED parts 64, 65 and 69). Portal-local message constants.
+MRF_SUBMIT_FORM_UNAVAILABLE = "This form is no longer available."
+MRF_SUBMIT_UNKNOWN_QUESTION = "Unknown question."
+MRF_SUBMIT_DUPLICATE_ANSWER = "Each question can be answered only once."
+MRF_SUBMIT_REQUIRED = "Answer every required question."
+MRF_SUBMIT_BAD_OPTION = "Choose one of the listed options."
+MRF_SUBMIT_TOO_LONG = "Answers must be " + str(MRF_ANSWER_MAX_LENGTH) + " characters or fewer."
+
+
+def question_labels(question: MrfFormQuestion) -> List[str]:
+    """Current labels of a YES_NO (plain strings) or MULTIPLE_CHOICE ([{id, text}]) question."""
+    if question.question_type == MRF_QUESTION_TYPE_YES_NO:
+        return [str(o) for o in (question.options or [])]
+    return [o["text"] for o in (question.options or [])]
+
+
+@router.post("/requests", status_code=201, response_model=MrfRequestListItem)
+async def submit_request(
+    payload: MrfRequestCreate,
+    response: Response,
+    user: MrfUser = Depends(get_current_mrf_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # One POST at the end of the wizard, one transaction (request row plus one row per non-blank answer).
+    response.headers["Cache-Control"] = "no-store"
+    form = await db.scalar(select(MrfForm).where(MrfForm.id == payload.form_id))
+    if form is None:
+        raise HTTPException(status_code=404, detail=MRF_PORTAL_FORM_NOT_FOUND)
+    questions = (
+        await db.execute(
+            select(MrfFormQuestion)
+            .where(MrfFormQuestion.form_id == form.id)
+            .order_by(MrfFormQuestion.display_order, MrfFormQuestion.id)
+        )
+    ).scalars().all()
+    classification_question = next((q for q in questions if q.is_classification), None)
+    if form.status != MRF_FORM_STATUS_ACTIVE or form.assignment is None or classification_question is None:
+        raise HTTPException(status_code=409, detail=MRF_SUBMIT_FORM_UNAVAILABLE)
+
+    by_id = {q.id: q for q in questions}
+    if any(item.question_id not in by_id for item in payload.answers):
+        raise HTTPException(status_code=422, detail=MRF_SUBMIT_UNKNOWN_QUESTION)
+    if len({item.question_id for item in payload.answers}) != len(payload.answers):
+        raise HTTPException(status_code=422, detail=MRF_SUBMIT_DUPLICATE_ANSWER)
+
+    # A blank answer counts as not answered and is never stored (part 69, option A).
+    given = {item.question_id: item.answer for item in payload.answers if item.answer.strip() != ""}
+    if any((q.is_required or q.is_classification) and q.id not in given for q in questions):
+        raise HTTPException(status_code=422, detail=MRF_SUBMIT_REQUIRED)
+
+    stored = {}
+    for question_id, raw in given.items():
+        q = by_id[question_id]
+        if q.question_type == MRF_QUESTION_TYPE_OPEN_ENDED:
+            continue
+        if raw not in question_labels(q):
+            raise HTTPException(status_code=422, detail=MRF_SUBMIT_BAD_OPTION)
+        stored[question_id] = raw
+    for question_id, raw in given.items():
+        q = by_id[question_id]
+        if q.question_type != MRF_QUESTION_TYPE_OPEN_ENDED:
+            continue
+        text = raw.strip()
+        if len(text) > MRF_ANSWER_MAX_LENGTH:
+            raise HTTPException(status_code=422, detail=MRF_SUBMIT_TOO_LONG)
+        stored[question_id] = text
+
+    # Values for the response are read before the commit (no lazy loads after it).
+    form_name = form.name
+    assignment = form.assignment
+    request_row = MrfRequest(
+        form_id=form.id,
+        user_id=user.id,
+        classification=stored[classification_question.id],
+        department=user.department,
+        assignment=assignment,
+        status=MRF_REQUEST_STATUS_PENDING,
+    )
+    db.add(request_row)
+    try:
+        await db.flush()
+        request_id = request_row.id
+        created_at = request_row.created_at
+        for question_id, value in stored.items():
+            db.add(MrfRequestAnswer(request_id=request_id, question_id=question_id, answer=value))
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail=MRF_SUBMIT_FORM_UNAVAILABLE)
+
+    return {
+        "id": request_id,
+        "form_name": form_name,
+        "assignment": assignment,
+        "created_at": created_at,
+        "status": MRF_REQUEST_STATUS_PENDING,
+        "remarks": None,
     }

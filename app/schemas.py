@@ -470,6 +470,31 @@ class MrfPortalFormDetail(BaseModel):
     questions: List[MrfFormQuestionItem]
 
 
+class MrfRequestAnswerIn(BaseModel):
+    # One answer in POST /api/v1/mrf/requests (docs/API_CONTRACT.md, part 69). Plain UUID on purpose, not UUID4:
+    # a well-formed id that is not on the form must reach the handler and get its own 422 ("Unknown question.").
+    # answer is loose: the endpoint trims it, treats blank as not answered and returns its own 422 messages.
+    question_id: UUID
+    answer: str
+
+
+class MrfRequestCreate(BaseModel):
+    # Plain UUID on purpose: an unknown but well-formed form_id gets the contracted 404, not a list-style 422.
+    form_id: UUID
+    answers: List[MrfRequestAnswerIn]
+
+
+class MrfRequestListItem(BaseModel):
+    # List-row shape shared by the requestor's request endpoints (docs/API_CONTRACT.md, part 69): the submit 201 and
+    # later GET /api/v1/mrf/requests. assignment is NOT NULL on mrf_requests, so never null here.
+    id: UUID4
+    form_name: str
+    assignment: str
+    created_at: datetime
+    status: str
+    remarks: Optional[str] = None
+
+
 class MrfFormDetail(BaseModel):
     id: UUID4
     name: str
