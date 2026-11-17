@@ -2338,3 +2338,33 @@ NEXT: step 5a, render the form on the wizard page from GET /api/v1/mrf/forms/{fo
 shows "This form is no longer available"; 401 goes to /mrf/login): contract "Call site" edit first, then
 the page code, then a browser check with a throwaway form.
 Commits (part 70): code d240aaa, docs 9ea1a84. The push bfbf287..(this hash commit) is recorded in the part 71 section.
+STEP part 71 (step 5a, MRF wizard page shows the form header from GET /api/v1/mrf/forms/{form_id}):
+DECIDED: nothing new needing a sign-off. Per the handover order, step 5a renders only the form name and
+the assignment (an em dash when null); a 401 goes to /mrf/login; any other status or a network error
+shows "This form is no longer available" (part 64, option A). The contract Call site was edited first (17.2).
+SEEN: start of part 71: branch main, HEAD = origin/main = e5af88a, tree clean except package-lock.json.
+The part 70 push bfbf287..e5af88a is recorded here (the part 70 section is not amended; its Commits
+line says the push is recorded in part 71). Code commit 85f5def (wizard.html, 56 insertions, 3
+deletions). Browser, signed in (user-confirmed) with throwaway forms ZZ test wizard A (Active, Head
+Office), B (Active, no assignment) and C (Draft): A showed the name and Head Office; B showed the name
+and an em dash; C showed "This form is no longer available"; a non-uuid id and an unknown uuid showed
+the same message; signed out went to /mrf/login.
+NOT tested: a form switched to Draft while the page is open; a network error; narrow screens; the
+Network tab (Cache-Control on the API call). The throwaway forms were created through the model, not the
+admin form routes, and had no questions, so no question rendering was exercised (that is step 5c).
+Cleanup: the 3 ZZ test wizard forms were removed by a guarded one-transaction DO block (3 forms, 0
+questions, 0 requests, 0 answers expected and found); read-back 0 forms, 0 questions, 0 requests, 0
+answers, 0 zz forms.
+HARDCODES: page script constants FORM_URL_PREFIX, LOGIN_PAGE and UNAVAILABLE_TEXT; the em dash
+fallback; the placeholder question and review panels are still shown after a successful load.
+DOCS: API_CONTRACT.md: portal get-one Call site now PARTLY built with the test result; line 2 "Last
+verified" prefix added. The long Status line of portal get-one still says "any call site (the wizard
+is not built)" in its NOT tested sentence; the Call site line is authoritative (see OPEN ITEMS).
+Work mode: feature-wiring step.
+What changed: frontend only: app/templates/mrf/wizard.html (80 to 133 lines: fetch script, wrapper with
+hidden body, ids on the heading and assignment line). Backend and admin panel no change. Contract edited.
+OPEN ITEMS: portal get-one Status line wording still says the wizard is not built; the three wizard
+decisions from part 70 (autosave key, Log out clearing the draft, destination after submit) must be
+asked before steps 5d and 5e; the not-tested items above. All earlier open items unchanged.
+NEXT: step 5b, the Start button on /mrf/forms links to /mrf/forms/{form_id} (contract first, one UI
+piece), then 5c (questions, Previous/Next, Review screen).
