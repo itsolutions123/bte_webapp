@@ -35,6 +35,13 @@
         .mrf-date { width: auto; border-radius: 12px; font-size: 0.9rem; }
         .mrf-req-row { cursor: pointer; }
         .mrf-req-row:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; }
+        .mrf-fp-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 1.25rem; }
+        .mrf-fp-pill { display: inline-block; background-color: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-muted); font-weight: 700; font-size: 0.7rem; padding: 0.3rem 0.7rem; border-radius: 10px; }
+        .mrf-fp-q { border: 1px solid var(--border-light); border-radius: 12px; padding: 0.75rem 1rem; margin-bottom: 0.75rem; }
+        .mrf-fp-q-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+        .mrf-fp-q-text { font-weight: 700; font-size: 0.9rem; }
+        .mrf-fp-q-type { font-size: 0.8rem; color: var(--text-muted); }
+        .mrf-fp-opts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
         .mrf-review-grid { display: grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1.25rem; font-size: 0.9rem; margin-bottom: 1.25rem; }
         .mrf-review-label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); padding-top: 0.15rem; }
         .mrf-review-value { overflow-wrap: anywhere; }
@@ -114,7 +121,6 @@
                             </table>
                         </div>
                     </div>
-                    <div class="mrf-shell-note">Shell: the rows do nothing yet.</div>
                 </section>
 
                 <section class="mrf-panel d-none" data-panel="users">
@@ -192,6 +198,19 @@
                     <button type="button" class="btn btn-danger" id="mrf-decide-reject" hidden>Reject</button>
                     <button type="button" class="btn mrf-add-btn" id="mrf-decide-approve" hidden>Approve</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="mrfFormPreviewModal" tabindex="-1" aria-labelledby="mrfFormPreviewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="mrfFormPreviewModalLabel"></h5>
+                    <a href="#" class="btn mrf-add-btn btn-sm ms-auto me-3" id="mrf-formprev-edit" hidden>Edit form</a>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="mrf-formprev-body"></div>
             </div>
         </div>
     </div>
@@ -898,6 +917,17 @@
             var MRF_FORMS_OF_WORD = 'of';
             var MRF_FORMS_CREATE_ERROR_ACCESS = "Oops, you don't have permission to create forms.";
             var MRF_FORMS_CREATE_ERROR_OTHER = "Oops, couldn't create this form. Please try again.";
+            var MRF_FORMS_PREVIEW_ERROR_ACCESS = "Oops, you don't have permission to view this form.";
+            var MRF_FORMS_PREVIEW_ERROR_NOT_FOUND = 'Oops, this form no longer exists. The list has been refreshed.';
+            var MRF_FORMS_PREVIEW_ERROR_OTHER = "Oops, couldn't load this form. Please try again.";
+            var MRF_FORMS_PREVIEW_NO_QUESTIONS = 'No questions yet.';
+            var MRF_FORMS_PREVIEW_TYPE_LABELS = { YES_NO: 'Yes / No', MULTIPLE_CHOICE: 'Multiple Choice', OPEN_ENDED: 'Open ended' };
+            var MRF_FORMS_PREVIEW_CLASSIFICATION_LABEL = 'Classification';
+            var MRF_FORMS_PREVIEW_STATUS_PREFIX = 'Status: ';
+            var MRF_FORMS_PREVIEW_ASSIGNMENT_PREFIX = 'Assignment: ';
+            var MRF_FORMS_PREVIEW_CREATED_PREFIX = 'Created ';
+            var MRF_FORMS_PREVIEW_REQUIRED = 'Required';
+            var MRF_FORMS_PREVIEW_NONE = '\u2014';
             var formsTab = document.querySelector('.mrf-tab[data-tab="forms"]');
             var formsBody = document.getElementById('mrf-forms-body');
             var formsStatus = document.getElementById('mrf-forms-status');
@@ -905,6 +935,11 @@
             var formsPage = 1;
             var formsLatest = 0;
             var formsLoaded = false;
+            var formsPrevModalEl = document.getElementById('mrfFormPreviewModal');
+            var formsPrevTitle = document.getElementById('mrfFormPreviewModalLabel');
+            var formsPrevBody = document.getElementById('mrf-formprev-body');
+            var formsPrevEdit = document.getElementById('mrf-formprev-edit');
+            var formsPrevLatest = 0;
 
             function formsMessageRow(text) {
                 var tr = document.createElement('tr');
@@ -929,7 +964,91 @@
                 tr.appendChild(formsCell(MRF_FORMS_STATUS_LABELS[item.status] || item.status, 'mrf-muted'));
                 tr.appendChild(formsCell(String(item.question_count), 'mrf-muted'));
                 tr.appendChild(formsCell(String(item.created_at || '').slice(0, MRF_FORMS_DATE_LENGTH), 'mrf-muted'));
+                tr.className = 'mrf-req-row';
+                tr.tabIndex = 0;
+                tr.addEventListener('click', function () { formsPreviewOpen(item); });
+                tr.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); formsPreviewOpen(item); }
+                });
                 return tr;
+            }
+
+            function formsPreviewEl(tag, className, text) {
+                var el = document.createElement(tag);
+                if (className) { el.className = className; }
+                if (text !== undefined) { el.textContent = text; }
+                return el;
+            }
+
+            function formsPreviewOption(o) {
+                if (o !== null && typeof o === 'object') { return typeof o.text === 'string' ? o.text : ''; }
+                return String(o);
+            }
+
+            function formsPreviewMessage(text, className) {
+                var el = formsPreviewEl('div', className, text);
+                if (className === 'text-danger') { el.setAttribute('role', 'alert'); }
+                formsPrevBody.replaceChildren(el);
+            }
+
+            function formsPreviewRender(d) {
+                formsPrevTitle.textContent = d.name;
+                var meta = formsPreviewEl('div', 'mrf-fp-meta');
+                meta.appendChild(formsPreviewEl('span', 'mrf-fp-pill', MRF_FORMS_PREVIEW_STATUS_PREFIX + (MRF_FORMS_STATUS_LABELS[d.status] || d.status)));
+                meta.appendChild(formsPreviewEl('span', 'mrf-fp-pill', MRF_FORMS_PREVIEW_ASSIGNMENT_PREFIX + (d.assignment || MRF_FORMS_PREVIEW_NONE)));
+                meta.appendChild(formsPreviewEl('span', 'mrf-muted small', MRF_FORMS_PREVIEW_CREATED_PREFIX + String(d.created_at || '').slice(0, MRF_FORMS_DATE_LENGTH)));
+                var list = formsPreviewEl('div', 'mrf-fp-list');
+                var qs = Array.isArray(d.questions) ? d.questions : [];
+                if (!qs.length) { list.appendChild(formsPreviewEl('div', 'mrf-muted small', MRF_FORMS_PREVIEW_NO_QUESTIONS)); }
+                qs.forEach(function (q, i) {
+                    var card = formsPreviewEl('div', 'mrf-fp-q');
+                    var head = formsPreviewEl('div', 'mrf-fp-q-head');
+                    var left = formsPreviewEl('div');
+                    left.appendChild(formsPreviewEl('div', 'mrf-fp-q-text', (i + 1) + '. ' + q.question_text));
+                    var typeText = q.is_classification ? MRF_FORMS_PREVIEW_CLASSIFICATION_LABEL : (MRF_FORMS_PREVIEW_TYPE_LABELS[q.question_type] || q.question_type);
+                    left.appendChild(formsPreviewEl('div', 'mrf-fp-q-type', typeText));
+                    head.appendChild(left);
+                    if (!q.is_classification && q.is_required === true) {
+                        head.appendChild(formsPreviewEl('span', 'mrf-fp-pill', MRF_FORMS_PREVIEW_REQUIRED));
+                    }
+                    card.appendChild(head);
+                    if (Array.isArray(q.options) && q.question_type !== 'OPEN_ENDED') {
+                        var opts = formsPreviewEl('div', 'mrf-fp-opts');
+                        q.options.forEach(function (o) { opts.appendChild(formsPreviewEl('span', 'mrf-fp-pill', formsPreviewOption(o))); });
+                        card.appendChild(opts);
+                    }
+                    list.appendChild(card);
+                });
+                formsPrevBody.replaceChildren(meta, list);
+            }
+
+            function formsPreviewOpen(item) {
+                var mine = ++formsPrevLatest;
+                formsPrevTitle.textContent = item.name;
+                formsPrevEdit.hidden = true;
+                formsPrevBody.replaceChildren();
+                bootstrap.Modal.getOrCreateInstance(formsPrevModalEl).show();
+                fetch(MRF_FORMS_API + '/' + encodeURIComponent(item.id), { credentials: 'same-origin', cache: 'no-store' })
+                    .then(function (res) {
+                        if (res.ok) { return res.json(); }
+                        var err = new Error('request failed');
+                        err.status = res.status;
+                        throw err;
+                    })
+                    .then(function (d) {
+                        if (mine !== formsPrevLatest) { return; }
+                        formsPreviewRender(d);
+                        formsPrevEdit.href = MRF_TAB_PATHS.forms + '/' + encodeURIComponent(d.id);
+                        formsPrevEdit.hidden = false;
+                    })
+                    .catch(function (err) {
+                        if (mine !== formsPrevLatest) { return; }
+                        var text = MRF_FORMS_PREVIEW_ERROR_OTHER;
+                        if (err.status === 401) { text = MRF_FORMS_ERROR_SESSION; }
+                        else if (err.status === 403) { text = MRF_FORMS_PREVIEW_ERROR_ACCESS; }
+                        else if (err.status === 404) { text = MRF_FORMS_PREVIEW_ERROR_NOT_FOUND; loadForms(); }
+                        formsPreviewMessage(text, 'text-danger');
+                    });
             }
 
             function formsUrl() {
