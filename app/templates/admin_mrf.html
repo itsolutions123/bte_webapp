@@ -33,6 +33,15 @@
         .mrf-toolbar-wrap { flex-wrap: wrap; }
         .mrf-req-search { flex: 1 1 220px; min-width: 200px; border-radius: 12px; font-size: 0.9rem; }
         .mrf-date { width: auto; border-radius: 12px; font-size: 0.9rem; }
+        .mrf-req-row { cursor: pointer; }
+        .mrf-req-row:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; }
+        .mrf-review-grid { display: grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1.25rem; font-size: 0.9rem; margin-bottom: 1.25rem; }
+        .mrf-review-label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); padding-top: 0.15rem; }
+        .mrf-review-value { overflow-wrap: anywhere; }
+        .mrf-review-item { padding: 0.75rem 0; border-top: 1px solid var(--border-light); }
+        .mrf-review-q { font-weight: 700; font-size: 0.9rem; }
+        .mrf-review-a { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.9rem; }
+        .mrf-review-empty { color: var(--text-muted); font-size: 0.9rem; }
         .mrf-pager { display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; padding: 0.75rem; font-size: 0.85rem; color: var(--text-muted); }
     </style>
 </head>
@@ -164,11 +173,26 @@
         </div>
     </div>
 
+    <div class="modal fade" id="mrfReviewModal" tabindex="-1" aria-labelledby="mrfReviewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="mrfReviewModalLabel"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="mrf-review-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {% include '_form_builder.html' %}
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Submissions tab (GET /api/v1/admin/mrf/requests, part 79 step E). Rows do nothing until the review panel step.
+        // Submissions tab (GET /api/v1/admin/mrf/requests, part 79 step E). Rows open the review modal (GET /api/v1/admin/mrf/requests/<id>, part 80 step F).
         (function () {
             var MRF_REQ_API = '/api/v1/admin/mrf/requests';
             var MRF_REQ_PAGE_SIZE = 10;
@@ -184,6 +208,13 @@
             var MRF_REQ_NEXT_TEXT = 'Next';
             var MRF_REQ_PAGE_WORD = 'Page';
             var MRF_REQ_OF_WORD = 'of';
+            var MRF_REQ_REVIEW_LOADING_TEXT = 'Loading request\u2026';
+            var MRF_REQ_REVIEW_ERROR_OTHER = 'Could not load this request. Try again.';
+            var MRF_REQ_REVIEW_NO_ANSWERS_TEXT = 'No answers were submitted.';
+            var MRF_REQ_REVIEW_LABELS = {
+                form: 'FORM', classification: 'CLASSIFICATION', department: 'DEPARTMENT', assignment: 'ASSIGNMENT',
+                submitted: 'SUBMITTED', status: 'STATUS', decided: 'DECIDED', remarks: 'REMARKS'
+            };
             var reqTab = document.querySelector('.mrf-tab[data-tab="submissions"]');
             var reqBody = document.getElementById('mrf-req-body');
             var reqCard = reqBody.closest('.mrf-card');
@@ -198,6 +229,10 @@
             var reqLoaded = false;
             var reqSearchText = '';
             var reqSearchTimer = null;
+            var reviewModalEl = document.getElementById('mrfReviewModal');
+            var reviewTitle = document.getElementById('mrfReviewModalLabel');
+            var reviewBody = document.getElementById('mrf-review-body');
+            var reviewLatest = 0;
 
             function reqMessageRow(text) {
                 var tr = document.createElement('tr');
@@ -225,6 +260,12 @@
                 tr.appendChild(reqCell(item.assignment, 'mrf-muted'));
                 tr.appendChild(reqCell(String(item.created_at || '').slice(0, MRF_REQ_DATE_LENGTH), 'mrf-muted'));
                 tr.appendChild(reqCell(item.status, 'mrf-muted'));
+                tr.className = 'mrf-req-row';
+                tr.tabIndex = 0;
+                tr.addEventListener('click', function () { reviewOpen(item); });
+                tr.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); reviewOpen(item); }
+                });
                 return tr;
             }
 
@@ -311,11 +352,83 @@
                     });
             }
 
+            function reviewEl(tag, className, text) {
+                var el = document.createElement(tag);
+                if (className) { el.className = className; }
+                if (text !== undefined) { el.textContent = text; }
+                return el;
+            }
+
+            function reviewMessage(text, className) {
+                reviewBody.replaceChildren(reviewEl('div', className, text));
+            }
+
+            function reviewDate(value) {
+                return String(value || '').slice(0, MRF_REQ_DATE_LENGTH);
+            }
+
+            function reviewRender(d) {
+                reviewTitle.textContent = d.submitted_by;
+                var grid = reviewEl('div', 'mrf-review-grid');
+                function line(label, value) {
+                    grid.appendChild(reviewEl('div', 'mrf-review-label', label));
+                    grid.appendChild(reviewEl('div', 'mrf-review-value', value));
+                }
+                line(MRF_REQ_REVIEW_LABELS.form, d.form_name);
+                line(MRF_REQ_REVIEW_LABELS.classification, d.classification);
+                line(MRF_REQ_REVIEW_LABELS.department, d.department || '');
+                line(MRF_REQ_REVIEW_LABELS.assignment, d.assignment);
+                line(MRF_REQ_REVIEW_LABELS.submitted, reviewDate(d.created_at));
+                line(MRF_REQ_REVIEW_LABELS.status, d.status);
+                if (d.decided_at) {
+                    line(MRF_REQ_REVIEW_LABELS.decided, reviewDate(d.decided_at));
+                    if (d.remarks) { line(MRF_REQ_REVIEW_LABELS.remarks, d.remarks); }
+                }
+                var wrap = reviewEl('div', 'mrf-review-answers');
+                if (!d.answers.length) {
+                    wrap.appendChild(reviewEl('div', 'mrf-review-empty', MRF_REQ_REVIEW_NO_ANSWERS_TEXT));
+                }
+                d.answers.forEach(function (a) {
+                    var box = reviewEl('div', 'mrf-review-item');
+                    box.appendChild(reviewEl('div', 'mrf-review-q', a.question_text));
+                    box.appendChild(reviewEl('div', 'mrf-review-a', a.answer));
+                    wrap.appendChild(box);
+                });
+                reviewBody.replaceChildren(grid, wrap);
+            }
+
+            function reviewOpen(item) {
+                var mine = ++reviewLatest;
+                reviewTitle.textContent = item.submitted_by;
+                reviewMessage(MRF_REQ_REVIEW_LOADING_TEXT, 'mrf-review-empty');
+                bootstrap.Modal.getOrCreateInstance(reviewModalEl).show();
+                fetch(MRF_REQ_API + '/' + encodeURIComponent(item.id), { credentials: 'same-origin', cache: 'no-store' })
+                    .then(function (res) {
+                        if (res.ok) { return res.json(); }
+                        return res.json().catch(function () { return null; }).then(function (b) {
+                            var err = new Error('request failed');
+                            err.status = res.status;
+                            if (res.status === 404 && b && typeof b.detail === 'string') { err.detail = b.detail; }
+                            throw err;
+                        });
+                    })
+                    .then(function (d) {
+                        if (mine !== reviewLatest) { return; }
+                        reviewRender(d);
+                    })
+                    .catch(function (err) {
+                        if (mine !== reviewLatest) { return; }
+                        if (err.status === 401) { window.location.replace(MRF_REQ_LOGIN_PATH); return; }
+                        reviewMessage(err.detail || MRF_REQ_REVIEW_ERROR_OTHER, 'text-danger');
+                    });
+            }
+
             function reqFilterChanged() {
                 reqPage = 1;
                 loadRequests();
             }
 
+            reviewModalEl.addEventListener('hidden.bs.modal', function () { reviewLatest++; });
             reqSearch.maxLength = MRF_REQ_SEARCH_MAX_LENGTH;
             reqSearch.addEventListener('input', function () {
                 clearTimeout(reqSearchTimer);
