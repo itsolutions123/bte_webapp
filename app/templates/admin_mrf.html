@@ -231,9 +231,11 @@
             var MRF_REQ_DECIDE_CONFIRM_REJECT_TEXT = 'Confirm reject';
             var MRF_REQ_DECIDE_ERROR_ACCESS = 'You do not have access to decide requests.';
             var MRF_REQ_DECIDE_ERROR_OTHER = 'Could not save the decision. Try again.';
+            var MRF_REQ_DECIDE_ROLE_LABELS = { SUPERADMIN: 'Super admin', MANAGER: 'Manager' };
+            var MRF_REQ_DECIDE_NAME_EMPTY = '\u2014';
             var MRF_REQ_REVIEW_LABELS = {
                 form: 'FORM', classification: 'CLASSIFICATION', department: 'DEPARTMENT', assignment: 'ASSIGNMENT',
-                submitted: 'SUBMITTED', status: 'STATUS', decided: 'DECIDED', remarks: 'REMARKS'
+                submitted: 'SUBMITTED', status: 'STATUS', decided: 'DECIDED', decidedBy: 'DECIDED BY', remarks: 'REMARKS'
             };
             var reqTab = document.querySelector('.mrf-tab[data-tab="submissions"]');
             var reqBody = document.getElementById('mrf-req-body');
@@ -412,6 +414,9 @@
                 line(MRF_REQ_REVIEW_LABELS.status, d.status);
                 if (d.decided_at) {
                     line(MRF_REQ_REVIEW_LABELS.decided, reviewDate(d.decided_at));
+                    var byName = d.decided_by || MRF_REQ_DECIDE_NAME_EMPTY;
+                    var byRole = d.decided_by_role ? (MRF_REQ_DECIDE_ROLE_LABELS[d.decided_by_role] || d.decided_by_role) : '';
+                    line(MRF_REQ_REVIEW_LABELS.decidedBy, byRole ? byName + ' (' + byRole + ')' : byName);
                     if (d.remarks) { line(MRF_REQ_REVIEW_LABELS.remarks, d.remarks); }
                 }
                 var wrap = reviewEl('div', 'mrf-review-answers');
