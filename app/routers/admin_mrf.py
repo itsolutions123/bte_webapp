@@ -24,6 +24,9 @@ from app.mrf_lists import (
     MRF_QUESTION_TYPE_OPEN_ENDED,
     MRF_QUESTION_TYPE_YES_NO,
     MRF_QUESTION_TYPES,
+    MRF_REQUEST_STATUS_APPROVED,
+    MRF_REQUEST_STATUS_PENDING,
+    MRF_REQUEST_STATUS_REJECTED,
     MRF_REQUEST_STATUSES,
 )
 from app.roles import ROLE_MANAGER, ROLE_SUPERADMIN
@@ -44,6 +47,7 @@ from app.schemas import (
     MrfAdminRequestListResponse,
     MrfAdminRequestAnswerItem,
     MrfAdminRequestDetail,
+    MrfRequestDecision,
     MrfUserListItem,
     MrfUserListResponse,
 )
@@ -70,6 +74,13 @@ MRF_REQUESTS_DATE_ORDER = "Start date must not be after end date."
 
 # Request detail (docs/API_CONTRACT.md, GET /api/v1/admin/mrf/requests/{request_id}, part 80); the decision endpoint (step G) reuses it.
 MRF_REQUEST_NOT_FOUND = "Request not found."
+
+# Decision endpoint (docs/API_CONTRACT.md, POST /api/v1/admin/mrf/requests/{request_id}/decision, decided 2026-11-17 part 65 and 2026-11-18 part 81, option A).
+MRF_REMARKS_MAX_LENGTH = 500
+MRF_DECISION_ALREADY_DECIDED = "This request has already been decided."
+MRF_DECISION_STATUS_INVALID = "Choose Approved or Rejected."
+MRF_DECISION_REMARKS_REQUIRED = "Add remarks to reject a request."
+MRF_DECISION_REMARKS_TOO_LONG = f"Remarks must be {MRF_REMARKS_MAX_LENGTH} characters or fewer."
 
 # Forms list limits and messages (docs/API_CONTRACT.md, GET /api/v1/admin/mrf/forms, decided by the user 2026-11-12, part 43, option A).
 MRF_FORMS_DEFAULT_PAGE_SIZE = 10
@@ -291,6 +302,64 @@ async def get_mrf_request(
             for qid, qtext, qtype, ans in answers
         ],
     )
+
+
+@router.post(
+    "/mrf/requests/{request_id}/decision",
+    response_model=MrfAdminRequestListItem,
+)
+async def decide_mrf_request(
+    request_id: UUID,
+    payload: MrfRequestDecision,
+    response: Response,
+    admin: User = Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Approves or rejects one Pending MRF request, once. The row is locked while it is checked, so two admins
+    deciding the same request get one 200 and one 409. Order of checks: 404, 409, then the 422s."""
+    req = await db.scalar(select(MrfRequest).where(MrfRequest.id == request_id).with_for_update())
+    if req is None:
+        raise HTTPException(status_code=404, detail=MRF_REQUEST_NOT_FOUND)
+    if req.status != MRF_REQUEST_STATUS_PENDING:
+        raise HTTPException(status_code=409, detail=MRF_DECISION_ALREADY_DECIDED)
+
+    if payload.status not in (MRF_REQUEST_STATUS_APPROVED, MRF_REQUEST_STATUS_REJECTED):
+        raise HTTPException(status_code=422, detail=MRF_DECISION_STATUS_INVALID)
+    remarks = (payload.remarks or "").strip()
+    if payload.status == MRF_REQUEST_STATUS_REJECTED and not remarks:
+        raise HTTPException(status_code=422, detail=MRF_DECISION_REMARKS_REQUIRED)
+    if len(remarks) > MRF_REMARKS_MAX_LENGTH:
+        raise HTTPException(status_code=422, detail=MRF_DECISION_REMARKS_TOO_LONG)
+
+    req.status = payload.status
+    req.remarks = remarks or None
+    req.decided_by_user_id = admin.id
+    req.decided_at = datetime.now(timezone.utc)
+
+    first, last, form_name = (
+        await db.execute(
+            select(MrfUser.first_name, MrfUser.last_name, MrfForm.name)
+            .select_from(MrfRequest)
+            .join(MrfUser, MrfUser.id == MrfRequest.user_id)
+            .join(MrfForm, MrfForm.id == MrfRequest.form_id)
+            .where(MrfRequest.id == req.id)
+        )
+    ).one()
+    item = MrfAdminRequestListItem(
+        id=req.id,
+        submitted_by=(first + " " + last).strip(),
+        classification=req.classification,
+        department=req.department,
+        assignment=req.assignment,
+        form_name=form_name,
+        created_at=to_app_tz(req.created_at),
+        status=req.status,
+        remarks=req.remarks,
+        decided_at=to_app_tz(req.decided_at),
+    )
+    await db.commit()
+    response.headers["Cache-Control"] = "no-store"
+    return item
 
 
 @router.get("/mrf/summary", dependencies=[Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER))])

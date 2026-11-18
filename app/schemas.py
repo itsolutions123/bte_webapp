@@ -536,6 +536,13 @@ class MrfAdminRequestDetail(MrfAdminRequestListItem):
     answers: List[MrfAdminRequestAnswerItem]
 
 
+class MrfRequestDecision(BaseModel):
+    # Loose on purpose: both fields optional so the endpoint returns its own 422 texts (docs/API_CONTRACT.md, POST /api/v1/admin/mrf/requests/{request_id}/decision, part 81).
+    # A non-string status or remarks still gets FastAPI's own list-style 422 before the handler runs.
+    status: Optional[str] = None
+    remarks: Optional[str] = None
+
+
 class MrfFormDetail(BaseModel):
     id: UUID4
     name: str
