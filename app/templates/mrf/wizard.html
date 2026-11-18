@@ -59,9 +59,10 @@
             <h2 class="mrf-review-title">Review your answers</h2>
             <p class="mrf-page-sub">Check everything before you submit. A submitted request cannot be edited.</p>
             <div id="mrf-review-list" class="mrf-review-list"></div>
+            <p id="mrf-submit-error" class="mrf-alert" role="alert" hidden></p>
             <div class="mrf-wizard-nav">
                 <button type="button" id="mrf-review-back" class="mrf-btn">Back</button>
-                <button type="button" class="mrf-btn mrf-btn-primary" disabled>Submit</button>
+                <button type="button" id="mrf-submit" class="mrf-btn mrf-btn-primary" disabled>Submit</button>
             </div>
         </div>
         </div>
@@ -95,6 +96,8 @@
             var reviewPanel = document.getElementById("mrf-review-panel");
             var reviewList = document.getElementById("mrf-review-list");
             var reviewBack = document.getElementById("mrf-review-back");
+            var submitBtn = document.getElementById("mrf-submit");
+            var submitError = document.getElementById("mrf-submit-error");
             var progressText = document.getElementById("mrf-progress-text");
             var progressBar = document.getElementById("mrf-progress-bar");
             var qText = document.getElementById("mrf-question-text");
@@ -238,6 +241,8 @@
 
             function renderReview() {
                 reviewList.textContent = "";
+                submitError.hidden = true;
+                submitBtn.disabled = false;
                 questions.forEach(function (q) {
                     var item = document.createElement("div");
                     item.className = "mrf-review-item";
@@ -327,6 +332,9 @@
 
             var LOGOUT_URL = "/api/v1/mrf/logout";
             var LOGOUT_FAILED_TEXT = "Could not log out. Try again.";
+            var SUBMIT_URL = "/api/v1/mrf/requests";
+            var REQUESTS_PAGE = "/mrf/requests";
+            var SUBMIT_FAILED_TEXT = "Could not submit. Try again.";
             var logoutButton = document.getElementById("mrf-logout");
             var logoutMessage = document.getElementById("mrf-logout-message");
 
@@ -341,6 +349,51 @@
                     /* storage blocked: nothing to clear */
                 }
             }
+
+            submitBtn.addEventListener("click", async function () {
+                submitError.hidden = true;
+                submitError.textContent = "";
+                submitBtn.disabled = true;
+                var answerList = [];
+                questions.forEach(function (q) {
+                    var value = answers[q.id];
+                    if (!isBlank(value)) {
+                        answerList.push({ question_id: q.id, answer: value });
+                    }
+                });
+                try {
+                    var response = await fetch(SUBMIT_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ form_id: formIdFromPath(), answers: answerList })
+                    });
+                    if (response.status === 201) {
+                        clearDraft();
+                        window.location.replace(REQUESTS_PAGE);
+                        return;
+                    }
+                    if (response.status === 401) {
+                        window.location.href = LOGIN_PAGE;
+                        return;
+                    }
+                    var text = SUBMIT_FAILED_TEXT;
+                    try {
+                        var data = await response.json();
+                        if (typeof data.detail === "string") {
+                            text = data.detail;
+                        }
+                    } catch (parseErr) {
+                        /* no JSON body: fall back to the default text */
+                    }
+                    submitError.textContent = text;
+                    submitError.hidden = false;
+                    submitBtn.disabled = false;
+                } catch (err) {
+                    submitError.textContent = SUBMIT_FAILED_TEXT;
+                    submitError.hidden = false;
+                    submitBtn.disabled = false;
+                }
+            });
 
             logoutButton.addEventListener("click", async function () {
                 logoutMessage.hidden = true;
