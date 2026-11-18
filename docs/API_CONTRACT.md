@@ -647,7 +647,7 @@ Status: PROPOSED 2026-11-10. Each entry below states its own status: sign-up and
   `Choose one of the listed options.` (a label that does not match the question's labels) and
   `Answers must be 1000 characters or fewer.` (an OPEN_ENDED answer over the cap).
   A malformed id is FastAPI's own 422. If the database refuses the insert (for example a question deleted between the read and the write), the transaction is rolled back and the answer is 409 `This form is no longer available.` (part 69 implementation rule; not exercised by the tests).
-- **Call site:** the wizard at `/mrf/forms/{form_id}`, NOT built. DECIDED (user, part 75, option A): after a 201 the wizard goes to `/mrf/requests` (My Requests), built in step 5e together with the Submit button. The 1000-character cap is the named
+- **Call site:** the wizard at `/mrf/forms/{form_id}`, NOT built. DECIDED (user, part 75, option A): after a 201 the wizard goes to `/mrf/requests` (My Requests). DECIDED (user, part 77, option A each): blank optional answers are omitted from the POST body; errors show in a new `#mrf-submit-error` alert element (`class="mrf-alert" role="alert" hidden`) inside the Review panel above the Back/Submit buttons; an unknown status or a network error shows "Could not submit. Try again."; a string `detail` returned by the server is shown as-is, otherwise that same text; a 401 goes to `/mrf/login`, same as the get-one; Submit disables itself while the request runs. Built in step 5e together with the Submit button. The 1000-character cap is the named
   constant `MRF_ANSWER_MAX_LENGTH` in app/mrf_lists.py (DECIDED 2026-11-17, sign-off (b), option A).
 
 ### `GET /api/v1/mrf/requests`
