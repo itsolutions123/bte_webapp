@@ -663,6 +663,15 @@ Status: PROPOSED 2026-11-10. Each entry below states its own status: sign-up and
   copied from the form at submit, so a later change to the form does not rewrite history.
 - **Call site:** `/mrf/requests` table columns FORM, ASSIGNMENT, DATE, STATUS (replaces the shell's JOB POSITION
   column, DECIDED). HR's remarks show beside the status on a Rejected request. NOT built.
+- **Step D decisions (DECIDED 2026-11-18, user, part 78):** `form_name` is the form's CURRENT name, joined
+  from `mrf_forms` (option A; no new column, so a later rename shows on old rows, while `assignment` stays as
+  copied at submit). The Search requests input and the Date range dropdown stay inert shell controls
+  (option A); the endpoint has no `q` or date params. DATE column: date only, like "Nov 18, 2026",
+  formatted in the browser from `created_at` (option A). HR remarks: small text under the status word, only
+  when the status is Rejected and the remarks are not empty (option A). Empty table keeps "Nothing here yet";
+  a 401 goes to `/mrf/login`; any other failure shows "Could not load requests. Try again." in the table's
+  single row (option A). The page asks for `page=1&page_size=50` and has no pager (option B); a pager for
+  a requestor with more than 50 requests is an open item. NOT built.
 - **No detail view (DECIDED, option A):** a requestor cannot open a request to see the answers submitted;
   this can be added later without changing the list. A rejected request is replaced by a new submission
   (no edit or resubmit path).
