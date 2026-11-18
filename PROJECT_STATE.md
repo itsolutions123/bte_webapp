@@ -2516,6 +2516,6 @@ SLIPS: one verify block was sent with the table name mrf_request (typo for mrf_r
 Work mode: feature-wiring step (backend piece plus UI piece together, user override of section 8). Page: /admin/mrf Submissions tab, step E.
 What changed: backend (GET /api/v1/admin/mrf/requests, two schemas, MRF_REQUESTS_* constants); frontend/admin panel (Submissions tab list, filters, pager, page context in app/main.py); portal no change.
 Push recorded here: the push 0a195f1..a431b1d (part 78 hash commit) went out before part 79 started, as the part 78 section said it would be recorded in this section.
-Commits (part 79): contract-decision d65947a, backend f39edef, UI 3c86584, contract flip b9ab7c6; the PROJECT_STATE docs commit and the hash commit follow, the hash commit replaces this line.
+Commits (part 79): contract-decision d65947a, backend f39edef, UI 3c86584, contract flip b9ab7c6, PROJECT_STATE 9305f4b. The push a431b1d..(this hash commit) is recorded in the part 80 section.
 OPEN ITEMS (new): the contract line 531 sentence 'Not contracted yet: ... the Submissions tab wiring' is stale (several items in it have been built since parts 66 to 78), fix as a wording item; Submissions rows are inert until step F; the second page and the 401 and load-failure paths are not browser-checked; the list has no column sorting (not decided); a blank status is 422, so the UI omits empty filters (by design); everything under the part 78 OPEN ITEMS and the carried list stands unchanged.
 NEXT: step F, GET /api/v1/admin/mrf/requests/{request_id} plus the review panel; then G.
