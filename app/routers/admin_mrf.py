@@ -1,7 +1,7 @@
 """Admin MRF endpoints (docs/API_CONTRACT.md, /api/v1/admin/mrf). Mounted in app/main.py with the session check.
 
 Summary, users list and approve, plus the forms endpoints (list, create, get one, update) and the question create, update and delete endpoints. Roles: SUPERADMIN and MANAGER (decided by the user 2026-11-10); RECRUITER gets 403."""
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID, uuid4
 
@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import MrfForm, MrfFormQuestion, MrfUser, User
+from app.models import MrfForm, MrfFormQuestion, MrfRequest, MrfUser, User
 from app.mrf_lists import (
     MRF_ASSIGNMENTS,
     MRF_CLASSIFICATION_OPTIONS,
@@ -24,6 +24,7 @@ from app.mrf_lists import (
     MRF_QUESTION_TYPE_OPEN_ENDED,
     MRF_QUESTION_TYPE_YES_NO,
     MRF_QUESTION_TYPES,
+    MRF_REQUEST_STATUSES,
 )
 from app.roles import ROLE_MANAGER, ROLE_SUPERADMIN
 from app.routers.auth import require_roles
@@ -39,10 +40,12 @@ from app.schemas import (
     MrfFormUpdate,
     MrfQuestionReorder,
     MrfQuestionReorderResponse,
+    MrfAdminRequestListItem,
+    MrfAdminRequestListResponse,
     MrfUserListItem,
     MrfUserListResponse,
 )
-from app.timeutil import to_app_tz
+from app.timeutil import APP_TIMEZONE, to_app_tz
 
 router = APIRouter()
 
@@ -54,6 +57,14 @@ USER_STATUSES = (STATUS_PENDING, STATUS_APPROVED)
 MRF_USERS_DEFAULT_PAGE_SIZE = 10
 MRF_USERS_MAX_PAGE_SIZE = 50
 MRF_USERS_SEARCH_MAX_LENGTH = 100
+
+# Requests list limits and messages (docs/API_CONTRACT.md, GET /api/v1/admin/mrf/requests, decided by the user 2026-11-17 part 65 and 2026-11-18 part 79, option A).
+MRF_REQUESTS_DEFAULT_PAGE_SIZE = 10
+MRF_REQUESTS_MAX_PAGE_SIZE = 50
+MRF_REQUESTS_SEARCH_MAX_LENGTH = 100
+MRF_REQUESTS_STATUS_INVALID = "status must be Pending, Approved or Rejected"
+MRF_REQUESTS_SEARCH_TOO_LONG = f"Search must be {MRF_REQUESTS_SEARCH_MAX_LENGTH} characters or fewer."
+MRF_REQUESTS_DATE_ORDER = "Start date must not be after end date."
 
 # Forms list limits and messages (docs/API_CONTRACT.md, GET /api/v1/admin/mrf/forms, decided by the user 2026-11-12, part 43, option A).
 MRF_FORMS_DEFAULT_PAGE_SIZE = 10
@@ -118,6 +129,101 @@ USER_SORTS = (SORT_NEWEST, SORT_FIRST_NAME_ASC, SORT_FIRST_NAME_DESC)
 # Approve error messages (docs/API_CONTRACT.md, POST /api/v1/admin/mrf/users/{user_id}/approve, decided by the user 2026-11-11).
 MRF_USER_NOT_FOUND = "Account not found."
 MRF_USER_ALREADY_APPROVED = "Account is already approved."
+
+
+@router.get(
+    "/mrf/requests",
+    response_model=MrfAdminRequestListResponse,
+    dependencies=[Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER))],
+)
+async def list_mrf_requests(
+    response: Response,
+    classification: Optional[str] = Query(None),
+    department: Optional[str] = Query(None),
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    status: Optional[str] = Query(None),
+    q: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(MRF_REQUESTS_DEFAULT_PAGE_SIZE, ge=1, le=MRF_REQUESTS_MAX_PAGE_SIZE),
+    db: AsyncSession = Depends(get_db),
+):
+    """All MRF requests (every submitter), filtered, searched and paged, newest first."""
+    if status is not None and status not in MRF_REQUEST_STATUSES:
+        raise HTTPException(status_code=422, detail=MRF_REQUESTS_STATUS_INVALID)
+    term = (q or "").strip()
+    if len(term) > MRF_REQUESTS_SEARCH_MAX_LENGTH:
+        raise HTTPException(status_code=422, detail=MRF_REQUESTS_SEARCH_TOO_LONG)
+    if date_from is not None and date_to is not None and date_from > date_to:
+        raise HTTPException(status_code=422, detail=MRF_REQUESTS_DATE_ORDER)
+
+    flt = []
+    if status is not None:
+        flt.append(MrfRequest.status == status)
+    if classification is not None:
+        flt.append(MrfRequest.classification == classification)
+    if department is not None:
+        flt.append(MrfRequest.department == department)
+    if date_from is not None:
+        start = datetime.combine(date_from, datetime.min.time(), tzinfo=APP_TIMEZONE)
+        flt.append(MrfRequest.created_at >= start)
+    if date_to is not None:
+        end = datetime.combine(date_to + timedelta(days=1), datetime.min.time(), tzinfo=APP_TIMEZONE)
+        flt.append(MrfRequest.created_at < end)
+    if term:
+        escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = "%" + escaped + "%"
+        flt.append(
+            or_(
+                MrfUser.first_name.ilike(pattern, escape="\\"),
+                MrfUser.last_name.ilike(pattern, escape="\\"),
+                func.concat(MrfUser.first_name, " ", MrfUser.last_name).ilike(pattern, escape="\\"),
+                MrfForm.name.ilike(pattern, escape="\\"),
+            )
+        )
+
+    total = (
+        await db.execute(
+            select(func.count())
+            .select_from(MrfRequest)
+            .join(MrfUser, MrfUser.id == MrfRequest.user_id)
+            .join(MrfForm, MrfForm.id == MrfRequest.form_id)
+            .where(*flt)
+        )
+    ).scalar_one()
+    rows = (
+        await db.execute(
+            select(MrfRequest, MrfUser.first_name, MrfUser.last_name, MrfForm.name)
+            .join(MrfUser, MrfUser.id == MrfRequest.user_id)
+            .join(MrfForm, MrfForm.id == MrfRequest.form_id)
+            .where(*flt)
+            .order_by(MrfRequest.created_at.desc(), MrfRequest.id)
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+    ).all()
+
+    response.headers["Cache-Control"] = "no-store"
+    return MrfAdminRequestListResponse(
+        data=[
+            MrfAdminRequestListItem(
+                id=r.id,
+                submitted_by=(first + " " + last).strip(),
+                classification=r.classification,
+                department=r.department,
+                assignment=r.assignment,
+                form_name=form_name,
+                created_at=to_app_tz(r.created_at),
+                status=r.status,
+                remarks=r.remarks,
+                decided_at=to_app_tz(r.decided_at),
+            )
+            for r, first, last, form_name in rows
+        ],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get("/mrf/summary", dependencies=[Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER))])

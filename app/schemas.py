@@ -502,6 +502,27 @@ class MrfRequestListResponse(BaseModel):
     page_size: int
 
 
+class MrfAdminRequestListItem(BaseModel):
+    # Admin list row (docs/API_CONTRACT.md, GET /api/v1/admin/mrf/requests, part 79). remarks and decided_at are null while Pending.
+    id: UUID4
+    submitted_by: str
+    classification: str
+    department: Optional[str] = None
+    assignment: str
+    form_name: str
+    created_at: datetime
+    status: str
+    remarks: Optional[str] = None
+    decided_at: Optional[datetime] = None
+
+
+class MrfAdminRequestListResponse(BaseModel):
+    data: List[MrfAdminRequestListItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class MrfFormDetail(BaseModel):
     id: UUID4
     name: str
