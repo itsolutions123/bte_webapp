@@ -30,6 +30,9 @@
         .mrf-approve-error { color: #dc3545; font-size: 0.85rem; padding: 0.5rem 0.75rem 0; }
         .mrf-shell-note { font-size: 0.8rem; color: var(--text-muted); }
         .mrf-sortable { cursor: pointer; user-select: none; }
+        .mrf-toolbar-wrap { flex-wrap: wrap; }
+        .mrf-req-search { flex: 1 1 220px; min-width: 200px; border-radius: 12px; font-size: 0.9rem; }
+        .mrf-date { width: auto; border-radius: 12px; font-size: 0.9rem; }
         .mrf-pager { display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; padding: 0.75rem; font-size: 0.85rem; color: var(--text-muted); }
     </style>
 </head>
@@ -52,7 +55,35 @@
                 </div>
 
                 <section class="mrf-panel" data-panel="submissions">
-                    <div class="mrf-card"><div class="mrf-empty">Submissions list: placeholder, built at a later step.</div></div>
+                    <div class="mrf-toolbar mrf-toolbar-wrap">
+                        <input type="search" class="form-control mrf-req-search" id="mrf-req-search" placeholder="Search requests" aria-label="Search requests" autocomplete="off">
+                        <select class="form-select mrf-select" id="mrf-req-status" aria-label="Filter by status">
+                            <option value="">All statuses</option>
+                            {% for s in mrf_request_statuses %}<option value="{{ s }}">{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                        <select class="form-select mrf-select" id="mrf-req-classification" aria-label="Filter by classification">
+                            <option value="">All classifications</option>
+                            {% for c in mrf_classifications %}<option value="{{ c }}">{{ c }}</option>
+                            {% endfor %}
+                        </select>
+                        <select class="form-select mrf-select" id="mrf-req-department" aria-label="Filter by department">
+                            <option value="">All departments</option>
+                            {% for d in mrf_departments %}<option value="{{ d }}">{{ d }}</option>
+                            {% endfor %}
+                        </select>
+                        <input type="date" class="form-control mrf-date" id="mrf-req-from" aria-label="From date" title="From date">
+                        <input type="date" class="form-control mrf-date" id="mrf-req-to" aria-label="To date" title="To date">
+                    </div>
+                    <div class="mrf-card">
+                        <div class="table-responsive">
+                            <table class="table mrf-table align-middle">
+                                <thead><tr><th>SUBMITTED BY</th><th>FORM</th><th>CLASSIFICATION</th><th>DEPARTMENT</th><th>ASSIGNMENT</th><th>DATE</th><th>STATUS</th></tr></thead>
+                                <tbody id="mrf-req-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </section>
 
                 <section class="mrf-panel d-none" data-panel="forms">
@@ -136,6 +167,183 @@
     {% include '_form_builder.html' %}
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Submissions tab (GET /api/v1/admin/mrf/requests, part 79 step E). Rows do nothing until the review panel step.
+        (function () {
+            var MRF_REQ_API = '/api/v1/admin/mrf/requests';
+            var MRF_REQ_PAGE_SIZE = 10;
+            var MRF_REQ_COLUMNS = 7;
+            var MRF_REQ_DATE_LENGTH = 10;
+            var MRF_REQ_SEARCH_DELAY_MS = 300;
+            var MRF_REQ_SEARCH_MAX_LENGTH = 100;
+            var MRF_REQ_LOGIN_PATH = '/login';
+            var MRF_REQ_EMPTY_TEXT = 'Nothing here yet';
+            var MRF_REQ_EMPTY_FILTERED_TEXT = 'No requests match your filters.';
+            var MRF_REQ_ERROR_OTHER = 'Could not load requests. Try again.';
+            var MRF_REQ_PREV_TEXT = 'Previous';
+            var MRF_REQ_NEXT_TEXT = 'Next';
+            var MRF_REQ_PAGE_WORD = 'Page';
+            var MRF_REQ_OF_WORD = 'of';
+            var reqTab = document.querySelector('.mrf-tab[data-tab="submissions"]');
+            var reqBody = document.getElementById('mrf-req-body');
+            var reqCard = reqBody.closest('.mrf-card');
+            var reqSearch = document.getElementById('mrf-req-search');
+            var reqStatus = document.getElementById('mrf-req-status');
+            var reqClass = document.getElementById('mrf-req-classification');
+            var reqDept = document.getElementById('mrf-req-department');
+            var reqFrom = document.getElementById('mrf-req-from');
+            var reqTo = document.getElementById('mrf-req-to');
+            var reqPage = 1;
+            var reqLatest = 0;
+            var reqLoaded = false;
+            var reqSearchText = '';
+            var reqSearchTimer = null;
+
+            function reqMessageRow(text) {
+                var tr = document.createElement('tr');
+                var td = document.createElement('td');
+                td.colSpan = MRF_REQ_COLUMNS;
+                td.className = 'mrf-muted';
+                td.textContent = text;
+                tr.appendChild(td);
+                return tr;
+            }
+
+            function reqCell(text, className) {
+                var td = document.createElement('td');
+                if (className) { td.className = className; }
+                td.textContent = text;
+                return td;
+            }
+
+            function reqRow(item) {
+                var tr = document.createElement('tr');
+                tr.appendChild(reqCell(item.submitted_by));
+                tr.appendChild(reqCell(item.form_name, 'mrf-muted'));
+                tr.appendChild(reqCell(item.classification, 'mrf-muted'));
+                tr.appendChild(reqCell(item.department || '', 'mrf-muted'));
+                tr.appendChild(reqCell(item.assignment, 'mrf-muted'));
+                tr.appendChild(reqCell(String(item.created_at || '').slice(0, MRF_REQ_DATE_LENGTH), 'mrf-muted'));
+                tr.appendChild(reqCell(item.status, 'mrf-muted'));
+                return tr;
+            }
+
+            function reqFilters() {
+                var f = [];
+                var text = reqSearch.value.trim();
+                if (text) { f.push(['q', text]); }
+                if (reqStatus.value) { f.push(['status', reqStatus.value]); }
+                if (reqClass.value) { f.push(['classification', reqClass.value]); }
+                if (reqDept.value) { f.push(['department', reqDept.value]); }
+                if (reqFrom.value) { f.push(['date_from', reqFrom.value]); }
+                if (reqTo.value) { f.push(['date_to', reqTo.value]); }
+                return f;
+            }
+
+            function reqUrl(filters) {
+                var url = MRF_REQ_API + '?page=' + reqPage + '&page_size=' + MRF_REQ_PAGE_SIZE;
+                filters.forEach(function (pair) { url += '&' + pair[0] + '=' + encodeURIComponent(pair[1]); });
+                return url;
+            }
+
+            function reqPager(total) {
+                var oldBar = reqCard.querySelector('.mrf-pager');
+                if (oldBar) { oldBar.remove(); }
+                if (!total) { return; }
+                var pageCount = Math.ceil(total / MRF_REQ_PAGE_SIZE);
+                var page = reqPage;
+                var bar = document.createElement('div');
+                bar.className = 'mrf-pager';
+                var prev = document.createElement('button');
+                prev.type = 'button';
+                prev.className = 'btn btn-outline-dark btn-sm mrf-btn';
+                prev.textContent = MRF_REQ_PREV_TEXT;
+                prev.disabled = page <= 1;
+                prev.addEventListener('click', function () { reqPage = page - 1; loadRequests(); });
+                var label = document.createElement('span');
+                label.textContent = MRF_REQ_PAGE_WORD + ' ' + page + ' ' + MRF_REQ_OF_WORD + ' ' + pageCount;
+                var next = document.createElement('button');
+                next.type = 'button';
+                next.className = 'btn btn-outline-dark btn-sm mrf-btn';
+                next.textContent = MRF_REQ_NEXT_TEXT;
+                next.disabled = page >= pageCount;
+                next.addEventListener('click', function () { reqPage = page + 1; loadRequests(); });
+                bar.appendChild(prev);
+                bar.appendChild(label);
+                bar.appendChild(next);
+                reqCard.appendChild(bar);
+            }
+
+            function loadRequests() {
+                var mine = ++reqLatest;
+                var filters = reqFilters();
+                fetch(reqUrl(filters), { credentials: 'same-origin', cache: 'no-store' })
+                    .then(function (res) {
+                        if (res.ok) { return res.json(); }
+                        return res.json().catch(function () { return null; }).then(function (b) {
+                            var err = new Error('request failed');
+                            err.status = res.status;
+                            if (res.status === 422 && b && typeof b.detail === 'string') { err.detail = b.detail; }
+                            throw err;
+                        });
+                    })
+                    .then(function (body) {
+                        if (mine !== reqLatest) { return; }
+                        if (!body.data.length && reqPage > 1) {
+                            reqPage = reqPage - 1;
+                            loadRequests();
+                            return;
+                        }
+                        reqBody.replaceChildren();
+                        reqPager(body.total);
+                        if (!body.data.length) {
+                            reqBody.appendChild(reqMessageRow(filters.length ? MRF_REQ_EMPTY_FILTERED_TEXT : MRF_REQ_EMPTY_TEXT));
+                            return;
+                        }
+                        body.data.forEach(function (item) { reqBody.appendChild(reqRow(item)); });
+                    })
+                    .catch(function (err) {
+                        if (mine !== reqLatest) { return; }
+                        if (err.status === 401) { window.location.replace(MRF_REQ_LOGIN_PATH); return; }
+                        reqLoaded = false;
+                        reqBody.replaceChildren(reqMessageRow(err.detail || MRF_REQ_ERROR_OTHER));
+                        reqPager(0);
+                    });
+            }
+
+            function reqFilterChanged() {
+                reqPage = 1;
+                loadRequests();
+            }
+
+            reqSearch.maxLength = MRF_REQ_SEARCH_MAX_LENGTH;
+            reqSearch.addEventListener('input', function () {
+                clearTimeout(reqSearchTimer);
+                reqSearchTimer = setTimeout(function () {
+                    var text = reqSearch.value.trim();
+                    if (text === reqSearchText) { return; }
+                    reqSearchText = text;
+                    reqFilterChanged();
+                }, MRF_REQ_SEARCH_DELAY_MS);
+            });
+            [reqStatus, reqClass, reqDept, reqFrom, reqTo].forEach(function (el) {
+                el.addEventListener('change', reqFilterChanged);
+            });
+
+            reqTab.addEventListener('click', function () {
+                if (reqLoaded) { return; }
+                reqLoaded = true;
+                loadRequests();
+            });
+            // MRF_INITIAL_TAB is defined by the tab script further down the page.
+            window.addEventListener('DOMContentLoaded', function () {
+                if (typeof MRF_INITIAL_TAB !== 'undefined' && MRF_INITIAL_TAB === 'submissions' && !reqLoaded) {
+                    reqLoaded = true;
+                    loadRequests();
+                }
+            });
+        })();
+    </script>
     <script src="/static/admin-sidebar.js"></script>
     <script>
         // Switches the three tabs in the page and keeps the address in step (DECIDED 2026-11-12, part 42).

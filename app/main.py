@@ -47,7 +47,7 @@ from app.database import get_db
 
 from app.roles import ROLE_SUPERADMIN, ROLE_MANAGER
 from app.password_rules import RULES_LEAD_IN, RULE_PHRASES, PASSWORD_MIN_BYTES, PASSWORD_MAX_BYTES
-from app.mrf_lists import DEPARTMENTS, MRF_ASSIGNMENTS, POSITIONS
+from app.mrf_lists import DEPARTMENTS, MRF_ASSIGNMENTS, MRF_CLASSIFICATION_OPTIONS, MRF_REQUEST_STATUSES, POSITIONS
 from app.routers.mrf import get_current_mrf_user
 
 NO_STORE = {"Cache-Control": "no-store"}
@@ -257,15 +257,22 @@ async def serve_admin_users(request: Request):
 async def serve_admin_mrf(request: Request):
     # Admin MRF section, SHELL only (section 8): static page with placeholder rows, no data fetched yet.
     # Role check: SUPERADMIN and MANAGER allowed, RECRUITER gets 403 (API_CONTRACT.md section 5).
-    return templates.TemplateResponse(request=request, name="admin_mrf.html", context=admin_sidebar_context(request), headers=NO_STORE)
+    return templates.TemplateResponse(request=request, name="admin_mrf.html", context={**MRF_ADMIN_SUBMISSIONS_CONTEXT, **admin_sidebar_context(request)}, headers=NO_STORE)
 
 # MRF admin tab addresses (DECIDED 2026-11-12, part 42): each opens the same page with that tab selected.
 # Same guard as /admin/mrf (SUPERADMIN and MANAGER, RECRUITER gets 403). Registered here, above the /admin catch-alls.
 MRF_ADMIN_TABS = ("submissions", "forms", "users")
 
+# Submissions tab filter options come from app/mrf_lists.py (single source of truth; part 79, step E).
+MRF_ADMIN_SUBMISSIONS_CONTEXT = {
+    "mrf_request_statuses": MRF_REQUEST_STATUSES,
+    "mrf_classifications": MRF_CLASSIFICATION_OPTIONS,
+    "mrf_departments": DEPARTMENTS,
+}
+
 def _make_mrf_tab_page(tab: str):
     async def serve_admin_mrf_tab(request: Request):
-        return templates.TemplateResponse(request=request, name="admin_mrf.html", context={"initial_tab": tab, **admin_sidebar_context(request)}, headers=NO_STORE)
+        return templates.TemplateResponse(request=request, name="admin_mrf.html", context={"initial_tab": tab, **MRF_ADMIN_SUBMISSIONS_CONTEXT, **admin_sidebar_context(request)}, headers=NO_STORE)
     return serve_admin_mrf_tab
 
 for _mrf_tab in MRF_ADMIN_TABS:
