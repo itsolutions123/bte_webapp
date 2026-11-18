@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import MrfForm, MrfFormQuestion, MrfRequest, MrfUser, User
+from app.models import MrfForm, MrfFormQuestion, MrfRequest, MrfRequestAnswer, MrfUser, User
 from app.mrf_lists import (
     MRF_ASSIGNMENTS,
     MRF_CLASSIFICATION_OPTIONS,
@@ -42,6 +42,8 @@ from app.schemas import (
     MrfQuestionReorderResponse,
     MrfAdminRequestListItem,
     MrfAdminRequestListResponse,
+    MrfAdminRequestAnswerItem,
+    MrfAdminRequestDetail,
     MrfUserListItem,
     MrfUserListResponse,
 )
@@ -65,6 +67,9 @@ MRF_REQUESTS_SEARCH_MAX_LENGTH = 100
 MRF_REQUESTS_STATUS_INVALID = "status must be Pending, Approved or Rejected"
 MRF_REQUESTS_SEARCH_TOO_LONG = f"Search must be {MRF_REQUESTS_SEARCH_MAX_LENGTH} characters or fewer."
 MRF_REQUESTS_DATE_ORDER = "Start date must not be after end date."
+
+# Request detail (docs/API_CONTRACT.md, GET /api/v1/admin/mrf/requests/{request_id}, part 80); the decision endpoint (step G) reuses it.
+MRF_REQUEST_NOT_FOUND = "Request not found."
 
 # Forms list limits and messages (docs/API_CONTRACT.md, GET /api/v1/admin/mrf/forms, decided by the user 2026-11-12, part 43, option A).
 MRF_FORMS_DEFAULT_PAGE_SIZE = 10
@@ -223,6 +228,68 @@ async def list_mrf_requests(
         total=total,
         page=page,
         page_size=page_size,
+    )
+
+
+@router.get(
+    "/mrf/requests/{request_id}",
+    response_model=MrfAdminRequestDetail,
+    dependencies=[Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER))],
+)
+async def get_mrf_request(
+    request_id: UUID,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    """One MRF request for HR review: the list-row fields plus its answers in the form display order."""
+    row = (
+        await db.execute(
+            select(MrfRequest, MrfUser.first_name, MrfUser.last_name, MrfForm.name)
+            .join(MrfUser, MrfUser.id == MrfRequest.user_id)
+            .join(MrfForm, MrfForm.id == MrfRequest.form_id)
+            .where(MrfRequest.id == request_id)
+        )
+    ).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail=MRF_REQUEST_NOT_FOUND)
+    r, first, last, form_name = row
+
+    answers = (
+        await db.execute(
+            select(
+                MrfFormQuestion.id,
+                MrfFormQuestion.question_text,
+                MrfFormQuestion.question_type,
+                MrfRequestAnswer.answer,
+            )
+            .select_from(MrfRequestAnswer)
+            .join(MrfFormQuestion, MrfFormQuestion.id == MrfRequestAnswer.question_id)
+            .where(MrfRequestAnswer.request_id == request_id)
+            .order_by(MrfFormQuestion.display_order, MrfFormQuestion.id)
+        )
+    ).all()
+
+    response.headers["Cache-Control"] = "no-store"
+    return MrfAdminRequestDetail(
+        id=r.id,
+        submitted_by=(first + " " + last).strip(),
+        classification=r.classification,
+        department=r.department,
+        assignment=r.assignment,
+        form_name=form_name,
+        created_at=to_app_tz(r.created_at),
+        status=r.status,
+        remarks=r.remarks,
+        decided_at=to_app_tz(r.decided_at),
+        answers=[
+            MrfAdminRequestAnswerItem(
+                question_id=qid,
+                question_text=qtext,
+                question_type=qtype,
+                answer=ans,
+            )
+            for qid, qtext, qtype, ans in answers
+        ],
     )
 
 

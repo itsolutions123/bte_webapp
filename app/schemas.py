@@ -523,6 +523,19 @@ class MrfAdminRequestListResponse(BaseModel):
     page_size: int
 
 
+class MrfAdminRequestAnswerItem(BaseModel):
+    # One answered question (docs/API_CONTRACT.md, GET /api/v1/admin/mrf/requests/{request_id}, part 80). question_text is the current wording.
+    question_id: UUID4
+    question_text: str
+    question_type: str
+    answer: str
+
+
+class MrfAdminRequestDetail(MrfAdminRequestListItem):
+    # The list-row fields plus the answered questions in the form display order.
+    answers: List[MrfAdminRequestAnswerItem]
+
+
 class MrfFormDetail(BaseModel):
     id: UUID4
     name: str
