@@ -495,6 +495,13 @@ class MrfRequestListItem(BaseModel):
     remarks: Optional[str] = None
 
 
+class MrfRequestListResponse(BaseModel):
+    data: List[MrfRequestListItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class MrfFormDetail(BaseModel):
     id: UUID4
     name: str

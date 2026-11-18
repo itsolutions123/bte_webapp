@@ -42,6 +42,7 @@ from app.schemas import (
     MrfPortalFormListResponse,
     MrfRequestCreate,
     MrfRequestListItem,
+    MrfRequestListResponse,
     MrfSignupRequest,
 )
 
@@ -270,6 +271,9 @@ MRF_PORTAL_FORMS_DEFAULT_PAGE_SIZE = 10
 MRF_PORTAL_FORMS_MAX_PAGE_SIZE = 50
 # Same text as MRF_FORM_NOT_FOUND in app/routers/admin_mrf.py (contract, part 65 sign-off (c3)); kept portal-local like MRF_STATUS_APPROVED.
 MRF_PORTAL_FORM_NOT_FOUND = "Form not found."
+# Portal Requests list (docs/API_CONTRACT.md, GET /api/v1/mrf/requests, DECIDED part 65 sign-off (d)); portal-local like the forms limits.
+MRF_PORTAL_REQUESTS_DEFAULT_PAGE_SIZE = 10
+MRF_PORTAL_REQUESTS_MAX_PAGE_SIZE = 50
 
 
 @router.get("/forms", response_model=MrfPortalFormListResponse)
@@ -356,6 +360,46 @@ def question_labels(question: MrfFormQuestion) -> List[str]:
     if question.question_type == MRF_QUESTION_TYPE_YES_NO:
         return [str(o) for o in (question.options or [])]
     return [o["text"] for o in (question.options or [])]
+
+
+@router.get("/requests", response_model=MrfRequestListResponse)
+async def list_my_requests(
+    response: Response,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(MRF_PORTAL_REQUESTS_DEFAULT_PAGE_SIZE, ge=1, le=MRF_PORTAL_REQUESTS_MAX_PAGE_SIZE),
+    user: MrfUser = Depends(get_current_mrf_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # The signed-in user's own requests only, newest first (contract, part 64/65). form_name is the form's CURRENT name (part 78, option A).
+    response.headers["Cache-Control"] = "no-store"
+    flt = (MrfRequest.user_id == user.id,)
+    total = (await db.execute(select(func.count()).select_from(MrfRequest).where(*flt))).scalar_one()
+    rows = (
+        await db.execute(
+            select(MrfRequest, MrfForm.name)
+            .join(MrfForm, MrfForm.id == MrfRequest.form_id)
+            .where(*flt)
+            .order_by(MrfRequest.created_at.desc(), MrfRequest.id)
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+    ).all()
+    return {
+        "data": [
+            {
+                "id": r.id,
+                "form_name": form_name,
+                "assignment": r.assignment,
+                "created_at": r.created_at,
+                "status": r.status,
+                "remarks": r.remarks,
+            }
+            for r, form_name in rows
+        ],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
 
 
 @router.post("/requests", status_code=201, response_model=MrfRequestListItem)
