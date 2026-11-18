@@ -7,7 +7,7 @@
     <link href="/static/mrf-portal.css" rel="stylesheet">
 </head>
 <body class="mrf-app-body">
-    <!-- SHELL (section 8): placeholder content only, except the footer name and avatar, which come from GET /api/v1/mrf/me. No session check, no table data. Search, filter and New Request do nothing yet. The logout icon calls POST /api/v1/mrf/logout. The Forms link opens /mrf/forms. -->
+    <!-- SHELL (section 8): placeholder content only, except the footer name and avatar, which come from GET /api/v1/mrf/me. No session check. The table is filled from GET /api/v1/mrf/requests (part 78). Search, filter and New Request do nothing yet. The logout icon calls POST /api/v1/mrf/logout. The Forms link opens /mrf/forms. -->
     <aside class="mrf-side">
         <div class="mrf-brand">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18v2H3zM3 6l4.5 4L12 4l4.5 6L21 6l-2 10H5z"/></svg>
@@ -44,13 +44,13 @@
             <table class="mrf-table">
                 <thead>
                     <tr>
-                        <th>JOB POSITION</th>
+                        <th>FORM</th>
                         <th>ASSIGNMENT</th>
                         <th>DATE</th>
                         <th>STATUS</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="mrf-requests-body">
                     <tr>
                         <td colspan="4" class="mrf-empty">Nothing here yet</td>
                     </tr>
@@ -66,6 +66,80 @@
 
         var button = document.getElementById("mrf-logout");
         var message = document.getElementById("mrf-logout-message");
+
+        var REQUESTS_URL = "/api/v1/mrf/requests?page=1&page_size=50";
+        var LOGIN_PAGE = "/mrf/login";
+        var EMPTY_TEXT = "Nothing here yet";
+        var LOAD_FAILED_TEXT = "Could not load requests. Try again.";
+        var REJECTED = "Rejected";
+
+        var tbody = document.getElementById("mrf-requests-body");
+
+        function showRow(text) {
+            tbody.textContent = "";
+            var tr = document.createElement("tr");
+            var td = document.createElement("td");
+            td.colSpan = 4;
+            td.className = "mrf-empty";
+            td.textContent = text;
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        }
+
+        function formatDate(iso) {
+            var d = new Date(iso);
+            if (isNaN(d.getTime())) { return ""; }
+            return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+        }
+
+        function addCell(tr, text) {
+            var td = document.createElement("td");
+            td.textContent = text;
+            tr.appendChild(td);
+            return td;
+        }
+
+        function renderRows(rows) {
+            tbody.textContent = "";
+            rows.forEach(function (item) {
+                var tr = document.createElement("tr");
+                addCell(tr, item.form_name);
+                addCell(tr, item.assignment);
+                addCell(tr, formatDate(item.created_at));
+                var statusCell = addCell(tr, item.status);
+                if (item.status === REJECTED && item.remarks) {
+                    var remarks = document.createElement("div");
+                    remarks.className = "mrf-request-remarks";
+                    remarks.textContent = item.remarks;
+                    statusCell.appendChild(remarks);
+                }
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function loadRequests() {
+            try {
+                var response = await fetch(REQUESTS_URL);
+                if (response.status === 401) {
+                    window.location.replace(LOGIN_PAGE);
+                    return;
+                }
+                if (response.status !== 200) {
+                    showRow(LOAD_FAILED_TEXT);
+                    return;
+                }
+                var body = await response.json();
+                if (!body.data || body.data.length === 0) {
+                    showRow(EMPTY_TEXT);
+                    return;
+                }
+                renderRows(body.data);
+            } catch (err) {
+                showRow(LOAD_FAILED_TEXT);
+            }
+        }
+
+        loadRequests();
 
         button.addEventListener("click", async function () {
             message.hidden = true;
