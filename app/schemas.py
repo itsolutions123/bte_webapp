@@ -503,7 +503,7 @@ class MrfRequestListResponse(BaseModel):
 
 
 class MrfAdminRequestListItem(BaseModel):
-    # Admin list row (docs/API_CONTRACT.md, GET /api/v1/admin/mrf/requests, part 79). remarks and decided_at are null while Pending.
+    # Admin list row (docs/API_CONTRACT.md, GET /api/v1/admin/mrf/requests, part 79). remarks, decided_at, decided_by and decided_by_role are null while Pending (decided_by and decided_by_role: part 82).
     id: UUID4
     submitted_by: str
     classification: str
@@ -514,6 +514,8 @@ class MrfAdminRequestListItem(BaseModel):
     status: str
     remarks: Optional[str] = None
     decided_at: Optional[datetime] = None
+    decided_by: Optional[str] = None
+    decided_by_role: Optional[str] = None
 
 
 class MrfAdminRequestListResponse(BaseModel):

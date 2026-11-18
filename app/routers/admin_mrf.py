@@ -209,9 +209,14 @@ async def list_mrf_requests(
     ).scalar_one()
     rows = (
         await db.execute(
-            select(MrfRequest, MrfUser.first_name, MrfUser.last_name, MrfForm.name)
+            select(
+                MrfRequest, MrfUser.first_name, MrfUser.last_name, MrfForm.name,
+                User.first_name.label("decider_first"), User.last_name.label("decider_last"), User.role.label("decider_role"),
+            )
+            .select_from(MrfRequest)
             .join(MrfUser, MrfUser.id == MrfRequest.user_id)
             .join(MrfForm, MrfForm.id == MrfRequest.form_id)
+            .outerjoin(User, User.id == MrfRequest.decided_by_user_id)
             .where(*flt)
             .order_by(MrfRequest.created_at.desc(), MrfRequest.id)
             .offset((page - 1) * page_size)
@@ -233,13 +238,22 @@ async def list_mrf_requests(
                 status=r.status,
                 remarks=r.remarks,
                 decided_at=to_app_tz(r.decided_at),
+                decided_by=_decided_by_name(dfirst, dlast),
+                decided_by_role=drole,
             )
-            for r, first, last, form_name in rows
+            for r, first, last, form_name, dfirst, dlast, drole in rows
         ],
         total=total,
         page=page,
         page_size=page_size,
     )
+
+
+def _decided_by_name(first, last):
+    """Deciding admin display name (docs/API_CONTRACT.md, part 82): first plus last name only, each trimmed,
+    a null counting as empty; None when both are blank. Never the email and never full_name."""
+    name = ((first or "").strip() + " " + (last or "").strip()).strip()
+    return name or None
 
 
 @router.get(
@@ -255,15 +269,20 @@ async def get_mrf_request(
     """One MRF request for HR review: the list-row fields plus its answers in the form display order."""
     row = (
         await db.execute(
-            select(MrfRequest, MrfUser.first_name, MrfUser.last_name, MrfForm.name)
+            select(
+                MrfRequest, MrfUser.first_name, MrfUser.last_name, MrfForm.name,
+                User.first_name.label("decider_first"), User.last_name.label("decider_last"), User.role.label("decider_role"),
+            )
+            .select_from(MrfRequest)
             .join(MrfUser, MrfUser.id == MrfRequest.user_id)
             .join(MrfForm, MrfForm.id == MrfRequest.form_id)
+            .outerjoin(User, User.id == MrfRequest.decided_by_user_id)
             .where(MrfRequest.id == request_id)
         )
     ).first()
     if row is None:
         raise HTTPException(status_code=404, detail=MRF_REQUEST_NOT_FOUND)
-    r, first, last, form_name = row
+    r, first, last, form_name, dfirst, dlast, drole = row
 
     answers = (
         await db.execute(
@@ -292,6 +311,8 @@ async def get_mrf_request(
         status=r.status,
         remarks=r.remarks,
         decided_at=to_app_tz(r.decided_at),
+        decided_by=_decided_by_name(dfirst, dlast),
+        decided_by_role=drole,
         answers=[
             MrfAdminRequestAnswerItem(
                 question_id=qid,
@@ -356,6 +377,8 @@ async def decide_mrf_request(
         status=req.status,
         remarks=req.remarks,
         decided_at=to_app_tz(req.decided_at),
+        decided_by=_decided_by_name(admin.first_name, admin.last_name),
+        decided_by_role=admin.role,
     )
     await db.commit()
     response.headers["Cache-Control"] = "no-store"
