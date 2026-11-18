@@ -182,7 +182,15 @@
                 </div>
                 <div class="modal-body" id="mrf-review-body"></div>
                 <div class="modal-footer">
+                    <div class="w-100" id="mrf-decide-box" hidden>
+                        <label class="form-label" for="mrf-decide-remarks">Remarks</label>
+                        <textarea class="form-control" id="mrf-decide-remarks" rows="3" placeholder="Required to reject"></textarea>
+                        <div class="text-muted small text-end" id="mrf-decide-count"></div>
+                        <div class="text-danger small mt-2" id="mrf-decide-error" role="alert" hidden></div>
+                    </div>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-danger" id="mrf-decide-reject" hidden>Reject</button>
+                    <button type="button" class="btn mrf-add-btn" id="mrf-decide-approve" hidden>Approve</button>
                 </div>
             </div>
         </div>
@@ -211,6 +219,18 @@
             var MRF_REQ_REVIEW_LOADING_TEXT = 'Loading request\u2026';
             var MRF_REQ_REVIEW_ERROR_OTHER = 'Could not load this request. Try again.';
             var MRF_REQ_REVIEW_NO_ANSWERS_TEXT = 'No answers were submitted.';
+            var MRF_REQ_DECIDE_API_SUFFIX = '/decision';
+            var MRF_REQ_DECIDE_REMARKS_MAX = 500;
+            var MRF_REQ_DECIDE_CONFIRM_MS = 5000;
+            var MRF_REQ_DECIDE_PENDING = 'Pending';
+            var MRF_REQ_DECIDE_APPROVED = 'Approved';
+            var MRF_REQ_DECIDE_REJECTED = 'Rejected';
+            var MRF_REQ_DECIDE_APPROVE_TEXT = 'Approve';
+            var MRF_REQ_DECIDE_REJECT_TEXT = 'Reject';
+            var MRF_REQ_DECIDE_CONFIRM_APPROVE_TEXT = 'Confirm approve';
+            var MRF_REQ_DECIDE_CONFIRM_REJECT_TEXT = 'Confirm reject';
+            var MRF_REQ_DECIDE_ERROR_ACCESS = 'You do not have access to decide requests.';
+            var MRF_REQ_DECIDE_ERROR_OTHER = 'Could not save the decision. Try again.';
             var MRF_REQ_REVIEW_LABELS = {
                 form: 'FORM', classification: 'CLASSIFICATION', department: 'DEPARTMENT', assignment: 'ASSIGNMENT',
                 submitted: 'SUBMITTED', status: 'STATUS', decided: 'DECIDED', remarks: 'REMARKS'
@@ -233,6 +253,16 @@
             var reviewTitle = document.getElementById('mrfReviewModalLabel');
             var reviewBody = document.getElementById('mrf-review-body');
             var reviewLatest = 0;
+            var decideBox = document.getElementById('mrf-decide-box');
+            var decideRemarks = document.getElementById('mrf-decide-remarks');
+            var decideCount = document.getElementById('mrf-decide-count');
+            var decideError = document.getElementById('mrf-decide-error');
+            var decideApprove = document.getElementById('mrf-decide-approve');
+            var decideReject = document.getElementById('mrf-decide-reject');
+            var decideCurrent = null;
+            var decideConfirm = null;
+            var decideTimer = null;
+            var decideBusy = false;
 
             function reqMessageRow(text) {
                 var tr = document.createElement('tr');
@@ -401,6 +431,7 @@
                 var mine = ++reviewLatest;
                 reviewTitle.textContent = item.submitted_by;
                 reviewMessage(MRF_REQ_REVIEW_LOADING_TEXT, 'mrf-review-empty');
+                decideHide();
                 bootstrap.Modal.getOrCreateInstance(reviewModalEl).show();
                 fetch(MRF_REQ_API + '/' + encodeURIComponent(item.id), { credentials: 'same-origin', cache: 'no-store' })
                     .then(function (res) {
@@ -415,6 +446,7 @@
                     .then(function (d) {
                         if (mine !== reviewLatest) { return; }
                         reviewRender(d);
+                        decideSetup(d);
                     })
                     .catch(function (err) {
                         if (mine !== reviewLatest) { return; }
@@ -423,12 +455,120 @@
                     });
             }
 
+            function decideCountUpdate() {
+                decideCount.textContent = decideRemarks.value.length + ' / ' + MRF_REQ_DECIDE_REMARKS_MAX;
+            }
+
+            function decideShowError(text) {
+                decideError.textContent = text;
+                decideError.hidden = false;
+            }
+
+            function decideClearError() {
+                decideError.textContent = '';
+                decideError.hidden = true;
+            }
+
+            function decideReset() {
+                clearTimeout(decideTimer);
+                decideConfirm = null;
+                decideBusy = false;
+                decideApprove.textContent = MRF_REQ_DECIDE_APPROVE_TEXT;
+                decideReject.textContent = MRF_REQ_DECIDE_REJECT_TEXT;
+                decideApprove.disabled = false;
+                decideReject.disabled = false;
+            }
+
+            function decideHide() {
+                decideCurrent = null;
+                decideBox.hidden = true;
+                decideApprove.hidden = true;
+                decideReject.hidden = true;
+                decideClearError();
+                decideReset();
+            }
+
+            function decideSetup(d) {
+                decideReset();
+                decideClearError();
+                var pending = !!d && d.status === MRF_REQ_DECIDE_PENDING;
+                decideCurrent = pending ? d : null;
+                decideBox.hidden = !pending;
+                decideApprove.hidden = !pending;
+                decideReject.hidden = !pending;
+                decideRemarks.value = '';
+                decideCountUpdate();
+            }
+
+            function decideClick(status) {
+                if (!decideCurrent || decideBusy) { return; }
+                decideClearError();
+                if (decideConfirm !== status) {
+                    decideReset();
+                    decideConfirm = status;
+                    if (status === MRF_REQ_DECIDE_APPROVED) {
+                        decideApprove.textContent = MRF_REQ_DECIDE_CONFIRM_APPROVE_TEXT;
+                        decideReject.disabled = true;
+                    } else {
+                        decideReject.textContent = MRF_REQ_DECIDE_CONFIRM_REJECT_TEXT;
+                        decideApprove.disabled = true;
+                    }
+                    decideTimer = setTimeout(decideReset, MRF_REQ_DECIDE_CONFIRM_MS);
+                    return;
+                }
+                clearTimeout(decideTimer);
+                decideBusy = true;
+                decideApprove.disabled = true;
+                decideReject.disabled = true;
+                var mine = reviewLatest;
+                var current = decideCurrent;
+                fetch(MRF_REQ_API + '/' + encodeURIComponent(current.id) + MRF_REQ_DECIDE_API_SUFFIX, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: status, remarks: decideRemarks.value })
+                })
+                    .then(function (res) {
+                        if (res.ok) { return res.json(); }
+                        return res.json().catch(function () { return null; }).then(function (b) {
+                            var err = new Error('request failed');
+                            err.status = res.status;
+                            err.detail = (b && typeof b.detail === 'string') ? b.detail : '';
+                            throw err;
+                        });
+                    })
+                    .then(function (item) {
+                        if (mine === reviewLatest && decideCurrent === current) {
+                            var merged = Object.assign({}, current, item);
+                            reviewRender(merged);
+                            decideSetup(merged);
+                        }
+                        loadRequests();
+                    })
+                    .catch(function (err) {
+                        if (err.status === 401) { window.location.replace(MRF_REQ_LOGIN_PATH); return; }
+                        if (mine !== reviewLatest || decideCurrent !== current) { return; }
+                        decideReset();
+                        var msg = MRF_REQ_DECIDE_ERROR_OTHER;
+                        if (err.status === 403) { msg = MRF_REQ_DECIDE_ERROR_ACCESS; }
+                        else if ((err.status === 404 || err.status === 409 || err.status === 422) && err.detail) { msg = err.detail; }
+                        decideShowError(msg);
+                    });
+            }
+
             function reqFilterChanged() {
                 reqPage = 1;
                 loadRequests();
             }
 
-            reviewModalEl.addEventListener('hidden.bs.modal', function () { reviewLatest++; });
+            reviewModalEl.addEventListener('hidden.bs.modal', function () { reviewLatest++; decideHide(); });
+            decideRemarks.maxLength = MRF_REQ_DECIDE_REMARKS_MAX;
+            decideRemarks.addEventListener('input', function () {
+                decideCountUpdate();
+                if (decideConfirm !== null && !decideBusy) { decideReset(); }
+            });
+            decideApprove.addEventListener('click', function () { decideClick(MRF_REQ_DECIDE_APPROVED); });
+            decideReject.addEventListener('click', function () { decideClick(MRF_REQ_DECIDE_REJECTED); });
             reqSearch.maxLength = MRF_REQ_SEARCH_MAX_LENGTH;
             reqSearch.addEventListener('input', function () {
                 clearTimeout(reqSearchTimer);
