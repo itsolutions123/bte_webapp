@@ -320,12 +320,12 @@
 
             <!-- Main Content -->
             <main class="col-md-10 px-4 pb-5">
-                <!-- Top Nav (search and date are visual-only until their wiring steps) -->
+                <!-- Top Nav (search filters the tally by job title in the browser; date is visual-only until its wiring step) -->
                 <div class="top-bar">
                     <div class="d-flex gap-2 flex-wrap">
-                        <label class="search-box" title="Not wired yet">
+                        <label class="search-box">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
-                            <input type="search" placeholder="Search candidates..." disabled>
+                            <input type="search" id="tally-search" placeholder="Search job titles" aria-label="Search job titles" autocomplete="off">
                         </label>
                         <button type="button" class="date-pill" disabled title="Not wired yet">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>
@@ -436,6 +436,7 @@
         const COLLAPSED_ROLES = 3;
         let rolesExpanded = false;
         let lastTally = [];
+        let tallyQuery = '';
 
         function esc(s) {
             return String(s ?? '').replace(/[&<>"']/g, c => (
@@ -452,12 +453,13 @@
         function renderTally() {
             const body = document.getElementById('tally-body');
             const moreBtn = document.getElementById('tally-more');
-            if (!lastTally.length) {
-                body.innerHTML = '<tr><td colspan="7" class="tally-empty">No active jobs yet.</td></tr>';
+            const shown = lastTally.filter(t => String(t.job_title ?? '').toLowerCase().includes(tallyQuery));
+            if (!shown.length) {
+                body.innerHTML = '<tr><td colspan="7" class="tally-empty">' + (lastTally.length ? 'No matching jobs.' : 'No active jobs yet.') + '</td></tr>';
                 moreBtn.hidden = true;
                 return;
             }
-            body.innerHTML = lastTally.map((t, i) => {
+            body.innerHTML = shown.map((t, i) => {
                 const c = t.counts || {};
                 const hide = (!rolesExpanded && i >= COLLAPSED_ROLES) ? ' hidden' : '';
                 return `
@@ -471,13 +473,18 @@
                         ${cell(c.ENDORSED, 'col-extra')}
                     </tr>`;
             }).join('');
-            const extra = lastTally.length - COLLAPSED_ROLES;
+            const extra = shown.length - COLLAPSED_ROLES;
             moreBtn.hidden = extra <= 0;
             moreBtn.textContent = rolesExpanded ? 'Show fewer roles' : `Show ${extra} more ${extra === 1 ? 'role' : 'roles'}`;
         }
 
         document.getElementById('tally-more').addEventListener('click', () => {
             rolesExpanded = !rolesExpanded;
+            renderTally();
+        });
+
+        document.getElementById('tally-search').addEventListener('input', (e) => {
+            tallyQuery = e.target.value.trim().toLowerCase();
             renderTally();
         });
 
