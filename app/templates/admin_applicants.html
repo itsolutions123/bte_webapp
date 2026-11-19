@@ -332,6 +332,44 @@
         @media (max-width: 767.98px) { .applicant-cell-brand, .applicant-cell-date { display: none; } }
         @media (prefers-reduced-motion: reduce) { .applicant-card, .applicant-card::before, .applicant-avatar { transition: none; } .applicant-card:hover { transform: none; } }
     </style>
+    <style>
+        /* Applicant slide-over panel, new shell look (part 85, 2026-11-19): overrides the panel rules above, CSS only. */
+        .applicant-panel-backdrop { background-color: rgba(10, 10, 10, 0.55); backdrop-filter: blur(0.25rem); }
+        .applicant-panel { transition: transform 0.42s var(--ease); box-shadow: -1rem 0 3rem rgba(0, 0, 0, 0.25); overflow: hidden; }
+        .applicant-panel::before { content: ""; position: absolute; inset: 0 0 auto; height: 0.3125rem; background: linear-gradient(90deg, var(--accent-gold), #E8CB62); z-index: 2; }
+        @media (min-width: 641px) { .applicant-panel { border-radius: 1.25rem 0 0 1.25rem; } }
+        .detail-header { background-color: var(--bg-card); padding: 1.5rem 2rem 1.125rem; }
+        .detail-avatar { width: 3rem; height: 3rem; flex: 0 0 3rem; background-color: var(--accent-black); color: var(--accent-gold); }
+        .detail-name { font-weight: 800; font-size: 1.25rem; letter-spacing: -0.01em; }
+        .detail-close { width: 2.5rem; height: 2.5rem; border-radius: 0.625rem; display: grid; place-items: center; font-size: 1.5rem; transition: background-color 0.2s, color 0.2s; }
+        .detail-close:hover { background-color: var(--hover); color: var(--text-main); }
+        .detail-step-dot { width: 0.875rem; height: 0.875rem; transition: background-color 0.3s, box-shadow 0.3s; }
+        .detail-step.is-current .detail-step-dot { background-color: var(--accent-gold); box-shadow: 0 0 0 0.25rem rgba(201, 162, 39, 0.25); }
+        .detail-step-label { font-weight: 600; }
+        .detail-step.is-current .detail-step-label { font-weight: 800; }
+        .detail-actions .btn { min-height: 2.75rem; border-radius: 0.75rem; }
+        #applicant-detail-status-btn { background-color: var(--accent-black); border-color: var(--accent-black); color: var(--accent-gold); }
+        #applicant-detail-status-btn:hover:not(:disabled), #applicant-detail-status-btn:focus-visible { background-color: #1c1a10; border-color: #1c1a10; color: var(--accent-gold); }
+        .detail-actions .btn-outline-dark { border-color: var(--border-light); color: var(--text-main); background-color: transparent; }
+        .detail-actions .btn-outline-dark:hover { border-color: var(--accent-gold); background-color: transparent; color: var(--text-main); }
+        .applicant-panel .dropdown-menu { border: 1px solid var(--border-light); border-radius: 0.875rem; padding: 0.375rem; box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.12); }
+        .applicant-panel .dropdown-item { border-radius: 0.5rem; font-size: 0.875rem; padding: 0.5rem 0.75rem; }
+        .applicant-panel .dropdown-item:hover, .applicant-panel .dropdown-item:focus { background-color: var(--hover); color: var(--text-main); }
+        .applicant-panel .dropdown-item.active { background-color: color-mix(in srgb, var(--accent-gold) 15%, transparent); color: var(--text-main); font-weight: 700; }
+        .applicant-panel .dropdown-item.text-danger:hover { color: #b42318 !important; }
+        .detail-body { padding: 1.5rem 2rem; }
+        .detail-fields-title { font-size: 0.6875rem; letter-spacing: 0.09em; color: var(--text-muted); }
+        .detail-field-name { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+        .detail-field-text { font-size: 0.9375rem; font-weight: 600; }
+        .detail-resume .btn { min-height: 2.75rem; border-radius: 0.75rem; border-color: var(--border-light); color: var(--text-main); background-color: transparent; }
+        .detail-resume .btn:hover:not(:disabled) { border-color: var(--accent-gold); background-color: transparent; color: var(--text-main); }
+        #applicant-detail-answers .list-group-item { border-radius: 1rem; }
+        .detail-answer-pill { background-color: var(--tint); }
+        .detail-footer { padding: 0.75rem 1.5rem; }
+        .detail-footer-next { min-height: 2.5rem; padding: 0 0.875rem; border-radius: 0.625rem; transition: background-color 0.2s; }
+        .detail-footer-next:not(:disabled):hover { background-color: var(--hover); }
+        @media (prefers-reduced-motion: reduce) { .applicant-panel { transition: none; } }
+    </style>
 </head>
 <body>
     {% set active_page = 'applicants' %}
