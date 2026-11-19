@@ -22,6 +22,43 @@
         .archive-card-title { font-weight: 800; font-size: 1.1rem; }
         .archive-card-count { font-weight: 800; font-size: 1.4rem; color: var(--text-muted); }
     </style>
+    <style>
+        /* part 88: new gold/black look for the archive page */
+        .archive-card {
+            background-color: #FBF9F3;
+            border: 1px solid #ECE9E0;
+            border-radius: 1rem;
+            box-shadow: none;
+            transition: border-color .25s ease, box-shadow .25s ease;
+        }
+        .archive-card:hover {
+            border-color: #C9A227;
+            box-shadow: 0 .5rem 1.5rem rgba(201, 162, 39, .14);
+        }
+        .archive-card-title {
+            color: #0A0A0A;
+            font-weight: 800;
+        }
+        .archive-card-count {
+            color: #8a8a8a;
+            font-weight: 800;
+        }
+        main h4.fw-bold {
+            position: relative;
+            padding-bottom: .5rem;
+            color: #0A0A0A;
+        }
+        main h4.fw-bold::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 3rem;
+            height: .1875rem;
+            border-radius: 1rem;
+            background: #C9A227;
+        }
+    </style>
 </head>
 <body>
     {% set active_page = 'archive' %}
