@@ -85,6 +85,11 @@
         #newFormModal .form-control:focus, #mrfReviewModal .form-control:focus { border-color: var(--accent-gold); box-shadow: 0 0 0 0.25rem rgba(201, 162, 39, 0.2); }
         #newFormModal .modal-footer .btn-secondary, #mrfReviewModal .modal-footer .btn-secondary { background-color: var(--hover); border-color: var(--hover); color: var(--text-main); border-radius: 0.75rem; }
         #mrfReviewModal .modal-footer .btn-danger { border-radius: 0.75rem; }
+        .mrf-status { display: inline-block; padding: 0.25rem 0.875rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); background-color: color-mix(in srgb, currentColor 14%, transparent); }
+        .mrf-status[data-status="Pending"] { color: #8A6A00; }
+        .mrf-status[data-status="Approved"], .mrf-status[data-status="ACTIVE"] { color: #15803D; }
+        .mrf-status[data-status="Rejected"] { color: #B42318; }
+        #mrf-formprev-edit:not([hidden]) { display: inline-flex; align-items: center; }
         .mrf-pager .btn { border-radius: 0.75rem; }
     </style>
 </head>
@@ -346,7 +351,13 @@
                 tr.appendChild(reqCell(item.department || '', 'mrf-muted'));
                 tr.appendChild(reqCell(item.assignment, 'mrf-muted'));
                 tr.appendChild(reqCell(String(item.created_at || '').slice(0, MRF_REQ_DATE_LENGTH), 'mrf-muted'));
-                tr.appendChild(reqCell(item.status, 'mrf-muted'));
+                var reqStTd = reqCell('', 'mrf-muted');
+                var reqStPill = document.createElement('span');
+                reqStPill.className = 'mrf-status';
+                reqStPill.dataset.status = String(item.status || '');
+                reqStPill.textContent = item.status;
+                reqStTd.appendChild(reqStPill);
+                tr.appendChild(reqStTd);
                 tr.className = 'mrf-req-row';
                 tr.tabIndex = 0;
                 tr.addEventListener('click', function () { reviewOpen(item); });
@@ -997,7 +1008,13 @@
             function formsRow(item) {
                 var tr = document.createElement('tr');
                 tr.appendChild(formsCell(item.name));
-                tr.appendChild(formsCell(MRF_FORMS_STATUS_LABELS[item.status] || item.status, 'mrf-muted'));
+                var formsStTd = formsCell('', 'mrf-muted');
+                var formsStPill = document.createElement('span');
+                formsStPill.className = 'mrf-status';
+                formsStPill.dataset.status = String(item.status || '');
+                formsStPill.textContent = MRF_FORMS_STATUS_LABELS[item.status] || item.status;
+                formsStTd.appendChild(formsStPill);
+                tr.appendChild(formsStTd);
                 tr.appendChild(formsCell(String(item.question_count), 'mrf-muted'));
                 tr.appendChild(formsCell(String(item.created_at || '').slice(0, MRF_FORMS_DATE_LENGTH), 'mrf-muted'));
                 tr.className = 'mrf-req-row';
