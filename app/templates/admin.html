@@ -310,6 +310,39 @@
         }
         .link-btn:hover { color: var(--accent-gold); }
     </style>
+    <style>
+        /* part 85: new gold/black look for the HR dashboard (override block; no old rule edited, no ids or classes changed) */
+        .page-heading h1 { letter-spacing: -0.02em; }
+        .page-heading h1::after { content: ""; display: block; width: 36px; height: 3px; border-radius: 3px; background: #C9A227; margin-top: 0.5rem; }
+        .search-box { border-color: #ECE9E0; }
+        .search-box:focus-within { border-color: #C9A227; box-shadow: 0 0 0 0.2rem rgba(201, 162, 39, 0.2); color: #111; }
+        .dashboard-card { border-color: #ECE9E0; border-radius: 20px; box-shadow: 0 6px 24px rgba(17, 17, 17, 0.06); }
+        .hero-card { position: relative; overflow: hidden; border-radius: 20px; background-image: radial-gradient(circle at 85% 20%, rgba(201, 162, 39, 0.28), transparent 55%), linear-gradient(135deg, #111 0%, #1c1a14 100%); box-shadow: 0 10px 30px rgba(17, 17, 17, 0.22); }
+        .hero-card > * { position: relative; z-index: 1; }
+        .hero-label { color: #C9A227; }
+        .hero-value { letter-spacing: -0.03em; }
+        .hero-pill { background: rgba(201, 162, 39, 0.16); color: #E6CB6B; border: 1px solid rgba(201, 162, 39, 0.35); }
+        .pass-ring::before { filter: drop-shadow(0 0 6px rgba(201, 162, 39, 0.45)); }
+        .flow-item { transition: transform 0.2s ease; }
+        .flow-item:hover { transform: translateX(2px); }
+        .flow-item:not(:last-child)::before { background-color: #ECE9E0; }
+        .flow-new .flow-dot { box-shadow: 0 0 0 4px rgba(17, 17, 17, 0.08); }
+        .flow-hired .flow-dot { background-color: #C9A227; box-shadow: 0 0 0 4px rgba(201, 162, 39, 0.22); }
+        .flow-failed { border-top-color: #ECE9E0; }
+        .brand-card { transition: box-shadow 0.2s ease; }
+        .brand-card:hover { box-shadow: inset 3px 0 0 #C9A227, 0 6px 24px rgba(17, 17, 17, 0.08); }
+        .brand-card .stat-value { color: #B38F1F; }
+        .empty-banner { background-color: #FAF3E0; border-color: #E8D9A8; color: #7A5F0A; border-radius: 14px; }
+        .empty-banner .icon { border-color: #7A5F0A; }
+        .badge-auto { background-color: #FAF3E0; border-color: #E8D9A8; color: #7A5F0A; display: inline-flex; align-items: center; gap: 0.4rem; }
+        .badge-auto::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #C9A227; }
+        @media (prefers-reduced-motion: no-preference) { .badge-auto::before { animation: part85-pulse 2s ease-in-out infinite; } @keyframes part85-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } } }
+        .tally-table th { background-color: #FBF9F3; border-bottom-color: #ECE9E0; }
+        .tally-table td { border-bottom-color: #F1EEE4; }
+        .tally-table tbody tr:hover td { background-color: #F6F2E6; }
+        .tally-table tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 #C9A227; }
+        .link-btn:hover { color: #B38F1F; }
+    </style>
 </head>
 <body>
     {% set active_page = 'dashboard' %}
