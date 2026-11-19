@@ -99,6 +99,10 @@
                         <div id="mrf-q-options"></div>
                         <button type="button" class="btn btn-sm btn-outline-secondary mrf-form-btn" id="mrf-q-add-option">Add option</button>
                     </div>
+                    <div class="form-check form-switch mt-3" id="mrf-q-required-wrap" hidden>
+                        <input class="form-check-input" type="checkbox" role="switch" id="mrf-q-required">
+                        <label class="form-check-label small fw-bold" for="mrf-q-required">Required</label>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-sm btn-outline-dark mrf-form-btn" id="mrf-q-cancel" data-bs-dismiss="modal">Cancel</button>
@@ -280,6 +284,7 @@
                 var typeText = q.is_classification ? "Classification" : (MRF_FORM_TYPE_LABELS[q.question_type] || q.question_type);
                 left.appendChild(makeEl("div", "mrf-form-q-type", typeText));
                 row.appendChild(left);
+                var right = makeEl("div", "d-flex align-items-center gap-3");
                 if (!q.is_classification) {
                     var sw = makeEl("div", "form-check form-switch mb-0");
                     var input = document.createElement("input");
@@ -293,8 +298,15 @@
                     lab.setAttribute("for", input.id);
                     sw.appendChild(input);
                     sw.appendChild(lab);
-                    row.appendChild(sw);
+                    right.appendChild(sw);
                 }
+                var editQBtn = makeEl("button", "btn btn-sm btn-outline-dark mrf-form-btn", MRF_Q_EDIT_BUTTON_TEXT);
+                editQBtn.type = "button";
+                (function (question) {
+                    editQBtn.addEventListener("click", function () { openEditQuestionModal(question); });
+                })(q);
+                right.appendChild(editQBtn);
+                row.appendChild(right);
                 card.appendChild(row);
                 if (Array.isArray(q.options) && q.question_type !== "OPEN_ENDED") {
                     var pills = makeEl("div", "d-flex gap-2 flex-wrap mt-2");
@@ -311,6 +323,11 @@
         var MRF_Q_YES_NO_OPTIONS = ["Yes", "No"];
         var MRF_Q_CLASSIFICATION_OPTIONS = ["Rank and File", "Supervisory", "Managerial"];
         var MRF_Q_MIN_OPTIONS = 3;
+        var MRF_Q_TITLE_EDIT_PREFIX = "Edit question: ";
+        var MRF_Q_EDIT_BUTTON_TEXT = "Edit";
+        var MRF_Q_EDIT_ERROR_ACCESS = "Oops, you don't have permission to edit questions.";
+        var MRF_Q_EDIT_ERROR_GONE = "Oops, this question no longer exists. The questions have been refreshed.";
+        var MRF_Q_NOT_FOUND_DETAIL = "Question not found.";
         var questionList = [];
         var questionsLoaded = false;
         var qModalEl = document.getElementById("mrf-q-modal");
@@ -321,14 +338,17 @@
         var qOptionsEl = document.getElementById("mrf-q-options");
         var qAddOptionBtn = document.getElementById("mrf-q-add-option");
         var qAddBtn = document.getElementById("mrf-q-add");
+        var qRequiredWrapEl = document.getElementById("mrf-q-required-wrap");
+        var qRequiredEl = document.getElementById("mrf-q-required");
         var qType = "";
         var qSaving = false;
+        var qEditId = "";
 
         function setQSaving(on) {
             qSaving = on;
             var controls = qModalEl.querySelectorAll("input, button");
             for (var c = 0; c < controls.length; c++) { controls[c].disabled = on; }
-            qAddBtn.textContent = on ? "Adding..." : "Add";
+            qAddBtn.textContent = qEditId ? (on ? "Saving..." : "Save") : (on ? "Adding..." : "Add");
         }
 
         function addOptionRow() {
@@ -350,6 +370,9 @@
 
         function openQuestionModal(type) {
             clearError();
+            qEditId = "";
+            qAddBtn.textContent = "Add";
+            qRequiredWrapEl.hidden = true;
             qType = type;
             qTitleEl.textContent = "Add question: " + (type === "CLASSIFICATION" ? "Classification" : (MRF_FORM_TYPE_LABELS[type] || type));
             qErrorEl.hidden = true;
@@ -361,6 +384,48 @@
                 qOptionsWrapEl.hidden = false;
             } else {
                 qOptionsWrapEl.hidden = true;
+            }
+            bootstrap.Modal.getOrCreateInstance(qModalEl).show();
+        }
+
+        function reloadQuestions() {
+            fetch("/api/v1/admin/mrf/forms/" + encodeURIComponent(formId), { credentials: "same-origin", cache: "no-store" })
+                .then(function (res) {
+                    if (!res.ok) { throw new Error("HTTP " + res.status); }
+                    return res.json();
+                })
+                .then(function (form) {
+                    questionList = Array.isArray(form.questions) ? form.questions.slice() : [];
+                    if (questionsLoaded) { renderQuestions(questionList); }
+                })
+                .catch(function () {});
+        }
+
+        function openEditQuestionModal(q) {
+            clearError();
+            qEditId = q.id;
+            qType = q.is_classification ? "CLASSIFICATION" : q.question_type;
+            qTitleEl.textContent = MRF_Q_TITLE_EDIT_PREFIX + (q.is_classification ? "Classification" : (MRF_FORM_TYPE_LABELS[q.question_type] || q.question_type));
+            qAddBtn.textContent = "Save";
+            qErrorEl.hidden = true;
+            qErrorEl.textContent = "";
+            qTextEl.value = q.question_text;
+            qOptionsEl.textContent = "";
+            if (qType === "MULTIPLE_CHOICE") {
+                var labels = Array.isArray(q.options) ? q.options.map(optionLabel) : [];
+                var rowCount = Math.max(labels.length, MRF_Q_MIN_OPTIONS);
+                for (var n = 0; n < rowCount; n++) { addOptionRow(); }
+                var optionInputs = qOptionsEl.querySelectorAll("input");
+                for (var k = 0; k < labels.length; k++) { optionInputs[k].value = labels[k]; }
+                qOptionsWrapEl.hidden = false;
+            } else {
+                qOptionsWrapEl.hidden = true;
+            }
+            if (q.is_classification) {
+                qRequiredWrapEl.hidden = true;
+            } else {
+                qRequiredEl.checked = q.is_required === true;
+                qRequiredWrapEl.hidden = false;
             }
             bootstrap.Modal.getOrCreateInstance(qModalEl).show();
         }
@@ -379,11 +444,24 @@
                 body.options = MRF_Q_CLASSIFICATION_OPTIONS.slice();
                 body.is_classification = true;
             }
+            var requestUrl = "/api/v1/admin/mrf/forms/" + encodeURIComponent(formId) + "/questions";
+            var requestMethod = "POST";
+            if (qEditId) {
+                body = { question_text: qTextEl.value };
+                if (qType === "MULTIPLE_CHOICE") {
+                    var editInputs = qOptionsEl.querySelectorAll("input");
+                    body.options = [];
+                    for (var e = 0; e < editInputs.length; e++) { body.options.push(editInputs[e].value); }
+                }
+                if (qType !== "CLASSIFICATION") { body.is_required = qRequiredEl.checked; }
+                requestUrl += "/" + encodeURIComponent(qEditId);
+                requestMethod = "PATCH";
+            }
             qErrorEl.hidden = true;
             qErrorEl.textContent = "";
             setQSaving(true);
-            fetch("/api/v1/admin/mrf/forms/" + encodeURIComponent(formId) + "/questions", {
-                method: "POST",
+            fetch(requestUrl, {
+                method: requestMethod,
                 credentials: "same-origin",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body)
@@ -399,7 +477,13 @@
                 })
                 .then(function (q) {
                     if (!q || typeof q.id !== "string" || typeof q.question_text !== "string") { throw new Error("Unexpected response"); }
-                    questionList.push(q);
+                    if (qEditId) {
+                        for (var u = 0; u < questionList.length; u++) {
+                            if (questionList[u].id === q.id) { questionList[u] = q; break; }
+                        }
+                    } else {
+                        questionList.push(q);
+                    }
                     if (questionsLoaded) { renderQuestions(questionList); }
                     setQSaving(false);
                     bootstrap.Modal.getOrCreateInstance(qModalEl).hide();
@@ -409,6 +493,10 @@
                     if (err.status === 401) { text = MRF_FORM_ERROR_SESSION; }
                     else if (err.status === 403) { text = MRF_FORM_SAVE_ERROR_ACCESS; }
                     else if ((err.status === 404 || err.status === 409 || err.status === 422) && typeof err.detail === "string") { text = err.detail; }
+                    if (qEditId) {
+                        if (err.status === 403) { text = MRF_Q_EDIT_ERROR_ACCESS; }
+                        else if (err.status === 404 && err.detail === MRF_Q_NOT_FOUND_DETAIL) { text = MRF_Q_EDIT_ERROR_GONE; reloadQuestions(); }
+                    }
                     qErrorEl.textContent = text;
                     qErrorEl.hidden = false;
                 })
