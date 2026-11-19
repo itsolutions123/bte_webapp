@@ -313,7 +313,15 @@
         .applicant-card-name, .applicant-card-job { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .applicant-cell-brand { flex: 1 1 0; }
         .applicant-cell-date { flex: 1.2 1 0; }
-        .applicant-cell-score { flex: 0 0 5.5rem; text-align: right; font-weight: 700; color: var(--text-main); }
+        .applicant-cell-score { flex: 0 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; min-width: 6.5rem; }
+        .applicant-score-label { font-size: 0.6875rem; font-weight: 600; color: var(--text-muted); }
+        .applicant-ring { position: relative; width: 2.75rem; height: 2.75rem; display: grid; place-items: center; }
+        .applicant-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+        .applicant-ring circle { fill: none; stroke: var(--border-light); stroke-width: 3.5; }
+        .applicant-ring .applicant-ring-arc { stroke: var(--accent-gold); stroke-linecap: round; stroke-dasharray: 100.5; transform: rotate(-90deg); transform-origin: 50% 50%; animation: applicant-ring-draw 1.1s var(--ease) both; }
+        .applicant-ring b { font-size: 0.75rem; color: var(--text-main); }
+        @keyframes applicant-ring-draw { from { stroke-dashoffset: 100.5; } }
+        @media (prefers-reduced-motion: reduce) { .applicant-ring .applicant-ring-arc { animation: none; } }
         .applicant-status[data-status] { flex: 0 0 auto; padding: 0.25rem 0.875rem; background-color: color-mix(in srgb, currentColor 14%, transparent); }
         .applicant-status[data-status="NEW"] { color: #1D4ED8; }
         .applicant-status[data-status="HIRED"] { color: #15803D; }
@@ -533,7 +541,32 @@
                     const statusText = String(a.status || '');
                     const statusBadge = addEl(card, 'span', 'applicant-status', statusText.charAt(0) + statusText.slice(1).toLowerCase());
                     statusBadge.dataset.status = statusText.toUpperCase();
-                    addEl(card, 'span', 'applicant-cell applicant-cell-score', 'Score ' + ((a.score === null || a.score === undefined) ? '\u2014' : String(a.score)));
+                    const hasScore = !(a.score === null || a.score === undefined);
+                    const scorePct = hasScore ? Math.max(0, Math.min(100, Number(a.score) || 0)) : 0;
+                    const scoreCell = addEl(card, 'span', 'applicant-cell applicant-cell-score');
+                    scoreCell.setAttribute('aria-label', 'Score ' + (hasScore ? String(a.score) : 'not available'));
+                    addEl(scoreCell, 'small', 'applicant-score-label', 'Score');
+                    const ring = addEl(scoreCell, 'span', 'applicant-ring');
+                    const SVGNS = 'http://www.w3.org/2000/svg';
+                    const ringSvg = document.createElementNS(SVGNS, 'svg');
+                    ringSvg.setAttribute('viewBox', '0 0 36 36');
+                    ringSvg.setAttribute('aria-hidden', 'true');
+                    const ringTrack = document.createElementNS(SVGNS, 'circle');
+                    ringTrack.setAttribute('cx', '18');
+                    ringTrack.setAttribute('cy', '18');
+                    ringTrack.setAttribute('r', '16');
+                    ringSvg.appendChild(ringTrack);
+                    if (hasScore) {
+                        const ringArc = document.createElementNS(SVGNS, 'circle');
+                        ringArc.setAttribute('class', 'applicant-ring-arc');
+                        ringArc.setAttribute('cx', '18');
+                        ringArc.setAttribute('cy', '18');
+                        ringArc.setAttribute('r', '16');
+                        ringArc.style.strokeDashoffset = (100.5 * (1 - scorePct / 100)).toFixed(1);
+                        ringSvg.appendChild(ringArc);
+                    }
+                    ring.appendChild(ringSvg);
+                    addEl(ring, 'b', '', hasScore ? String(a.score) : '\u2014');
                     tbody.appendChild(card);
                 });
                 document.getElementById('applicants-count').textContent = 'Showing ' + body.data.length + ' of ' + body.total + (body.total === 1 ? ' applicant' : ' applicants') + ' \u00b7 newest first';
