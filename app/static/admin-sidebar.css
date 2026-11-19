@@ -273,11 +273,12 @@ body {
 .form-menu-item:hover { background-color: #f8f9fa; color: var(--accent-gold); }
 
 /* ===== Form builder modal redesign (shell step, 2026-10-22) ===== */
-#formBuilderModal .modal-header { border-bottom: 1px solid #e5e7eb; padding: 14px 24px; }
-#formBuilderModal .modal-footer { border-top: 1px solid #e5e7eb; padding: 14px 24px; }
-#formBuilderModal .modal-footer .btn { border-radius: 9px; padding: 8px 22px; font-weight: 500; border: 0; }
-#formBuilderModal .modal-footer .btn-secondary { background: #f4f4f5; color: #111; }
-#formBuilderModal .modal-footer .btn-secondary:hover { background: #e5e7eb; }
+/* part 88: gold/black update for formBuilderModal */
+#formBuilderModal .modal-header { border-bottom: 1px solid var(--border-light); padding: 14px 24px; }
+#formBuilderModal .modal-footer { border-top: 1px solid var(--border-light); padding: 14px 24px; background: var(--bg-main); }
+#formBuilderModal .modal-footer .btn { border-radius: 9px; padding: 8px 22px; font-weight: 700; border: 0; }
+#formBuilderModal .modal-footer .btn-secondary { background: transparent; border: 1px solid var(--border-light); color: var(--text-main); }
+#formBuilderModal .modal-footer .btn-secondary:hover { background: var(--hover); border-color: var(--accent-gold); }
 
 /* question list as a numbered timeline */
 #form-contents-list { position: relative; counter-reset: fq; padding-left: 44px; }
@@ -481,3 +482,21 @@ body {
 .form-menu-btn:hover, .form-menu-item:hover { background-color: var(--hover); }
 .profile-pill-avatar { border: 0; background: var(--accent-black); color: var(--accent-gold); }
 @media (min-width: 768px) { .profile-pill { margin: 0.75rem; border: 1px solid var(--border-light); border-radius: 0.875rem; background: var(--tint); padding: 0.625rem 0.75rem; } }
+
+/* part 88: new gold/black look for shared Bootstrap modals */
+.modal-content { border-radius: 1rem; border: 0; overflow: hidden; box-shadow: 0 1.5rem 4rem rgba(0,0,0,.35); }
+.modal-content::before { content: ""; display: block; height: 5px; background: linear-gradient(90deg, var(--accent-gold), #E8CB62); }
+#element-modal-overlay .bg-white { border-radius: 1rem; box-shadow: 0 1.5rem 4rem rgba(0,0,0,.35); }
+.modal-title { font-weight: 800; }
+.modal .btn-dark { background: var(--accent-black); border-color: var(--accent-black); font-weight: 700; }
+.modal .btn-dark:hover { background: var(--gold-deep); border-color: var(--gold-deep); color: var(--accent-black); }
+.modal .btn-danger { font-weight: 700; }
+.modal .btn-secondary { background: transparent; border: 1px solid var(--border-light); color: var(--text-main); font-weight: 700; }
+.modal .btn-secondary:hover { background: var(--hover); border-color: var(--accent-gold); }
+.modal .form-control:focus { border-color: var(--accent-gold); box-shadow: 0 0 0 .2rem color-mix(in srgb, var(--accent-gold) 20%, transparent); }
+.form-elements-label { font-size: .6875rem; font-weight: 700; letter-spacing: .09em; color: var(--text-muted); margin-bottom: .5rem; }
+.form-element-btn { border-radius: .625rem; border-color: var(--border-light); }
+.form-element-btn:hover { border-color: var(--accent-gold); background: var(--hover); color: var(--text-main); }
+.form-element-icon { width: 1.25rem; height: 1.25rem; margin-right: .5rem; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.form-elements-hint { font-size: .75rem; color: var(--text-muted); margin-top: .5rem; }
+#form-created-toast { border-radius: .75rem; }
