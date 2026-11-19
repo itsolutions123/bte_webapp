@@ -290,6 +290,40 @@
             color: var(--text-muted);
         }
     </style>
+    <style>
+        /* Applicants list, new shell look (part 85, 2026-11-19): overrides the rules above, CSS only. Score ring comes with a later JS step. */
+        main h4 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.01em; line-height: 1.15; }
+        .applicants-header-icon { width: 48px; height: 48px; border-radius: 14px; }
+        .applicants-header-sub { margin-top: 0.125rem; }
+        .applicants-tabs { gap: 1.5rem; margin-bottom: 1.25rem; }
+        .applicants-tab { font-weight: 600; color: var(--text-muted); min-height: 2.75rem; display: inline-flex; align-items: center; gap: 0.35rem; padding: 0 0.125rem; border-bottom: 3px solid transparent; }
+        .applicants-tab.active { color: var(--text-main); border-bottom-color: var(--accent-gold); }
+        .applicants-toolbar { gap: 0.75rem; margin-bottom: 1rem; }
+        .applicants-search { min-height: 2.75rem; padding: 0 1rem; border: 1px solid var(--border-light); border-radius: 0.75rem; background-color: var(--bg-card); }
+        .applicants-search:focus { border-color: var(--accent-gold); box-shadow: 0 0 0 0.25rem rgba(201, 162, 39, 0.2); }
+        .applicants-filters-btn { min-height: 2.75rem; padding: 0 1.25rem; border: 1px solid var(--text-main); border-radius: 0.75rem; background-color: transparent; }
+        .applicant-card { position: relative; gap: 1rem; padding: 0.875rem 1.125rem; margin-bottom: 0.625rem; background-color: var(--bg-card); border: 1px solid var(--border-light); border-radius: 1rem; transition: transform 0.3s var(--ease), border-color 0.3s, box-shadow 0.3s; }
+        .applicant-card::before { content: ""; position: absolute; left: -1px; top: 0.75rem; bottom: 0.75rem; width: 4px; border-radius: 1rem; background: var(--accent-gold); transform: scaleY(0); transition: transform 0.4s var(--ease); }
+        .applicant-card:hover { background-color: var(--bg-card); border-color: var(--accent-gold); box-shadow: 0 0.5rem 1.5rem rgba(201, 162, 39, 0.14); transform: translateX(0.25rem); }
+        .applicant-card:hover::before { transform: none; }
+        .applicant-card:focus-visible { outline: 2px solid var(--accent-gold); outline-offset: 2px; }
+        .applicant-avatar { width: 2.75rem; height: 2.75rem; flex: 0 0 2.75rem; background-color: var(--tint); transition: background-color 0.3s, transform 0.3s var(--ease); }
+        .applicant-card:hover .applicant-avatar { background-color: var(--accent-gold); transform: rotate(-8deg); }
+        .applicant-who { flex: 1.6 1 0; }
+        .applicant-card-name, .applicant-card-job { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .applicant-cell-brand { flex: 1 1 0; }
+        .applicant-cell-date { flex: 1.2 1 0; }
+        .applicant-cell-score { flex: 0 0 5.5rem; text-align: right; font-weight: 700; color: var(--text-main); }
+        .applicant-status[data-status] { flex: 0 0 auto; padding: 0.25rem 0.875rem; background-color: color-mix(in srgb, currentColor 14%, transparent); }
+        .applicant-status[data-status="NEW"] { color: #1D4ED8; }
+        .applicant-status[data-status="HIRED"] { color: #15803D; }
+        .applicant-status[data-status="POOLING"] { color: #8A6A00; }
+        .applicants-footer { margin-top: 1rem; }
+        .applicants-footer .btn { min-height: 2.75rem; padding: 0 1.25rem; border: 1px solid var(--border-light); border-radius: 0.75rem; background-color: transparent; color: var(--text-main); }
+        .applicants-footer .btn:hover:not(:disabled) { border-color: var(--accent-gold); background-color: transparent; color: var(--text-main); }
+        @media (max-width: 767.98px) { .applicant-cell-brand, .applicant-cell-date { display: none; } }
+        @media (prefers-reduced-motion: reduce) { .applicant-card, .applicant-card::before, .applicant-avatar { transition: none; } .applicant-card:hover { transform: none; } }
+    </style>
 </head>
 <body>
     {% set active_page = 'applicants' %}
