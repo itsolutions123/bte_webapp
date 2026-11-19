@@ -459,3 +459,25 @@ body {
 /* MRF nav badge (shell 2026-11-10): shows 0 until GET /api/v1/admin/mrf/summary is wired. */
 .mrf-nav-badge { display: inline-block; min-width: 1.25rem; padding: 0 0.4rem; margin-left: 0.5rem; border-radius: 999px; background: #dc3545; color: #fff; font-size: 0.7rem; line-height: 1.25rem; text-align: center; }
 .mrf-nav-badge[hidden] { display: none; }
+
+/* ===== New shell (part 85, 2026-11-19): gold/black design from Bigtime_Empire.html. Light theme only; dark tokens come with the theme switch step. ===== */
+:root { --bg-main: #F6F4EE; --accent-gold: #C9A227; --gold-deep: #A8841A; --border-light: #ECE9E0; --tint: #FAF3E0; --hover: #F6F2E6; --ease: cubic-bezier(.2, .8, .2, 1); }
+.sidebar { padding: 1.25rem 0.75rem 6rem; }
+.sidebar-brand { font-size: 1rem; letter-spacing: 0.05em; line-height: 1.1; gap: 0.75rem; margin: 0 0 1rem; padding: 0 0.5rem; }
+.sidebar-brand .logo-box { width: 40px; height: 40px; border-radius: 12px; }
+.nav-section { font-size: 0.6875rem; letter-spacing: 0.09em; margin: 1.25rem 0.75rem 0.375rem; padding-left: 0; }
+.sidebar a { display: flex; align-items: center; gap: 0.75rem; min-height: 2.5rem; padding: 0 0.75rem; border-radius: 0.625rem; font-weight: 500; margin-bottom: 0.125rem; position: relative; }
+.sidebar a:hover { background-color: var(--hover); color: var(--text-main); }
+.sidebar a.active { background-color: color-mix(in srgb, var(--accent-gold) 15%, transparent); color: var(--text-main); font-weight: 700; }
+.sidebar a.active::after { content: ""; position: absolute; left: 0; top: 0.5rem; bottom: 0.5rem; width: 3px; border-radius: 1rem; background: var(--accent-gold); }
+.mrf-nav-badge { margin-left: auto; }
+.business-unit-toggle { background: none; border-left: 0; border-radius: 0.625rem; padding: 0 0.5rem; min-height: 2.5rem; }
+.business-unit-toggle:hover { background: var(--hover); }
+.business-unit.has-active-child .business-unit-toggle { background: color-mix(in srgb, var(--accent-gold) 10%, transparent); }
+.business-unit-title { font-size: 0.9375rem; font-weight: 500; }
+.business-unit-chevron { font-size: 1rem; color: var(--text-muted); }
+.business-unit > .nav { margin-left: 1.3rem; border-left: 1px solid var(--border-light); }
+.brand-row > a { font-size: 0.9rem; }
+.form-menu-btn:hover, .form-menu-item:hover { background-color: var(--hover); }
+.profile-pill-avatar { border: 0; background: var(--accent-black); color: var(--accent-gold); }
+@media (min-width: 768px) { .profile-pill { margin: 0.75rem; border: 1px solid var(--border-light); border-radius: 0.875rem; background: var(--tint); padding: 0.625rem 0.75rem; } }
