@@ -195,6 +195,40 @@
         #submissionDetailPanel .sd-answer-q { font-size: .85rem; color: #6b7280; font-weight: 600; }
         #submissionDetailPanel .sd-answer-a { font-weight: 700; color: #111; margin-top: .2rem; display: flex; justify-content: space-between; gap: 1rem; }
     </style>
+    <style>
+        /* part 87: new gold/black look for the form detail page */
+        .form-detail-card { border: 1px solid #ECE9E0; border-radius: 20px; }
+        .form-detail-head { border-bottom: 1px solid #F1EEE4; }
+        .form-detail-title { position: relative; display: block; padding-bottom: .55rem; }
+        .form-detail-title::after { content: ""; position: absolute; left: 0; bottom: 0; width: 44px; height: 3px; border-radius: 3px; background: #C9A227; }
+        .form-detail-sub { color: #8a8a8a; margin-top: .35rem; }
+        #form-edit-btn {
+            --bs-btn-color: #111111; --bs-btn-border-color: #111111;
+            --bs-btn-hover-bg: #C9A227; --bs-btn-hover-border-color: #C9A227; --bs-btn-hover-color: #111111;
+            --bs-btn-active-bg: #B38F1F; --bs-btn-active-border-color: #B38F1F; --bs-btn-active-color: #111111;
+            border-radius: 12px;
+        }
+        .submissions-toolbar .search-box, .submissions-toolbar .date-box { border: 1px solid #ECE9E0; border-radius: 12px; }
+        .submissions-toolbar .search-box:focus, .submissions-toolbar .date-box:focus { border-color: #C9A227; box-shadow: 0 0 0 3px rgba(201,162,39,.18); }
+        .submission-count { background-color: #FAF3E0; border: 1px solid rgba(201,162,39,.35); color: #7A5F0A; }
+        .icon-btn { border: 1px solid #ECE9E0; border-radius: 12px; }
+        .icon-btn:hover:not(:disabled) { background-color: #F6F2E6; border-color: #C9A227; color: #7A5F0A; }
+        #bulk-delete-bar { background-color: #FBF9F3; border: 1px solid #ECE9E0; border-radius: 12px; }
+        .table { --bs-table-hover-bg: #F6F2E6; }
+        .table thead th { background-color: #FBF9F3; color: #8a8a8a; }
+        .table tbody td { border-bottom: 1px solid #F1EEE4; }
+        .table tbody tr:last-child td { border-bottom: 0; }
+        .table tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 #C9A227, inset 0 0 0 9999px #F6F2E6; }
+        .table input[type="checkbox"] { accent-color: #C9A227; }
+        .status-pill { background-color: #FAF3E0; border: 1px solid rgba(201,162,39,.35); color: #7A5F0A; border-radius: 999px; padding: .3rem .8rem; }
+        #submissionDetailPanel.offcanvas-end { border-left: 0; box-shadow: -12px 0 40px rgba(17,17,17,.14); }
+        #submissionDetailPanel .sd-head { background: #FBF9F3; border-bottom: 1px solid #F1EEE4; box-shadow: inset 0 3px 0 #C9A227; }
+        #submissionDetailPanel .sd-sub { color: #8a8a8a; }
+        #submissionDetailPanel .sd-section-title { color: #8a8a8a; }
+        #submissionDetailPanel .sd-field-label, #submissionDetailPanel .sd-answer-q { color: #8a8a8a; }
+        #submissionDetailPanel .sd-divider { border-top-color: #F1EEE4; }
+        #submissionDetailPanel .sd-answer { border-bottom-color: #F1EEE4; }
+    </style>
     <!-- Shell only: obviously-fake placeholder text; wired to GET /api/v1/admin/applications/{id} in the next step -->
     <div class="offcanvas offcanvas-end" tabindex="-1" id="submissionDetailPanel" aria-labelledby="sd-name">
         <div class="sd-head d-flex justify-content-between align-items-start">
