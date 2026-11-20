@@ -111,15 +111,12 @@
                 <div class="bp-page">
                     <!-- SHELL (section 8): subtitle, tab counts and the Expires node are placeholders; title, search and job rows are wired -->
                     <div class="bp-title" id="brand-title">BRAND NAME</div>
-                    <div class="bp-sub" id="brand-subtitle">&mdash; active jobs &middot; Applicants fill in &mdash;</div>
+                    {# part 89: placeholder subtitle removed (user request 2026-11-20) #}
 
                     <div class="bp-toolbar">
                         <input type="text" class="search-box" id="job-search" placeholder="Search jobs" autocomplete="off">
                         <div class="bp-tabs">
-                            <button type="button" class="bp-tab is-active" aria-disabled="true" tabindex="-1" title="Not wired yet">Active <span class="bp-tab-count">&mdash;</span></button>
-                            <button type="button" class="bp-tab" aria-disabled="true" tabindex="-1" title="Not wired yet">Draft <span class="bp-tab-count">&mdash;</span></button>
-                            <button type="button" class="bp-tab" aria-disabled="true" tabindex="-1" title="Not wired yet">Expired <span class="bp-tab-count">&mdash;</span></button>
-                            <button type="button" class="bp-tab" aria-disabled="true" tabindex="-1" title="Not wired yet">Filters</button>
+                            <button type="button" class="bp-tab is-active" aria-disabled="true" tabindex="-1" title="Not wired yet">Active</button>
                         </div>
                         <button type="button" class="btn btn-dark fw-bold" id="create-job-btn" data-bs-toggle="modal" data-bs-target="#createJobModal">Create job</button>
                     </div>
