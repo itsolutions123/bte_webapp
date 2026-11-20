@@ -500,3 +500,75 @@ body {
 .form-element-icon { width: 1.25rem; height: 1.25rem; margin-right: .5rem; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .form-elements-hint { font-size: .75rem; color: var(--text-muted); margin-top: .5rem; }
 #form-created-toast { border-radius: .75rem; }
+
+/* part 89: sidebar icons, entrance and hover animations, collapsible Forms unit (from Bigtime_Empire.html). Brand logo unchanged. */
+.sb-i { width: 1.25rem; height: 1.25rem; flex: none; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; color: var(--text-muted); transition: color .25s, transform .35s var(--ease); }
+.sb-chev { width: .625rem; height: .625rem; fill: var(--text-muted); display: block; }
+.sidebar a:hover .sb-i, .business-unit-toggle:hover .sb-i { color: var(--text-main); transform: translateX(.125rem); }
+.sidebar a.active .sb-i, .business-unit-toggle[aria-expanded="true"] .sb-i { color: var(--accent-gold); }
+.sb-divider { height: 1px; background: var(--border-light); margin: .875rem .75rem; }
+
+/* unit rows (business units + Forms): icon, title, chevron on the right, plus on hover */
+.unit-head { position: relative; margin-bottom: .125rem; }
+.business-unit-toggle { gap: .75rem; padding: 0 4.5rem 0 .75rem; min-height: 2.5rem; }
+.business-unit-title { padding-left: 0; }
+.business-unit-chevron { position: absolute; right: 1rem; top: 50%; width: .625rem; height: .625rem; margin-top: -.3125rem; font-size: 0; line-height: 0; transition: transform .35s var(--ease); pointer-events: none; }
+.business-unit.is-open > .unit-head .business-unit-chevron { transform: rotate(90deg); }
+.business-unit-add, .forms-add { position: absolute; right: 2.125rem; top: .25rem; width: 2rem; height: 2rem; display: grid; place-items: center; border-radius: .5rem; color: var(--text-muted); font-size: 1.25rem; line-height: 1; cursor: pointer; transition: opacity .2s, transform .3s var(--ease), background .2s; }
+.business-unit-add:hover, .forms-add:hover { background: color-mix(in srgb, var(--accent-gold) 18%, transparent); color: var(--gold-deep); transform: rotate(90deg) scale(1.1); }
+.business-unit-add:active, .forms-add:active { transform: rotate(90deg) scale(.85); }
+
+/* sub-lists: smooth height reveal + thin guide line */
+.sub { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows .45s var(--ease), visibility 0s linear .45s; }
+.business-unit.is-open > .sub { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows .45s var(--ease), visibility 0s; }
+.sub > .sub-inner { position: relative; min-height: 0; overflow: hidden; margin-left: 1.3125rem; padding-left: .75rem; }
+.sub.sub-settled > .sub-inner { overflow: visible; }
+.sub > .sub-inner::before { content: ""; position: absolute; left: 0; top: .25rem; bottom: .25rem; width: 1px; background: var(--border-light); }
+
+/* form and brand rows: kebab overlays the row and shows on hover */
+.form-row > a, .brand-row > a { padding-right: 2.75rem; }
+.form-row > .form-menu-btn, .brand-row > .form-menu-btn { position: absolute; right: .125rem; top: 0; width: 2.5rem; height: 2.5rem; margin: 0; padding: 0; display: grid; place-items: center; border-radius: .625rem; transition: opacity .2s, background .2s; }
+@media (hover: hover) {
+    .business-unit-add, .forms-add, .form-menu-btn { opacity: 0; }
+    .unit-head:hover .business-unit-add, .unit-head:hover .forms-add, .form-row:hover .form-menu-btn, .brand-row:hover .form-menu-btn,
+    .business-unit-add:focus-visible, .forms-add:focus-visible, .form-menu-btn:focus-visible, .form-menu-btn[aria-expanded="true"] { opacity: 1; }
+}
+
+/* active link: gold tint wipes in from the left, gold bar grows */
+.sidebar a.active, .sidebar a.active:hover { background-color: transparent; }
+.sidebar a.active { isolation: isolate; }
+.sidebar a.active::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: .625rem; background: color-mix(in srgb, var(--accent-gold) 15%, transparent); transform-origin: left; animation: sb-wipe .5s var(--ease) both; }
+.sidebar a.active::after { animation: sb-bar .45s var(--ease) .1s both; }
+@keyframes sb-wipe { from { transform: scaleX(0); } }
+@keyframes sb-bar { from { transform: scaleY(0); } }
+
+/* entrance stagger (--i set by admin-sidebar.js); fill-mode backwards only, so no stacking context is left behind to hide the row menus */
+@keyframes sb-rise { from { opacity: 0; transform: translateX(-.75rem); } }
+.sidebar > :not(.sidebar-brand) { animation: sb-rise .55s var(--ease) backwards; animation-delay: calc(var(--i, 0) * 35ms + .1s); }
+
+/* MRF badge ping, profile pill hover */
+@keyframes sb-ping { 0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, .55); } 70%, 100% { box-shadow: 0 0 0 .5rem rgba(220, 53, 69, 0); } }
+.mrf-nav-badge:not([hidden]) { animation: sb-ping 2.4s ease-out infinite; }
+.profile-pill-avatar { transition: transform .35s var(--ease); }
+.profile-pill:hover .profile-pill-avatar { transform: rotate(-10deg) scale(1.08); }
+.profile-pill-logout svg { transition: transform .35s var(--ease); }
+.profile-pill-logout:hover svg { transform: translateX(.25rem); }
+
+@media (prefers-reduced-motion: reduce) {
+    .sidebar > *, .sidebar a.active::before, .sidebar a.active::after, .mrf-nav-badge { animation: none !important; }
+    .sub, .sb-i, .business-unit-chevron { transition-duration: .01ms !important; transition-delay: 0s !important; }
+}
+
+/* part 89: uniform page header, tabs and search row for MRF, Applicants and Users (prefixed with main so it wins over each page's own rules) */
+main > div.mt-4.mb-4:first-child { min-height: 3.25rem; align-items: flex-start; }
+main .mrf-sub, main .users-header-sub { font-size: 0.9rem; font-weight: 400; color: var(--text-muted); }
+
+main .mrf-tabs, main .users-tabs, main .applicants-tabs { display: flex; gap: 1.75rem; border-bottom: 1px solid var(--border-light); margin-bottom: 1.25rem; }
+main .mrf-tab, main .users-tab, main .applicants-tab { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 0.125rem; font-size: 0.95rem; font-weight: 600; color: var(--text-muted); border-bottom: 3px solid transparent; margin-bottom: -1px; transition: color 0.2s, border-color 0.2s; }
+main .mrf-tab:hover, main .users-tab:hover, main .applicants-tab:hover { color: var(--text-main); }
+main .mrf-tab.active, main .users-tab.active, main .applicants-tab.active { color: var(--text-main); font-weight: 600; border-bottom-color: var(--accent-gold); }
+
+main .mrf-toolbar, main .users-toolbar, main .applicants-toolbar { display: flex; gap: 0.75rem; margin-bottom: 1rem; }
+main .mrf-search, main .mrf-req-search, main .users-search, main .applicants-search { min-height: 2.75rem; padding: 0 1rem; font-size: 0.9rem; border: 1px solid var(--border-light); border-radius: 0.75rem; background-color: var(--bg-card); }
+main .mrf-search:focus, main .mrf-req-search:focus, main .users-search:focus, main .applicants-search:focus { border-color: var(--accent-gold); box-shadow: 0 0 0 0.25rem rgba(201, 162, 39, 0.2); }
+main .applicants-search:disabled { background-color: var(--bg-card); opacity: 1; }

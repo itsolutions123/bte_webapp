@@ -85,12 +85,64 @@
         try { window.localStorage.setItem(UNIT_OPEN_KEY_PREFIX + id, open ? '1' : '0'); } catch (err) { /* storage unavailable: state is just not remembered */ }
     }
 
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    function svgIcon(id) {
+        const s = document.createElementNS(SVG_NS, 'svg');
+        s.setAttribute('class', id === 'ch' ? 'sb-chev' : 'sb-i');
+        s.setAttribute('aria-hidden', 'true');
+        const use = document.createElementNS(SVG_NS, 'use');
+        use.setAttribute('href', '#' + id);
+        s.appendChild(use);
+        return s;
+    }
+    // part 89: icon per business unit, matched by name (hardcode, falls back to the building icon)
+    function unitIconId(name) {
+        const n = String(name || '').toLowerCase();
+        if (n.indexOf('project') !== -1 || n.indexOf('franchise') !== -1) return 'i-pf';
+        if (n.indexOf('store') !== -1 || n.indexOf('operation') !== -1 || n.indexOf('house') !== -1) return 'i-so';
+        return 'i-ho';
+    }
+    // After the open transition ends, let the row menus overflow the list (collapsed lists clip them).
+    function bindSettle(wrap, sub) {
+        sub.addEventListener('transitionend', function (e) {
+            if (e.target === sub && e.propertyName === 'grid-template-rows') {
+                sub.classList.toggle('sub-settled', wrap.classList.contains('is-open'));
+            }
+        });
+    }
+    function setupFormsUnit(hasActive) {
+        const wrap = document.getElementById('forms-unit');
+        const toggle = document.getElementById('forms-toggle');
+        const sub = document.getElementById('forms-sub');
+        if (!wrap || !toggle || !sub) return;
+        function setOpen(open, instant) {
+            wrap.classList.toggle('is-open', open);
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            sub.classList.toggle('sub-settled', !!(open && instant));
+        }
+        if (!wrap.dataset.bound) {
+            wrap.dataset.bound = '1';
+            bindSettle(wrap, sub);
+            toggle.addEventListener('click', function () {
+                const next = !wrap.classList.contains('is-open');
+                setOpen(next);
+                storeUnitOpen('forms', next);
+            });
+            toggle.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle.click(); }
+            });
+            setOpen(hasActive || storedUnitOpen('forms') === '1', true);
+        } else if (hasActive) {
+            setOpen(true, true);
+        }
+    }
+
     function unitSection(u) {
         const wrap = document.createElement('div');
         wrap.className = 'business-unit';
         wrap.dataset.businessUnitId = u.id;
         const head = document.createElement('div');
-        head.className = 'd-flex justify-content-between align-items-center ps-3 pe-0 mt-2';
+        head.className = 'unit-head';
         const title = document.createElement('span');
         title.className = 'business-unit-title';
         title.textContent = u.name; // textContent: names are never parsed as HTML
@@ -109,11 +161,18 @@
         const chevron = document.createElement('span');
         chevron.className = 'business-unit-chevron';
         chevron.setAttribute('aria-hidden', 'true');
-        chevron.textContent = '\u203A';
-        toggle.append(chevron, title);
+        chevron.appendChild(svgIcon('ch'));
+        toggle.append(svgIcon(unitIconId(u.name)), title, chevron);
         head.append(toggle, plus);
         const list = document.createElement('div');
-        list.className = 'nav flex-column ps-3';
+        list.className = 'nav flex-column';
+        const sub = document.createElement('div');
+        sub.className = 'sub';
+        const subInner = document.createElement('div');
+        subInner.className = 'sub-inner';
+        subInner.appendChild(list);
+        sub.appendChild(subInner);
+        bindSettle(wrap, sub);
         let hasActiveChild = false;
         if (u.brands && u.brands.length > 0) {
             u.brands.forEach(function (b) {
@@ -125,14 +184,14 @@
             list.appendChild(emptyNote('No brands yet'));
         }
         if (hasActiveChild) wrap.classList.add('has-active-child');
-        function setOpen(open) {
-            list.classList.toggle('d-none', !open);
+        function setOpen(open, instant) {
             wrap.classList.toggle('is-open', open);
             toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            sub.classList.toggle('sub-settled', !!(open && instant));
         }
-        setOpen(hasActiveChild || storedUnitOpen(u.id) === '1');
+        setOpen(hasActiveChild || storedUnitOpen(u.id) === '1', true);
         toggle.addEventListener('click', function () {
-            const next = list.classList.contains('d-none');
+            const next = !wrap.classList.contains('is-open');
             setOpen(next);
             storeUnitOpen(u.id, next);
         });
@@ -140,7 +199,7 @@
             if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle.click(); }
         });
         plus.addEventListener('click', function () { storeUnitOpen(u.id, true); });
-        wrap.append(head, list);
+        wrap.append(head, sub);
         return wrap;
     }
 
@@ -157,6 +216,7 @@
         } else {
             formBox.appendChild(emptyNote('No forms yet'));
         }
+        setupFormsUnit(!!formBox.querySelector('a.active'));
     }
 
     async function refreshSidebar() {
@@ -1334,4 +1394,15 @@
     initProfilePill();
     refreshSidebar();
     initMrfBadge();
+})();
+
+// part 89: sidebar entrance stagger (mockup: items rise in one after another). Sets --i on each direct child of the sidebar nav; CSS does the rest.
+(function () {
+    function stagger() {
+        const nav = document.querySelector('nav.sidebar');
+        if (!nav) return;
+        Array.prototype.forEach.call(nav.children, function (n, i) { n.style.setProperty('--i', i); });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', stagger);
+    else stagger();
 })();
