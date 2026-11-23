@@ -236,7 +236,7 @@ DECIDED 2026-11-12 (user, part 42, contract approved). Migration 022 APPLIED and
 
 ### mrf_form_questions
 DECIDED 2026-11-12 (user, part 42). Same question shape as the job forms; the earlier lowercase type names and plain-list options are replaced. Migration 022 APPLIED and VERIFIED by read-back 2026-11-12; model MrfFormQuestion in app/models.py. question_text is VARCHAR NOT NULL, matching job_questions (decided 2026-11-12, option A). Indexes: idx_mrf_form_questions_form_id and the partial unique idx_mrf_form_questions_one_classification.
-- id UUID PK, form_id FK mrf_forms.id (indexed), question_type String (YES_NO, MULTIPLE_CHOICE, OPEN_ENDED; immutable after create), question_text, options JSONB nullable, is_required Boolean NOT NULL, is_classification Boolean NOT NULL default false, display_order Integer NOT NULL
+- id UUID PK, form_id FK mrf_forms.id (indexed), question_type String (YES_NO, MULTIPLE_CHOICE, OPEN_ENDED, FILE_UPLOAD; immutable after create), question_text, options JSONB nullable, is_required Boolean NOT NULL, is_classification Boolean NOT NULL default false, display_order Integer NOT NULL
 - options: as in the job forms. MULTIPLE_CHOICE is a list of {"id","text"} with server-assigned ids and 3 or more entries; YES_NO has an optional pair of labels; OPEN_ENDED has none.
 - is_required: set in the builder; default on for YES_NO and MULTIPLE_CHOICE, off for OPEN_ENDED.
 - No scoring columns (no answer_points, correct_answer or hard requirement).
@@ -259,6 +259,7 @@ DECIDED 2026-11-17 (user, part 64). APPLIED and VERIFIED by read-back 2026-11-17
 ### mrf_request_answers
 APPLIED and VERIFIED by read-back 2026-11-17 (migration 024, 0 rows). answer is NOT NULL (user, part 66, option A).
 - id UUID PK, request_id FK mrf_requests.id (covered by the unique index below), question_id FK mrf_form_questions.id (indexed), answer Text
+- `answer_file_path` (String, nullable), `answer_file_name` (String, nullable), `answer_file_size` (Integer, nullable) - PROPOSED 2026-11-23, migration 025 not yet written: set only for a `FILE_UPLOAD` answer (the uploaded PDF's saved path, original filename and byte size, mirroring `Application.resume_path` / `resume_filename` / `resume_size_bytes`); `answer` stays NULL on a `FILE_UPLOAD` row. Storage root: new env var `MRF_ATTACHMENT_STORAGE_PATH`, default `/data/mrf_attachments`, separate from `/data/resumes`. On-disk filename `{request_id}_{question_id}.pdf`. Validation: `content_type == application/pdf` plus a `%PDF` magic-byte check, same as the resume upload; proposed 10 MB cap, 422 over it.
 - answer stores the label text for YES_NO and MULTIPLE_CHOICE (single answer),
   the typed text for OPEN_ENDED, trimmed, at most 1000 characters (DECIDED 2026-11-17, part 65 sign-off (b); constant MRF_ANSWER_MAX_LENGTH).
 - Unique (request_id, question_id) (DECIDED 2026-11-17, part 65 sign-off (g), option A). Its leading column

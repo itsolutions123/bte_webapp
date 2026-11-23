@@ -291,14 +291,19 @@ class MrfRequest(Base):
 
 
 class MrfRequestAnswer(Base):
-    # One answer per answered question of an MRF request (migration 024, table already live).
+    # One answer per answered question of an MRF request (migration 024, table already live;
+    # migration 025 adds the three answer_file_* columns and makes answer nullable).
     # answer is label text (YES_NO, MULTIPLE_CHOICE) or typed text (OPEN_ENDED); unanswered questions are not stored.
+    # For FILE_UPLOAD, answer stays NULL and answer_file_path/_name/_size hold the saved PDF instead.
     # Unique (request_id, question_id); no ON DELETE on the foreign keys.
     __tablename__ = "mrf_request_answers"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     request_id = Column(UUID(as_uuid=True), ForeignKey("mrf_requests.id"), nullable=False)
     question_id = Column(UUID(as_uuid=True), ForeignKey("mrf_form_questions.id"), nullable=False)
-    answer = Column(Text, nullable=False)
+    answer = Column(Text, nullable=True)
+    answer_file_path = Column(String, nullable=True)
+    answer_file_name = Column(String, nullable=True)
+    answer_file_size = Column(Integer, nullable=True)
 
     __table_args__ = (
         Index("idx_mrf_request_answers_request_question", "request_id", "question_id", unique=True),

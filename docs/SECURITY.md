@@ -69,3 +69,13 @@
 - **Cookie separation:** the portal cookie `mrf_session_id` and the admin cookie `session_id` are separate by decision. NOT verified: the cross-cookie tests (they need the portal guard and the me endpoint, which are NOT built).
 - **NOT built:** logout, the me endpoint, the portal session guard, and the login page script.
 - **NOT verified:** that no response body echoes a password, the behaviour in a browser, and the effect of a server restart on the limiter.
+
+## 10. MRF Attachments (FILE_UPLOAD answers) (IMPLEMENTED and VERIFIED LIVE 2026-11-23; retention NOT decided)
+- **Storage Path:** `MRF_ATTACHMENT_STORAGE_PATH`, deployed as `/app/data/mrf_attachments` (bind mount `./data/mrf_attachments`, gitignored via `data/`). Separate from the resume storage. The code default `/data/mrf_attachments` is outside the repo mount.
+- **File Naming:** `{request_id}_{question_id}.pdf` on disk, server-generated. The client file name is stored only in `mrf_request_answers.answer_file_name` (capped at 200 characters) and sanitized again for the download header. The stored path is never returned by any endpoint.
+- **File Type Enforcement:** PDF only: `Content-Type` must be `application/pdf` AND the first 4 bytes must be `%PDF`, checked before the file is kept. Failure is 422 `Attachment must be a PDF.`
+- **Max File Size:** 10 MB, a named constant. Over it is 422 `Attachment must be 10 MB or smaller.` Differs from resumes (5 MB, 413). The cap is checked while streaming to disk, but Starlette spools the whole upload first, so it is enforced after receipt (acceptable on the LAN; revisit before any public exposure).
+- **Write order:** every file is validated and streamed to a temporary name before any database write, renamed only after the request row is flushed, and all temporary and final files are deleted on any failure.
+- **File Permissions:** files are `0600` (seen, owned by root because the container runs as root). The code creates the directory with `0700` only if it does not exist; the deployed directory was created on the host as `drwxrwxr-x` (775), which does NOT meet the section 1 rule. OPEN ITEM for Security.
+- **Access:** only SUPERADMIN and MANAGER, through `GET /api/v1/admin/mrf/requests/{request_id}/answers/{question_id}/attachment` (`no-store`, `nosniff`, path must resolve under the storage root). The requestor cannot re-download their own upload.
+- **Retention / Deletion:** NOT decided. Attachments are not removed when a request is deleted or a question is deleted. Security Gem owns this decision.
