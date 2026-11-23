@@ -45,6 +45,8 @@
         .mrf-form-q:hover { border-color: #E3D6A6; box-shadow: inset 3px 0 0 #C9A227, 0 4px 14px rgba(17, 17, 17, 0.06); }
         .mrf-form-q-text { color: #111; }
         .mrf-form-q-type { color: #8a7a3a; letter-spacing: 0.03em; }
+        .mrf-form-q-left { min-width: 0; flex: 1 1 auto; }
+        .mrf-form-q-desc { font-size: 0.8rem; font-weight: 400; color: var(--text-muted); margin-top: 0.15rem; margin-bottom: 0.2rem; white-space: pre-line; overflow-wrap: anywhere; }
         .mrf-form-card .form-check-input:checked, #mrf-q-modal .form-check-input:checked { background-color: #C9A227; border-color: #C9A227; }
         .mrf-form-card .form-check-input:focus, #mrf-q-modal .form-check-input:focus { border-color: #C9A227; box-shadow: 0 0 0 0.2rem rgba(201, 162, 39, 0.25); }
         .mrf-form-head .form-control:focus, #mrf-q-modal .form-control:focus { border-color: #C9A227; box-shadow: 0 0 0 0.2rem rgba(201, 162, 39, 0.2); }
@@ -125,6 +127,8 @@
                     <div id="mrf-q-error" class="text-danger small mb-2" role="alert" hidden></div>
                     <label class="form-label small fw-bold" for="mrf-q-text">Question</label>
                     <input type="text" class="form-control form-control-sm mb-3" id="mrf-q-text" autocomplete="off">
+                    <label class="form-label small fw-bold" for="mrf-q-desc">Description <span class="text-muted fw-normal">(optional)</span></label>
+                    <textarea class="form-control form-control-sm mb-3" id="mrf-q-desc" rows="2" maxlength="500" autocomplete="off"></textarea>
                     <div id="mrf-q-options-wrap" hidden>
                         <div class="form-label small fw-bold">Options</div>
                         <div id="mrf-q-options"></div>
@@ -329,8 +333,11 @@
                 var q = questions[i];
                 var card = makeEl("div", "mrf-form-q");
                 var row = makeEl("div", "d-flex justify-content-between align-items-center gap-3");
-                var left = makeEl("div");
+                var left = makeEl("div", "mrf-form-q-left");
                 left.appendChild(makeEl("div", "mrf-form-q-text", q.question_text));
+                if (typeof q.description === "string" && q.description !== "") {
+                    left.appendChild(makeEl("div", "mrf-form-q-desc", q.description));
+                }
                 var typeText = q.is_classification ? "Classification" : (MRF_FORM_TYPE_LABELS[q.question_type] || q.question_type);
                 left.appendChild(makeEl("div", "mrf-form-q-type", typeText));
                 row.appendChild(left);
@@ -396,6 +403,7 @@
         var qTitleEl = document.getElementById("mrf-q-modal-title");
         var qErrorEl = document.getElementById("mrf-q-error");
         var qTextEl = document.getElementById("mrf-q-text");
+        var qDescEl = document.getElementById("mrf-q-desc");
         var qOptionsWrapEl = document.getElementById("mrf-q-options-wrap");
         var qOptionsEl = document.getElementById("mrf-q-options");
         var qAddOptionBtn = document.getElementById("mrf-q-add-option");
@@ -446,6 +454,7 @@
             qErrorEl.hidden = true;
             qErrorEl.textContent = "";
             qTextEl.value = "";
+            qDescEl.value = "";
             qOptionsEl.textContent = "";
             qAddOptionBtn.hidden = type === "YES_NO";
             if (type === "YES_NO") {
@@ -484,6 +493,7 @@
             qErrorEl.hidden = true;
             qErrorEl.textContent = "";
             qTextEl.value = q.question_text;
+            qDescEl.value = typeof q.description === "string" ? q.description : "";
             qOptionsEl.textContent = "";
             qAddOptionBtn.hidden = qType === "YES_NO";
             if (qType === "MULTIPLE_CHOICE" || qType === "YES_NO") {
@@ -509,6 +519,7 @@
         function submitQuestion() {
             if (qSaving) { return; }
             var body = { question_type: qType, question_text: qTextEl.value };
+            if (qDescEl.value.trim() !== "") { body.description = qDescEl.value; }
             if (qType === "YES_NO" || qType === "MULTIPLE_CHOICE") {
                 var inputs = qOptionsEl.querySelectorAll("input");
                 body.options = [];
@@ -521,7 +532,7 @@
             var requestUrl = "/api/v1/admin/mrf/forms/" + encodeURIComponent(formId) + "/questions";
             var requestMethod = "POST";
             if (qEditId) {
-                body = { question_text: qTextEl.value };
+                body = { question_text: qTextEl.value, description: qDescEl.value };
                 if (qType === "MULTIPLE_CHOICE" || qType === "YES_NO") {
                     var editInputs = qOptionsEl.querySelectorAll("input");
                     body.options = [];

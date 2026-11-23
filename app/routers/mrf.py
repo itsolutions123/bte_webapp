@@ -348,6 +348,7 @@ async def get_portal_form(
                 "is_required": q.is_required,
                 "is_classification": q.is_classification,
                 "display_order": q.display_order,
+                "description": q.description,
             }
             for q in questions
         ],

@@ -251,6 +251,8 @@ class MrfFormQuestion(Base):
     is_required = Column(Boolean, nullable=False)
     is_classification = Column(Boolean, nullable=False, default=False, server_default="false")
     display_order = Column(Integer, nullable=False)
+    # Optional description shown under the question title (migration 026, docs/API_CONTRACT.md "Question description"). NULL when none; never an empty string.
+    description = Column(String, nullable=True)
 
     __table_args__ = (
         Index("idx_mrf_form_questions_form_id", "form_id"),

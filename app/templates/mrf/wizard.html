@@ -46,6 +46,7 @@
             <div class="mrf-progress"><div id="mrf-progress-bar" class="mrf-progress-bar" style="width: 0%"></div></div>
             <div class="mrf-question">
                 <p id="mrf-question-text" class="mrf-question-text"></p>
+                <p id="mrf-question-desc" class="mrf-question-desc" hidden></p>
                 <p id="mrf-question-hint" class="mrf-question-hint"></p>
                 <div id="mrf-options" class="mrf-options"></div>
                 <p id="mrf-question-error" class="mrf-error" hidden></p>
@@ -105,6 +106,7 @@
             var progressBar = document.getElementById("mrf-progress-bar");
             var qText = document.getElementById("mrf-question-text");
             var qHint = document.getElementById("mrf-question-hint");
+            var qDesc = document.getElementById("mrf-question-desc");
             var qError = document.getElementById("mrf-question-error");
             var optionsBox = document.getElementById("mrf-options");
             var prevBtn = document.getElementById("mrf-prev");
@@ -202,6 +204,8 @@
                 progressText.textContent = (current + 1) + " of " + total;
                 progressBar.style.width = ((current + 1) / total * 100) + "%";
                 qText.textContent = q.question_text;
+                qDesc.textContent = q.description ? q.description : "";
+                qDesc.hidden = !q.description;
                 qHint.textContent = isRequired(q) ? "Required" : "Optional";
                 qError.hidden = true;
                 optionsBox.textContent = "";

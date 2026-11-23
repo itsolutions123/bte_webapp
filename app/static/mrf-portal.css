@@ -122,8 +122,9 @@ body.mrf-app-body {
 .mrf-progress { height: 8px; border-radius: 999px; background: #efefeb; overflow: hidden; }
 .mrf-progress-bar { height: 100%; background: var(--mrf-gold); border-radius: 999px; }
 .mrf-question { text-align: center; padding: 2.5rem 0 1.75rem; }
-.mrf-question-text { font-size: 1.15rem; font-weight: 700; margin: 0 0 0.35rem; }
-.mrf-question-hint { font-size: 0.78rem; color: var(--mrf-muted); margin: 0 0 1.5rem; }
+.mrf-question-text { font-size: 1.15rem; font-weight: 700; margin: 0 auto 0.35rem; max-width: 420px; text-align: left; }
+.mrf-question-desc { font-size: 0.88rem; color: var(--mrf-muted); margin: -0.25rem auto 0.6rem; max-width: 420px; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; }
+.mrf-question-hint { font-size: 0.78rem; color: var(--mrf-muted); margin: 0 auto 1.5rem; max-width: 420px; text-align: left; }
 .mrf-options { display: flex; flex-direction: column; gap: 0.6rem; max-width: 420px; margin: 0 auto; text-align: left; }
 .mrf-option { display: flex; align-items: center; gap: 0.7rem; padding: 0.75rem 0.9rem; border: 1px solid var(--mrf-border); border-radius: 10px; background: #fff; font-size: 0.92rem; }
 .mrf-option-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--mrf-border); flex: none; }

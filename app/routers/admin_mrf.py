@@ -24,6 +24,7 @@ from app.mrf_lists import (
     MRF_FORM_STATUS_ACTIVE,
     MRF_FORM_STATUS_DRAFT,
     MRF_FORM_STATUSES,
+    MRF_QUESTION_DESCRIPTION_MAX_LENGTH,
     MRF_QUESTION_TEXT_MAX_LENGTH,
     MRF_QUESTION_TYPE_MULTIPLE_CHOICE,
     MRF_QUESTION_TYPE_OPEN_ENDED,
@@ -118,6 +119,7 @@ MRF_FORM_NEEDS_CLASSIFICATION = (
 # The option messages are the same texts as the job form's create_question (admin.py), copied here on purpose (z1).
 MRF_QUESTION_TEXT_REQUIRED = "question_text must not be empty"
 MRF_QUESTION_TEXT_TOO_LONG = f"question_text must be at most {MRF_QUESTION_TEXT_MAX_LENGTH} characters"
+MRF_QUESTION_DESCRIPTION_TOO_LONG = f"description must be at most {MRF_QUESTION_DESCRIPTION_MAX_LENGTH} characters"
 MRF_QUESTION_TYPE_INVALID = "question_type must be YES_NO, MULTIPLE_CHOICE, OPEN_ENDED or FILE_UPLOAD"
 MRF_QUESTION_OPTION_EMPTY = "option labels must not be empty"
 MRF_QUESTION_YES_NO_COUNT = "YES_NO options must be exactly 2 labels"
@@ -132,7 +134,7 @@ MRF_QUESTION_CLASSIFICATION_EXISTS = "This form already has a Classification que
 
 # Update question messages (docs/API_CONTRACT.md, PATCH /api/v1/admin/mrf/forms/{form_id}/questions/{question_id}, decided by the user 2026-11-13, part 51, (p1) to (p10)).
 MRF_QUESTION_NOT_FOUND = "Question not found."
-MRF_QUESTION_UPDATE_EMPTY = "Send question_text, options or is_required to update."
+MRF_QUESTION_UPDATE_EMPTY = "Send question_text, options, is_required or description to update."
 MRF_QUESTION_CLASSIFICATION_OPTIONS_LOCKED = "a Classification question's options cannot be changed"
 MRF_QUESTION_CLASSIFICATION_ALWAYS_REQUIRED = "a Classification question is always required"
 
@@ -732,6 +734,7 @@ async def get_mrf_form(
                 is_required=q.is_required,
                 is_classification=q.is_classification,
                 display_order=q.display_order,
+                description=q.description,
             )
             for q in questions
         ],
@@ -760,6 +763,12 @@ async def create_mrf_question(
         raise HTTPException(status_code=422, detail=MRF_QUESTION_TEXT_REQUIRED)
     if len(text) > MRF_QUESTION_TEXT_MAX_LENGTH:
         raise HTTPException(status_code=422, detail=MRF_QUESTION_TEXT_TOO_LONG)
+
+    description = None
+    if payload.description is not None:
+        description = payload.description.strip() or None
+        if description is not None and len(description) > MRF_QUESTION_DESCRIPTION_MAX_LENGTH:
+            raise HTTPException(status_code=422, detail=MRF_QUESTION_DESCRIPTION_TOO_LONG)
 
     qtype = payload.question_type
     if qtype not in MRF_QUESTION_TYPES:
@@ -828,6 +837,7 @@ async def create_mrf_question(
         is_required=is_required,
         is_classification=payload.is_classification,
         display_order=next_order,
+        description=description,
     )
     db.add(question)
     try:
@@ -847,6 +857,7 @@ async def create_mrf_question(
         is_required=question.is_required,
         is_classification=question.is_classification,
         display_order=question.display_order,
+        description=question.description,
     )
 
 
@@ -874,7 +885,7 @@ async def update_mrf_question(
     if question is None:
         raise HTTPException(status_code=404, detail=MRF_QUESTION_NOT_FOUND)
 
-    if payload.question_text is None and payload.options is None and payload.is_required is None:
+    if payload.question_text is None and payload.options is None and payload.is_required is None and payload.description is None:
         raise HTTPException(status_code=422, detail=MRF_QUESTION_UPDATE_EMPTY)
 
     new_text = None
@@ -884,6 +895,14 @@ async def update_mrf_question(
             raise HTTPException(status_code=422, detail=MRF_QUESTION_TEXT_REQUIRED)
         if len(new_text) > MRF_QUESTION_TEXT_MAX_LENGTH:
             raise HTTPException(status_code=422, detail=MRF_QUESTION_TEXT_TOO_LONG)
+
+    set_description = False
+    new_description = None
+    if payload.description is not None:
+        set_description = True
+        new_description = payload.description.strip() or None
+        if new_description is not None and len(new_description) > MRF_QUESTION_DESCRIPTION_MAX_LENGTH:
+            raise HTTPException(status_code=422, detail=MRF_QUESTION_DESCRIPTION_TOO_LONG)
 
     if question.is_classification:
         if payload.options is not None:
@@ -928,6 +947,8 @@ async def update_mrf_question(
         question.options = new_options
     if payload.is_required is not None:
         question.is_required = payload.is_required
+    if set_description:
+        question.description = new_description
     await db.commit()
     await db.refresh(question)
 
@@ -939,6 +960,7 @@ async def update_mrf_question(
         is_required=question.is_required,
         is_classification=question.is_classification,
         display_order=question.display_order,
+        description=question.description,
     )
 
 
@@ -1055,6 +1077,7 @@ async def reorder_mrf_question(
                 is_required=q.is_required,
                 is_classification=q.is_classification,
                 display_order=q.display_order,
+                description=q.description,
             )
             for q in questions
         ]

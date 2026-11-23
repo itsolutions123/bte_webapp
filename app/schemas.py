@@ -442,6 +442,7 @@ class MrfFormQuestionCreate(BaseModel):
     options: Optional[List[str]] = None
     is_required: Optional[StrictBool] = None
     is_classification: StrictBool = False
+    description: Optional[str] = None
 
 
 class MrfFormQuestionUpdate(BaseModel):
@@ -450,6 +451,7 @@ class MrfFormQuestionUpdate(BaseModel):
     question_text: Optional[str] = None
     options: Optional[List[str]] = None
     is_required: Optional[StrictBool] = None
+    description: Optional[str] = None
 
 
 class MrfFormQuestionItem(BaseModel):
@@ -460,6 +462,7 @@ class MrfFormQuestionItem(BaseModel):
     is_required: bool
     is_classification: bool
     display_order: int
+    description: Optional[str] = None
 
 
 class MrfPortalFormDetail(BaseModel):
