@@ -142,6 +142,25 @@
             </div>
         </div>
     </div>
+    <div class="modal fade" id="mrf-q-remove-modal" tabindex="-1" aria-labelledby="mrf-q-remove-modal-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="mrf-q-remove-modal-title">Remove question</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="mrf-q-remove-error" class="text-danger small mb-2" role="alert" hidden></div>
+                    <p class="mb-2">Remove this question from the form?</p>
+                    <p class="fw-bold mb-0" id="mrf-q-remove-text"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-outline-dark mrf-form-btn" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-danger mrf-form-btn" id="mrf-q-remove-confirm">Remove</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/admin-sidebar.js"></script>
     <script>
@@ -337,6 +356,12 @@
                     editQBtn.addEventListener("click", function () { openEditQuestionModal(question); });
                 })(q);
                 right.appendChild(editQBtn);
+                var removeQBtn = makeEl("button", "btn btn-sm btn-outline-danger mrf-form-btn", MRF_Q_REMOVE_BUTTON_TEXT);
+                removeQBtn.type = "button";
+                (function (question) {
+                    removeQBtn.addEventListener("click", function () { openRemoveQuestionModal(question); });
+                })(q);
+                right.appendChild(removeQBtn);
                 row.appendChild(right);
                 card.appendChild(row);
                 if (Array.isArray(q.options) && q.question_type !== "OPEN_ENDED") {
@@ -352,6 +377,7 @@
 
         // POST /api/v1/admin/mrf/forms/{form_id}/questions (docs/API_CONTRACT.md, Call site (add question), part 57 step 5.4).
         var MRF_Q_YES_NO_OPTIONS = ["Yes", "No"];
+        var MRF_Q_YES_NO_COUNT = 2;
         var MRF_Q_CLASSIFICATION_OPTIONS = ["Rank and File", "Supervisory", "Managerial"];
         var MRF_Q_MIN_OPTIONS = 3;
         var MRF_Q_TITLE_EDIT_PREFIX = "Edit question: ";
@@ -359,6 +385,11 @@
         var MRF_Q_EDIT_ERROR_ACCESS = "Oops, you don't have permission to edit questions.";
         var MRF_Q_EDIT_ERROR_GONE = "Oops, this question no longer exists. The questions have been refreshed.";
         var MRF_Q_NOT_FOUND_DETAIL = "Question not found.";
+        // DELETE /api/v1/admin/mrf/forms/{form_id}/questions/{question_id} (docs/API_CONTRACT.md, Call site (remove question, 2026-11-23)).
+        var MRF_Q_REMOVE_BUTTON_TEXT = "Remove";
+        var MRF_Q_REMOVING_BUTTON_TEXT = "Removing...";
+        var MRF_Q_REMOVE_ERROR_ACCESS = "Oops, you don't have permission to remove questions.";
+        var MRF_Q_REMOVE_ERROR_OTHER = "Oops, couldn't remove this question. Please try again.";
         var questionList = [];
         var questionsLoaded = false;
         var qModalEl = document.getElementById("mrf-q-modal");
@@ -374,6 +405,12 @@
         var qType = "";
         var qSaving = false;
         var qEditId = "";
+        var rmModalEl = document.getElementById("mrf-q-remove-modal");
+        var rmTextEl = document.getElementById("mrf-q-remove-text");
+        var rmErrorEl = document.getElementById("mrf-q-remove-error");
+        var rmConfirmBtn = document.getElementById("mrf-q-remove-confirm");
+        var rmId = "";
+        var rmBusy = false;
 
         function setQSaving(on) {
             qSaving = on;
@@ -410,7 +447,13 @@
             qErrorEl.textContent = "";
             qTextEl.value = "";
             qOptionsEl.textContent = "";
-            if (type === "MULTIPLE_CHOICE") {
+            qAddOptionBtn.hidden = type === "YES_NO";
+            if (type === "YES_NO") {
+                for (var y = 0; y < MRF_Q_YES_NO_COUNT; y++) { addOptionRow(); }
+                var yesNoInputs = qOptionsEl.querySelectorAll("input");
+                for (var z = 0; z < yesNoInputs.length; z++) { yesNoInputs[z].value = MRF_Q_YES_NO_OPTIONS[z]; }
+                qOptionsWrapEl.hidden = false;
+            } else if (type === "MULTIPLE_CHOICE") {
                 for (var n = 0; n < MRF_Q_MIN_OPTIONS; n++) { addOptionRow(); }
                 qOptionsWrapEl.hidden = false;
             } else {
@@ -442,9 +485,11 @@
             qErrorEl.textContent = "";
             qTextEl.value = q.question_text;
             qOptionsEl.textContent = "";
-            if (qType === "MULTIPLE_CHOICE") {
+            qAddOptionBtn.hidden = qType === "YES_NO";
+            if (qType === "MULTIPLE_CHOICE" || qType === "YES_NO") {
                 var labels = Array.isArray(q.options) ? q.options.map(optionLabel) : [];
-                var rowCount = Math.max(labels.length, MRF_Q_MIN_OPTIONS);
+                if (qType === "YES_NO" && labels.length !== MRF_Q_YES_NO_COUNT) { labels = MRF_Q_YES_NO_OPTIONS.slice(); }
+                var rowCount = qType === "YES_NO" ? MRF_Q_YES_NO_COUNT : Math.max(labels.length, MRF_Q_MIN_OPTIONS);
                 for (var n = 0; n < rowCount; n++) { addOptionRow(); }
                 var optionInputs = qOptionsEl.querySelectorAll("input");
                 for (var k = 0; k < labels.length; k++) { optionInputs[k].value = labels[k]; }
@@ -464,9 +509,7 @@
         function submitQuestion() {
             if (qSaving) { return; }
             var body = { question_type: qType, question_text: qTextEl.value };
-            if (qType === "YES_NO") {
-                body.options = MRF_Q_YES_NO_OPTIONS.slice();
-            } else if (qType === "MULTIPLE_CHOICE") {
+            if (qType === "YES_NO" || qType === "MULTIPLE_CHOICE") {
                 var inputs = qOptionsEl.querySelectorAll("input");
                 body.options = [];
                 for (var j = 0; j < inputs.length; j++) { body.options.push(inputs[j].value); }
@@ -479,7 +522,7 @@
             var requestMethod = "POST";
             if (qEditId) {
                 body = { question_text: qTextEl.value };
-                if (qType === "MULTIPLE_CHOICE") {
+                if (qType === "MULTIPLE_CHOICE" || qType === "YES_NO") {
                     var editInputs = qOptionsEl.querySelectorAll("input");
                     body.options = [];
                     for (var e = 0; e < editInputs.length; e++) { body.options.push(editInputs[e].value); }
@@ -533,6 +576,61 @@
                 })
                 .then(function () { setQSaving(false); });
         }
+
+        function setRmBusy(on) {
+            rmBusy = on;
+            var rmControls = rmModalEl.querySelectorAll("button");
+            for (var rc = 0; rc < rmControls.length; rc++) { rmControls[rc].disabled = on; }
+            rmConfirmBtn.textContent = on ? MRF_Q_REMOVING_BUTTON_TEXT : MRF_Q_REMOVE_BUTTON_TEXT;
+        }
+
+        function openRemoveQuestionModal(q) {
+            rmId = q.id;
+            rmTextEl.textContent = q.question_text;
+            rmErrorEl.hidden = true;
+            rmErrorEl.textContent = "";
+            bootstrap.Modal.getOrCreateInstance(rmModalEl).show();
+        }
+
+        function submitRemoveQuestion() {
+            if (rmBusy || !rmId) { return; }
+            var removingId = rmId;
+            rmErrorEl.hidden = true;
+            rmErrorEl.textContent = "";
+            setRmBusy(true);
+            fetch("/api/v1/admin/mrf/forms/" + encodeURIComponent(formId) + "/questions/" + encodeURIComponent(removingId), {
+                method: "DELETE",
+                credentials: "same-origin"
+            })
+                .then(function (res) {
+                    if (res.status === 204) { return null; }
+                    return res.json().catch(function () { return null; }).then(function (errBody) {
+                        var err = new Error("HTTP " + res.status);
+                        err.status = res.status;
+                        err.detail = errBody ? errBody.detail : null;
+                        throw err;
+                    });
+                })
+                .then(function () {
+                    questionList = questionList.filter(function (item) { return item.id !== removingId; });
+                    if (questionsLoaded) { renderQuestions(questionList); }
+                    setRmBusy(false);
+                    bootstrap.Modal.getOrCreateInstance(rmModalEl).hide();
+                })
+                .catch(function (err) {
+                    var text = MRF_Q_REMOVE_ERROR_OTHER;
+                    if (err.status === 401) { text = MRF_FORM_ERROR_SESSION; }
+                    else if (err.status === 403) { text = MRF_Q_REMOVE_ERROR_ACCESS; }
+                    else if (err.status === 404 && err.detail === MRF_Q_NOT_FOUND_DETAIL) { text = MRF_Q_EDIT_ERROR_GONE; reloadQuestions(); }
+                    else if ((err.status === 404 || err.status === 409 || err.status === 422) && typeof err.detail === "string") { text = err.detail; }
+                    rmErrorEl.textContent = text;
+                    rmErrorEl.hidden = false;
+                })
+                .then(function () { setRmBusy(false); });
+        }
+
+        rmConfirmBtn.addEventListener("click", submitRemoveQuestion);
+        rmModalEl.addEventListener("hide.bs.modal", function (e) { if (rmBusy) { e.preventDefault(); } });
 
         var elementBtns = document.querySelectorAll("[data-question-type]");
         for (var eb = 0; eb < elementBtns.length; eb++) {
