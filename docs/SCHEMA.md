@@ -207,7 +207,7 @@ Columns below are verified against `app/models.py` (lines 140-165) on 2026-10-30
 
 ## 7. MRF (Manpower Request Form) -- PARTLY APPLIED (mrf_users, mrf_sessions, mrf_forms, mrf_form_questions); rest PROPOSED
 
-Status: PARTLY APPLIED (section first PROPOSED 2026-11-10, updated 2026-11-12). `mrf_users` and `mrf_sessions` APPLIED and VERIFIED by read-back 2026-11-10 (migration 021, migrations/021_create_mrf_users_sessions.sql; 16 columns, indexes idx_mrf_users_email unique, idx_mrf_users_status, idx_mrf_sessions_user_id, idx_mrf_sessions_expires_at). All other mrf_* tables below are still PROPOSED, no migration written, except mrf_forms and mrf_form_questions: migration 022 (migrations/022_create_mrf_forms_questions.sql) APPLIED and VERIFIED by read-back 2026-11-12 (part 42); mrf_requests and mrf_request_answers APPLIED and VERIFIED by read-back 2026-11-17 (migration 024, migrations/024_create_mrf_requests_answers.sql, part 66). Migration 025 (FILE_UPLOAD answer columns) and migration 026 (mrf_form_questions.description) are APPLIED. Next migration number: 027.
+Status: PARTLY APPLIED (section first PROPOSED 2026-11-10, updated 2026-11-12). `mrf_users` and `mrf_sessions` APPLIED and VERIFIED by read-back 2026-11-10 (migration 021, migrations/021_create_mrf_users_sessions.sql; 16 columns, indexes idx_mrf_users_email unique, idx_mrf_users_status, idx_mrf_sessions_user_id, idx_mrf_sessions_expires_at). All other mrf_* tables below are still PROPOSED, no migration written, except mrf_forms and mrf_form_questions: migration 022 (migrations/022_create_mrf_forms_questions.sql) APPLIED and VERIFIED by read-back 2026-11-12 (part 42); mrf_requests and mrf_request_answers APPLIED and VERIFIED by read-back 2026-11-17 (migration 024, migrations/024_create_mrf_requests_answers.sql, part 66). Migration 025 (FILE_UPLOAD answer columns) and migration 026 (mrf_form_questions.description) are APPLIED, and migration 027 (migrations/027_mrf_requests_form_id_index.sql, index idx_mrf_requests_form_id on mrf_requests(form_id), APPLIED and VERIFIED by read-back 2026-11-23) is APPLIED. Next migration number: 028.
 
 **Confirmed (user, 2026-11-10):** MRF is a separate service with its own users, sessions, forms and requests. Option A: separate `mrf_*` tables; nothing reuses `users`, `sessions`, `forms` or `job_questions`. No business unit, brand or job link. Scoring: DECIDED none (user, 2026-11-12, part 42): MRF forms have no answer_points, no correct_answer and no hard requirement.
 
@@ -255,7 +255,7 @@ DECIDED 2026-11-17 (user, part 64). APPLIED and VERIFIED by read-back 2026-11-17
   (one constant in app/mrf_lists.py, CHECK in the DB). A decision is final.
 - remarks Text NULL (trimmed, max 500, DECIDED 2026-11-17, part 65 sign-off (a); constant MRF_REMARKS_MAX_LENGTH). Required on Rejected, optional on Approved.
 - decided_by_user_id UUID NULL FK users.id; decided_at timestamptz NULL (both NULL while Pending)
-- Indexes (rule 18.1): status, classification, department, created_at, user_id
+- Indexes (rule 18.1): status, classification, department, created_at, user_id, form_id (migration 027, used by the MRF form delete check)
 
 ### mrf_request_answers
 APPLIED and VERIFIED by read-back 2026-11-17 (migration 024, 0 rows). answer is NOT NULL (user, part 66, option A).
