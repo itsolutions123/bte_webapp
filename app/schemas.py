@@ -567,3 +567,18 @@ class MrfQuestionReorder(BaseModel):
 
 class MrfQuestionReorderResponse(BaseModel):
     questions: List[MrfFormQuestionItem]
+
+
+class MrfBulkDelete(BaseModel):
+    # Plain UUID on purpose, like MrfQuestionReorder. Empty list and cap are checked in the router with plain-string 422 texts.
+    ids: List[UUID]
+
+
+class MrfBulkDeleteSkipped(BaseModel):
+    id: UUID
+    reason: str
+
+
+class MrfBulkDeleteResponse(BaseModel):
+    deleted: List[UUID]
+    skipped: List[MrfBulkDeleteSkipped]

@@ -289,6 +289,7 @@ class MrfRequest(Base):
         Index("idx_mrf_requests_department", "department"),
         Index("idx_mrf_requests_created_at", "created_at"),
         Index("idx_mrf_requests_user_id", "user_id"),
+        Index("idx_mrf_requests_form_id", "form_id"),
     )
 
 

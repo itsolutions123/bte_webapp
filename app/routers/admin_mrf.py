@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import MrfForm, MrfFormQuestion, MrfRequest, MrfRequestAnswer, MrfUser, User
+from app.models import MrfForm, MrfFormQuestion, MrfRequest, MrfRequestAnswer, MrfSession, MrfUser, User
 from app.mrf_lists import (
     MRF_ASSIGNMENTS,
     MRF_CLASSIFICATION_OPTIONS,
@@ -57,6 +57,9 @@ from app.schemas import (
     MrfRequestDecision,
     MrfUserListItem,
     MrfUserListResponse,
+    MrfBulkDelete,
+    MrfBulkDeleteResponse,
+    MrfBulkDeleteSkipped,
 )
 from app.timeutil import APP_TIMEZONE, to_app_tz
 
@@ -156,6 +159,16 @@ USER_SORTS = (SORT_NEWEST, SORT_FIRST_NAME_ASC, SORT_FIRST_NAME_DESC)
 # Approve error messages (docs/API_CONTRACT.md, POST /api/v1/admin/mrf/users/{user_id}/approve, decided by the user 2026-11-11).
 MRF_USER_NOT_FOUND = "Account not found."
 MRF_USER_ALREADY_APPROVED = "Account is already approved."
+
+# Delete (contract "Admin MRF delete", x2 and x3).
+MRF_USER_HAS_REQUESTS = "This account has submitted requests and cannot be deleted."
+MRF_FORM_DELETE_ACTIVE = "Set the form to Draft before deleting it."
+MRF_FORM_HAS_REQUESTS = "This form has submitted requests and cannot be deleted."
+MRF_DELETE_HEADERS = {"Cache-Control": "no-store"}
+# Bulk delete (contract x5 and x6).
+MRF_BULK_DELETE_MAX_IDS = 50
+MRF_BULK_DELETE_EMPTY = "ids must contain at least one id"
+MRF_BULK_DELETE_TOO_MANY = f"ids must contain at most {MRF_BULK_DELETE_MAX_IDS} ids"
 
 
 @router.get(
@@ -1112,3 +1125,184 @@ async def approve_mrf_user(
     )
     await db.commit()
     return item
+
+
+@router.delete(
+    "/mrf/users/{user_id}",
+    status_code=204,
+    dependencies=[Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER))],
+)
+async def delete_mrf_user(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Permanently deletes one MRF account (contract x2). Allowed only with zero rows in mrf_requests. The account's mrf_sessions rows
+    are deleted first and the account second, in one transaction. 404 for an unknown id, 409 when the account has requests. If a request
+    appears between the check and the delete, the foreign key refuses the delete and the same 409 is returned."""
+    exists = await db.scalar(select(MrfUser.id).where(MrfUser.id == user_id))
+    if exists is None:
+        raise HTTPException(status_code=404, detail=MRF_USER_NOT_FOUND)
+    request_count = await db.scalar(
+        select(func.count()).select_from(MrfRequest).where(MrfRequest.user_id == user_id)
+    )
+    if request_count:
+        raise HTTPException(status_code=409, detail=MRF_USER_HAS_REQUESTS)
+
+    try:
+        await db.execute(delete(MrfSession).where(MrfSession.user_id == user_id))
+        result = await db.execute(delete(MrfUser).where(MrfUser.id == user_id))
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail=MRF_USER_HAS_REQUESTS)
+    if result.rowcount == 0:
+        await db.rollback()
+        raise HTTPException(status_code=404, detail=MRF_USER_NOT_FOUND)
+
+    await db.commit()
+    return Response(status_code=204, headers=MRF_DELETE_HEADERS)
+
+
+@router.delete(
+    "/mrf/forms/{form_id}",
+    status_code=204,
+    dependencies=[Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER))],
+)
+async def delete_mrf_form(
+    form_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Permanently deletes one MRF form (contract x3). Allowed only when the form is DRAFT and has zero rows in mrf_requests. The form's
+    questions are deleted first and the form second, in one transaction. Checks in order: 404, ACTIVE 409, has-requests 409. A foreign key
+    refusal (a request or an answer appearing during the delete) returns the has-requests 409."""
+    form_row = (await db.execute(select(MrfForm.status).where(MrfForm.id == form_id))).first()
+    if form_row is None:
+        raise HTTPException(status_code=404, detail=MRF_FORM_NOT_FOUND)
+    if form_row.status == MRF_FORM_STATUS_ACTIVE:
+        raise HTTPException(status_code=409, detail=MRF_FORM_DELETE_ACTIVE)
+    request_count = await db.scalar(
+        select(func.count()).select_from(MrfRequest).where(MrfRequest.form_id == form_id)
+    )
+    if request_count:
+        raise HTTPException(status_code=409, detail=MRF_FORM_HAS_REQUESTS)
+
+    try:
+        await db.execute(delete(MrfFormQuestion).where(MrfFormQuestion.form_id == form_id))
+        result = await db.execute(delete(MrfForm).where(MrfForm.id == form_id))
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail=MRF_FORM_HAS_REQUESTS)
+    if result.rowcount == 0:
+        await db.rollback()
+        raise HTTPException(status_code=404, detail=MRF_FORM_NOT_FOUND)
+
+    await db.commit()
+    return Response(status_code=204, headers=MRF_DELETE_HEADERS)
+
+
+def _bulk_delete_ids(body: MrfBulkDelete):
+    """Duplicate ids are collapsed (order kept), then the list must hold 1 to MRF_BULK_DELETE_MAX_IDS ids (contract x5)."""
+    ids = list(dict.fromkeys(body.ids))
+    if not ids:
+        raise HTTPException(status_code=422, detail=MRF_BULK_DELETE_EMPTY)
+    if len(ids) > MRF_BULK_DELETE_MAX_IDS:
+        raise HTTPException(status_code=422, detail=MRF_BULK_DELETE_TOO_MANY)
+    return ids
+
+
+@router.post(
+    "/mrf/users/bulk-delete",
+    response_model=MrfBulkDeleteResponse,
+    dependencies=[Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER))],
+)
+async def bulk_delete_mrf_users(
+    body: MrfBulkDelete,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    """Bulk delete of MRF accounts (contract x5, x6). Same rules and texts as DELETE /mrf/users/{user_id}. Each id is deleted and committed
+    on its own, so a skipped id never cancels the others. 200 always, every id is in exactly one of deleted or skipped."""
+    ids = _bulk_delete_ids(body)
+    response.headers["Cache-Control"] = "no-store"
+    existing = set((await db.execute(select(MrfUser.id).where(MrfUser.id.in_(ids)))).scalars().all())
+    counts = dict(
+        (
+            await db.execute(
+                select(MrfRequest.user_id, func.count()).where(MrfRequest.user_id.in_(ids)).group_by(MrfRequest.user_id)
+            )
+        ).all()
+    )
+    deleted = []
+    skipped = []
+    for uid in ids:
+        if uid not in existing:
+            skipped.append(MrfBulkDeleteSkipped(id=uid, reason=MRF_USER_NOT_FOUND))
+            continue
+        if counts.get(uid, 0):
+            skipped.append(MrfBulkDeleteSkipped(id=uid, reason=MRF_USER_HAS_REQUESTS))
+            continue
+        try:
+            await db.execute(delete(MrfSession).where(MrfSession.user_id == uid))
+            result = await db.execute(delete(MrfUser).where(MrfUser.id == uid))
+            if result.rowcount == 0:
+                await db.rollback()
+                skipped.append(MrfBulkDeleteSkipped(id=uid, reason=MRF_USER_NOT_FOUND))
+                continue
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            skipped.append(MrfBulkDeleteSkipped(id=uid, reason=MRF_USER_HAS_REQUESTS))
+            continue
+        deleted.append(uid)
+    return MrfBulkDeleteResponse(deleted=deleted, skipped=skipped)
+
+
+@router.post(
+    "/mrf/forms/bulk-delete",
+    response_model=MrfBulkDeleteResponse,
+    dependencies=[Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER))],
+)
+async def bulk_delete_mrf_forms(
+    body: MrfBulkDelete,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    """Bulk delete of MRF forms (contract x5, x6). Same rules and texts as DELETE /mrf/forms/{form_id}: DRAFT only, zero requests.
+    Each id is deleted and committed on its own. 200 always, every id is in exactly one of deleted or skipped."""
+    ids = _bulk_delete_ids(body)
+    response.headers["Cache-Control"] = "no-store"
+    statuses = dict(
+        (await db.execute(select(MrfForm.id, MrfForm.status).where(MrfForm.id.in_(ids)))).all()
+    )
+    counts = dict(
+        (
+            await db.execute(
+                select(MrfRequest.form_id, func.count()).where(MrfRequest.form_id.in_(ids)).group_by(MrfRequest.form_id)
+            )
+        ).all()
+    )
+    deleted = []
+    skipped = []
+    for fid in ids:
+        if fid not in statuses:
+            skipped.append(MrfBulkDeleteSkipped(id=fid, reason=MRF_FORM_NOT_FOUND))
+            continue
+        if statuses[fid] == MRF_FORM_STATUS_ACTIVE:
+            skipped.append(MrfBulkDeleteSkipped(id=fid, reason=MRF_FORM_DELETE_ACTIVE))
+            continue
+        if counts.get(fid, 0):
+            skipped.append(MrfBulkDeleteSkipped(id=fid, reason=MRF_FORM_HAS_REQUESTS))
+            continue
+        try:
+            await db.execute(delete(MrfFormQuestion).where(MrfFormQuestion.form_id == fid))
+            result = await db.execute(delete(MrfForm).where(MrfForm.id == fid))
+            if result.rowcount == 0:
+                await db.rollback()
+                skipped.append(MrfBulkDeleteSkipped(id=fid, reason=MRF_FORM_NOT_FOUND))
+                continue
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            skipped.append(MrfBulkDeleteSkipped(id=fid, reason=MRF_FORM_HAS_REQUESTS))
+            continue
+        deleted.append(fid)
+    return MrfBulkDeleteResponse(deleted=deleted, skipped=skipped)

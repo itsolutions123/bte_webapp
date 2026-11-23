@@ -29,6 +29,9 @@
         .mrf-empty { padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
         .mrf-approve-error { color: #dc3545; font-size: 0.85rem; padding: 0.5rem 0.75rem 0; }
         .mrf-shell-note { font-size: 0.8rem; color: var(--text-muted); }
+        .mrf-approve-error { white-space: pre-line; }
+        .mrf-delete-selected { border-radius: 12px; font-weight: 700; }
+        .mrf-delete-selected[hidden] { display: none; }
         .mrf-sortable { cursor: pointer; user-select: none; }
         .mrf-toolbar-wrap { flex-wrap: wrap; }
         .mrf-req-search { flex: 1 1 220px; min-width: 200px; border-radius: 12px; font-size: 0.9rem; }
@@ -186,12 +189,14 @@
                             <option value="DRAFT">Draft</option>
                         </select>
                         <div class="flex-grow-1"></div>
+                        <button type="button" class="btn btn-outline-danger mrf-delete-selected" id="mrf-forms-delete-selected" hidden>Delete selected (0)</button>
                         <button type="button" class="btn mrf-add-btn" id="mrf-new-form-btn" data-bs-toggle="modal" data-bs-target="#newFormModal">New form</button>
                     </div>
                     <div class="mrf-card">
+                        <div class="mrf-approve-error" id="mrf-forms-error" role="alert" hidden></div>
                         <div class="table-responsive">
                             <table class="table mrf-table align-middle" style="min-width: 600px;">
-                                <thead><tr><th>FORM NAME</th><th>STATUS</th><th>QUESTIONS</th><th>CREATED</th></tr></thead>
+                                <thead><tr><th><input type="checkbox" class="form-check-input mrf-select-all" aria-label="Select all on this page"></th><th>FORM NAME</th><th>STATUS</th><th>QUESTIONS</th><th>CREATED</th><th>ACTIONS</th></tr></thead>
                                 <tbody id="mrf-forms-body">
                                 </tbody>
                             </table>
@@ -202,6 +207,7 @@
                 <section class="mrf-panel d-none" data-panel="users">
                     <div class="mrf-toolbar">
                         <input type="search" class="form-control mrf-search" placeholder="Search users" aria-label="Search users" autocomplete="off">
+                        <button type="button" class="btn btn-outline-danger mrf-delete-selected" id="mrf-users-delete-selected" hidden>Delete selected (0)</button>
                         <button type="button" class="btn mrf-add-btn">Add user</button>
                     </div>
 
@@ -210,7 +216,7 @@
                         <div class="mrf-approve-error" id="mrf-approve-error" role="alert" hidden></div>
                         <div class="table-responsive">
                             <table class="table mrf-table align-middle">
-                                <thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Department</th><th>Position</th><th>Security</th></tr></thead>
+                                <thead><tr><th><input type="checkbox" class="form-check-input mrf-select-all" aria-label="Select all on this page"></th><th>First name</th><th>Last name</th><th>Email</th><th>Department</th><th>Position</th><th>Security</th></tr></thead>
                                 <tbody>
                                     
                                 </tbody>
@@ -222,14 +228,14 @@
                         <div class="mrf-group-label" id="mrf-approved-label">APPROVED</div>
                         <div class="table-responsive">
                             <table class="table mrf-table align-middle">
-                                <thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Department</th><th>Position</th><th>Security</th></tr></thead>
+                                <thead><tr><th><input type="checkbox" class="form-check-input mrf-select-all" aria-label="Select all on this page"></th><th>First name</th><th>Last name</th><th>Email</th><th>Department</th><th>Position</th><th>Security</th></tr></thead>
                                 <tbody>
                                     
                                 </tbody>
                             </table>
                         </div>
                     </div>
-                    <div class="mrf-shell-note">Shell: Reset password and Add user do nothing yet.</div>
+                    <div class="mrf-shell-note">Shell: Add user does nothing yet.</div>
                 </section>
             </main>
         </div>
@@ -250,6 +256,26 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn mrf-add-btn" id="mrf-new-form-create">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="mrfDeleteUsersModal" tabindex="-1" aria-labelledby="mrfDeleteUsersModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="mrfDeleteUsersModalLabel">Delete accounts</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="mrf-delete-users-count"></p>
+                    <ul class="small mb-2 ps-3" id="mrf-delete-users-list"></ul>
+                    <p class="mb-0">This cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="mrf-delete-users-confirm">Delete</button>
                 </div>
             </div>
         </div>
@@ -284,6 +310,26 @@
                         <button type="button" class="btn btn-danger" id="mrf-decide-reject" hidden>Reject</button>
                         <button type="button" class="btn mrf-add-btn" id="mrf-decide-approve" hidden>Approve</button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="mrfDeleteFormsModal" tabindex="-1" aria-labelledby="mrfDeleteFormsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="mrfDeleteFormsModalLabel">Delete forms</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="mrf-delete-forms-count"></p>
+                    <ul class="small mb-2 ps-3" id="mrf-delete-forms-list"></ul>
+                    <p class="mb-0">This cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="mrf-delete-forms-confirm">Delete</button>
                 </div>
             </div>
         </div>
@@ -886,7 +932,31 @@
             var MRF_APPROVE_ERROR_ACCESS = "Oops, you don't have permission to approve accounts.";
             var MRF_APPROVE_ERROR_CHANGED = 'Oops, this account has changed. The list has been refreshed.';
             var MRF_APPROVE_ERROR_OTHER = "Oops, couldn't approve this account. Please try again.";
-            var MRF_USERS_COLUMNS = 6;
+            var MRF_USERS_COLUMNS = 7;
+            var MRF_LABEL_IDS = { pending: 'mrf-pending-label', approved: 'mrf-approved-label' };
+            var MRF_DELETE_TEXT = 'Delete';
+            var MRF_DELETE_SELECTED_TEXT = 'Delete selected';
+            var MRF_BULK_DELETE_SUFFIX = '/bulk-delete';
+            var MRF_SELECT_ROW_LABEL = 'Select this account';
+            var MRF_DELETE_LIST_MAX = 10;
+            var MRF_DELETE_ONE_TEXT = 'Delete this account?';
+            var MRF_DELETE_MANY_BEFORE = 'Delete these ';
+            var MRF_DELETE_MANY_AFTER = ' accounts?';
+            var MRF_DELETE_MORE_BEFORE = 'and ';
+            var MRF_DELETE_MORE_AFTER = ' more';
+            var MRF_DELETE_SKIP_JOIN = '\n';
+            var MRF_DELETE_ERROR_SESSION = 'Oops, your session has ended. Please sign in again.';
+            var MRF_DELETE_ERROR_ACCESS = "Oops, you don't have permission to delete accounts.";
+            var MRF_DELETE_ERROR_CHANGED = 'Oops, this account could not be deleted. The list has been refreshed.';
+            var MRF_DELETE_ERROR_OTHER = "Oops, couldn't delete. Please try again.";
+            var pickedUsers = { pending: {}, approved: {} };
+            var pendingDelete = [];
+            var pendingBulk = false;
+            var deleteSelectedBtn = document.getElementById('mrf-users-delete-selected');
+            var deleteModalEl = document.getElementById('mrfDeleteUsersModal');
+            var deleteCountEl = document.getElementById('mrf-delete-users-count');
+            var deleteListEl = document.getElementById('mrf-delete-users-list');
+            var deleteConfirmBtn = document.getElementById('mrf-delete-users-confirm');
             var MRF_PAGE_SIZE = 10;
             var MRF_PREV_TEXT = 'Previous';
             var MRF_NEXT_TEXT = 'Next';
@@ -922,6 +992,172 @@
                 if (className) { td.className = className; }
                 td.textContent = text;
                 return td;
+            }
+
+            function statusOf(buttonText) { return buttonText === MRF_APPROVE_TEXT ? 'pending' : 'approved'; }
+
+            function cardOf(status) { return document.getElementById(MRF_LABEL_IDS[status]).closest('.mrf-card'); }
+
+            function personOf(item) {
+                return { id: item.id, first_name: item.first_name, last_name: item.last_name, email: item.email };
+            }
+
+            function updateDeleteSelected() {
+                var n = Object.keys(pickedUsers.pending).length + Object.keys(pickedUsers.approved).length;
+                deleteSelectedBtn.hidden = n < 1;
+                deleteSelectedBtn.textContent = MRF_DELETE_SELECTED_TEXT + ' (' + n + ')';
+            }
+
+            function resetSelection(status, card) {
+                pickedUsers[status] = {};
+                var all = card.querySelector('thead .mrf-select-all');
+                if (all) { all.checked = false; }
+                updateDeleteSelected();
+            }
+
+            function syncSelectAll(status) {
+                var card = cardOf(status);
+                var total = card.querySelectorAll('tbody .mrf-select-row').length;
+                var checked = card.querySelectorAll('tbody .mrf-select-row:checked').length;
+                card.querySelector('thead .mrf-select-all').checked = total > 0 && total === checked;
+            }
+
+            function selectCell(item, status) {
+                var td = document.createElement('td');
+                var box = document.createElement('input');
+                box.type = 'checkbox';
+                box.className = 'form-check-input mrf-select-row';
+                box.setAttribute('aria-label', MRF_SELECT_ROW_LABEL);
+                box.setAttribute('data-user-id', item.id);
+                box.mrfPerson = personOf(item);
+                box.addEventListener('change', function () {
+                    if (box.checked) { pickedUsers[status][item.id] = box.mrfPerson; }
+                    else { delete pickedUsers[status][item.id]; }
+                    syncSelectAll(status);
+                    updateDeleteSelected();
+                });
+                td.appendChild(box);
+                return td;
+            }
+
+            function setupSelectAll(status) {
+                var all = cardOf(status).querySelector('thead .mrf-select-all');
+                all.addEventListener('change', function () {
+                    cardOf(status).querySelectorAll('tbody .mrf-select-row').forEach(function (box) {
+                        box.checked = all.checked;
+                        var id = box.getAttribute('data-user-id');
+                        if (all.checked) { pickedUsers[status][id] = box.mrfPerson; }
+                        else { delete pickedUsers[status][id]; }
+                    });
+                    updateDeleteSelected();
+                });
+            }
+
+            function askDelete(people, bulk) {
+                if (!people.length) { return; }
+                pendingDelete = people;
+                pendingBulk = bulk;
+                showApproveError('');
+                deleteCountEl.textContent = people.length === 1
+                    ? MRF_DELETE_ONE_TEXT
+                    : MRF_DELETE_MANY_BEFORE + people.length + MRF_DELETE_MANY_AFTER;
+                deleteListEl.replaceChildren();
+                people.slice(0, MRF_DELETE_LIST_MAX).forEach(function (person) {
+                    var li = document.createElement('li');
+                    li.textContent = person.first_name + ' ' + person.last_name + ' (' + person.email + ')';
+                    deleteListEl.appendChild(li);
+                });
+                if (people.length > MRF_DELETE_LIST_MAX) {
+                    var more = document.createElement('li');
+                    more.textContent = MRF_DELETE_MORE_BEFORE + (people.length - MRF_DELETE_LIST_MAX) + MRF_DELETE_MORE_AFTER;
+                    deleteListEl.appendChild(more);
+                }
+                deleteConfirmBtn.disabled = false;
+                bootstrap.Modal.getOrCreateInstance(deleteModalEl).show();
+            }
+
+            function closeDeleteModal() {
+                deleteConfirmBtn.disabled = false;
+                pendingDelete = [];
+                bootstrap.Modal.getOrCreateInstance(deleteModalEl).hide();
+            }
+
+            function afterDelete() {
+                closeDeleteModal();
+                resetSelection('pending', cardOf('pending'));
+                resetSelection('approved', cardOf('approved'));
+                refreshAfterApprove();
+            }
+
+            function serverText(body) {
+                if (body && typeof body.detail === 'string') { return body.detail; }
+                if (body && typeof body.message === 'string') { return body.message; }
+                return '';
+            }
+
+            function failedResponse(res) {
+                return res.json().catch(function () { return {}; }).then(function (body) {
+                    var err = new Error('request failed');
+                    err.status = res.status;
+                    err.text = serverText(body);
+                    throw err;
+                });
+            }
+
+            function showDeleteError(err) {
+                var text = MRF_DELETE_ERROR_OTHER;
+                if (err.status === 401) { text = MRF_DELETE_ERROR_SESSION; }
+                else if (err.status === 403) { text = MRF_DELETE_ERROR_ACCESS; }
+                else if (err.status === 404 || err.status === 409) {
+                    text = err.text || MRF_DELETE_ERROR_CHANGED;
+                    refreshAfterApprove();
+                }
+                showApproveError(text);
+            }
+
+            function runSingleDelete(person) {
+                var url = MRF_USERS_API + '/' + encodeURIComponent(person.id);
+                fetch(url, { method: 'DELETE', credentials: 'same-origin', cache: 'no-store' })
+                    .then(function (res) {
+                        if (!res.ok) { return failedResponse(res); }
+                        afterDelete();
+                    })
+                    .catch(function (err) {
+                        closeDeleteModal();
+                        showDeleteError(err);
+                    });
+            }
+
+            function runBulkDelete(people) {
+                var ids = people.map(function (person) { return person.id; });
+                fetch(MRF_USERS_API + MRF_BULK_DELETE_SUFFIX, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids: ids })
+                })
+                    .then(function (res) {
+                        if (!res.ok) { return failedResponse(res); }
+                        return res.json().then(function (body) {
+                            var names = {};
+                            people.forEach(function (person) { names[person.id] = person.first_name + ' ' + person.last_name; });
+                            var lines = (body.skipped || []).map(function (s) { return (names[s.id] || s.id) + ': ' + s.reason; });
+                            afterDelete();
+                            showApproveError(lines.join(MRF_DELETE_SKIP_JOIN));
+                        });
+                    })
+                    .catch(function (err) {
+                        closeDeleteModal();
+                        showDeleteError(err);
+                    });
+            }
+
+            function confirmDelete() {
+                var people = pendingDelete.slice();
+                if (!people.length) { return; }
+                deleteConfirmBtn.disabled = true;
+                if (pendingBulk) { runBulkDelete(people); } else { runSingleDelete(people[0]); }
             }
 
             function showApproveError(text) {
@@ -963,6 +1199,7 @@
 
             function userRow(item, buttonText) {
                 var tr = document.createElement('tr');
+                tr.appendChild(selectCell(item, statusOf(buttonText)));
                 tr.appendChild(cell(item.first_name));
                 tr.appendChild(cell(item.last_name));
                 tr.appendChild(cell(item.email, 'mrf-muted'));
@@ -978,6 +1215,13 @@
                     btn.addEventListener('click', function () { approveUser(btn); });
                 }
                 action.appendChild(btn);
+                var del = document.createElement('button');
+                del.type = 'button';
+                del.className = 'btn btn-outline-danger btn-sm mrf-btn ms-2';
+                del.textContent = MRF_DELETE_TEXT;
+                del.setAttribute('data-user-id', item.id);
+                del.addEventListener('click', function () { askDelete([personOf(item)], false); });
+                action.appendChild(del);
                 tr.appendChild(action);
                 return tr;
             }
@@ -1044,6 +1288,7 @@
                             return;
                         }
                         tbody.replaceChildren();
+                        resetSelection(status, card);
                         renderPager(card, status, labelId, buttonText, body.total);
                         if (!body.data.length) {
                             tbody.appendChild(messageRow(MRF_EMPTY_TEXT));
@@ -1058,6 +1303,7 @@
                         if (err.status === 401) { text = MRF_ERROR_SESSION; }
                         else if (err.status === 403) { text = MRF_ERROR_ACCESS; }
                         tbody.replaceChildren(messageRow(text));
+                        resetSelection(status, card);
                         renderPager(card, status, labelId, buttonText, 0);
                     });
             }
@@ -1069,7 +1315,7 @@
 
             function setupSort(status, labelId, buttonText) {
                 var card = document.getElementById(labelId).closest('.mrf-card');
-                var th = card.querySelector('thead th');
+                var th = card.querySelector('thead th:nth-child(2)');
                 var arrow = document.createElement('span');
                 th.className = 'mrf-sortable';
                 th.setAttribute('role', 'button');
@@ -1098,6 +1344,12 @@
             }
             setupSort('pending', 'mrf-pending-label', 'Approve');
             setupSort('approved', 'mrf-approved-label', 'Reset password');
+            setupSelectAll('pending');
+            setupSelectAll('approved');
+            deleteSelectedBtn.addEventListener('click', function () {
+                askDelete(Object.values(pickedUsers.pending).concat(Object.values(pickedUsers.approved)), true);
+            });
+            deleteConfirmBtn.addEventListener('click', confirmDelete);
 
             var searchBox = document.querySelector('.mrf-search');
             var searchTimer = null;
@@ -1127,7 +1379,31 @@
         (function () {
             var MRF_FORMS_API = '/api/v1/admin/mrf/forms';
             var MRF_FORMS_PAGE_SIZE = 10;
-            var MRF_FORMS_COLUMNS = 4;
+            var MRF_FORMS_COLUMNS = 6;
+            var MRF_FORMS_DELETE_TEXT = 'Delete';
+            var MRF_FORMS_DELETE_SELECTED_TEXT = 'Delete selected';
+            var MRF_FORMS_BULK_DELETE_SUFFIX = '/bulk-delete';
+            var MRF_FORMS_SELECT_ROW_LABEL = 'Select this form';
+            var MRF_FORMS_DELETE_LIST_MAX = 10;
+            var MRF_FORMS_DELETE_ONE_TEXT = 'Delete this form?';
+            var MRF_FORMS_DELETE_MANY_BEFORE = 'Delete these ';
+            var MRF_FORMS_DELETE_MANY_AFTER = ' forms?';
+            var MRF_FORMS_DELETE_MORE_BEFORE = 'and ';
+            var MRF_FORMS_DELETE_MORE_AFTER = ' more';
+            var MRF_FORMS_DELETE_SKIP_JOIN = '\n';
+            var MRF_FORMS_DELETE_ERROR_SESSION = 'Oops, your session has ended. Please sign in again.';
+            var MRF_FORMS_DELETE_ERROR_ACCESS = "Oops, you don't have permission to delete forms.";
+            var MRF_FORMS_DELETE_ERROR_CHANGED = 'Oops, this form could not be deleted. The list has been refreshed.';
+            var MRF_FORMS_DELETE_ERROR_OTHER = "Oops, couldn't delete. Please try again.";
+            var formsPicked = {};
+            var formsPendingDelete = [];
+            var formsPendingBulk = false;
+            var formsErrorEl = document.getElementById('mrf-forms-error');
+            var formsDeleteSelectedBtn = document.getElementById('mrf-forms-delete-selected');
+            var formsDeleteModalEl = document.getElementById('mrfDeleteFormsModal');
+            var formsDeleteCountEl = document.getElementById('mrf-delete-forms-count');
+            var formsDeleteListEl = document.getElementById('mrf-delete-forms-list');
+            var formsDeleteConfirmBtn = document.getElementById('mrf-delete-forms-confirm');
             var MRF_FORMS_DATE_LENGTH = 10;
             var MRF_FORMS_EMPTY_TEXT = 'Nothing to see here';
             var MRF_FORMS_ERROR_SESSION = 'Oops, your session has ended. Please sign in again.';
@@ -1181,8 +1457,190 @@
                 return td;
             }
 
+            function showFormsError(text) {
+                formsErrorEl.textContent = text;
+                formsErrorEl.hidden = !text;
+            }
+
+            function formOf(item) { return { id: item.id, name: item.name }; }
+
+            function updateFormsDeleteSelected() {
+                var n = Object.keys(formsPicked).length;
+                formsDeleteSelectedBtn.hidden = n < 1;
+                formsDeleteSelectedBtn.textContent = MRF_FORMS_DELETE_SELECTED_TEXT + ' (' + n + ')';
+            }
+
+            function resetFormsSelection() {
+                formsPicked = {};
+                var all = formsCard.querySelector('thead .mrf-select-all');
+                if (all) { all.checked = false; }
+                updateFormsDeleteSelected();
+            }
+
+            function syncFormsSelectAll() {
+                var total = formsBody.querySelectorAll('.mrf-select-row').length;
+                var checked = formsBody.querySelectorAll('.mrf-select-row:checked').length;
+                formsCard.querySelector('thead .mrf-select-all').checked = total > 0 && total === checked;
+            }
+
+            function formsSelectCell(item) {
+                var td = document.createElement('td');
+                var box = document.createElement('input');
+                box.type = 'checkbox';
+                box.className = 'form-check-input mrf-select-row';
+                box.setAttribute('aria-label', MRF_FORMS_SELECT_ROW_LABEL);
+                box.setAttribute('data-form-id', item.id);
+                box.mrfForm = formOf(item);
+                box.addEventListener('change', function () {
+                    if (box.checked) { formsPicked[item.id] = box.mrfForm; }
+                    else { delete formsPicked[item.id]; }
+                    syncFormsSelectAll();
+                    updateFormsDeleteSelected();
+                });
+                td.addEventListener('click', function (e) { e.stopPropagation(); });
+                td.addEventListener('keydown', function (e) { e.stopPropagation(); });
+                td.appendChild(box);
+                return td;
+            }
+
+            function formsActionsCell(item) {
+                var td = document.createElement('td');
+                var del = document.createElement('button');
+                del.type = 'button';
+                del.className = 'btn btn-outline-danger btn-sm mrf-btn';
+                del.textContent = MRF_FORMS_DELETE_TEXT;
+                del.setAttribute('data-form-id', item.id);
+                del.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    askFormsDelete([formOf(item)], false);
+                });
+                td.addEventListener('click', function (e) { e.stopPropagation(); });
+                td.addEventListener('keydown', function (e) { e.stopPropagation(); });
+                td.appendChild(del);
+                return td;
+            }
+
+            function setupFormsSelectAll() {
+                var all = formsCard.querySelector('thead .mrf-select-all');
+                all.addEventListener('change', function () {
+                    formsBody.querySelectorAll('.mrf-select-row').forEach(function (box) {
+                        box.checked = all.checked;
+                        var id = box.getAttribute('data-form-id');
+                        if (all.checked) { formsPicked[id] = box.mrfForm; }
+                        else { delete formsPicked[id]; }
+                    });
+                    updateFormsDeleteSelected();
+                });
+            }
+
+            function askFormsDelete(forms, bulk) {
+                if (!forms.length) { return; }
+                formsPendingDelete = forms;
+                formsPendingBulk = bulk;
+                showFormsError('');
+                formsDeleteCountEl.textContent = forms.length === 1
+                    ? MRF_FORMS_DELETE_ONE_TEXT
+                    : MRF_FORMS_DELETE_MANY_BEFORE + forms.length + MRF_FORMS_DELETE_MANY_AFTER;
+                formsDeleteListEl.replaceChildren();
+                forms.slice(0, MRF_FORMS_DELETE_LIST_MAX).forEach(function (f) {
+                    var li = document.createElement('li');
+                    li.textContent = f.name;
+                    formsDeleteListEl.appendChild(li);
+                });
+                if (forms.length > MRF_FORMS_DELETE_LIST_MAX) {
+                    var more = document.createElement('li');
+                    more.textContent = MRF_FORMS_DELETE_MORE_BEFORE + (forms.length - MRF_FORMS_DELETE_LIST_MAX) + MRF_FORMS_DELETE_MORE_AFTER;
+                    formsDeleteListEl.appendChild(more);
+                }
+                formsDeleteConfirmBtn.disabled = false;
+                bootstrap.Modal.getOrCreateInstance(formsDeleteModalEl).show();
+            }
+
+            function closeFormsDeleteModal() {
+                formsDeleteConfirmBtn.disabled = false;
+                formsPendingDelete = [];
+                bootstrap.Modal.getOrCreateInstance(formsDeleteModalEl).hide();
+            }
+
+            function afterFormsDelete() {
+                closeFormsDeleteModal();
+                resetFormsSelection();
+                loadForms();
+            }
+
+            function formsServerText(body) {
+                if (body && typeof body.detail === 'string') { return body.detail; }
+                if (body && typeof body.message === 'string') { return body.message; }
+                return '';
+            }
+
+            function formsFailedResponse(res) {
+                return res.json().catch(function () { return {}; }).then(function (body) {
+                    var err = new Error('request failed');
+                    err.status = res.status;
+                    err.text = formsServerText(body);
+                    throw err;
+                });
+            }
+
+            function showFormsDeleteError(err) {
+                var text = MRF_FORMS_DELETE_ERROR_OTHER;
+                if (err.status === 401) { text = MRF_FORMS_DELETE_ERROR_SESSION; }
+                else if (err.status === 403) { text = MRF_FORMS_DELETE_ERROR_ACCESS; }
+                else if (err.status === 404 || err.status === 409) {
+                    text = err.text || MRF_FORMS_DELETE_ERROR_CHANGED;
+                    loadForms();
+                }
+                showFormsError(text);
+            }
+
+            function runFormsSingleDelete(form) {
+                fetch(MRF_FORMS_API + '/' + encodeURIComponent(form.id), { method: 'DELETE', credentials: 'same-origin', cache: 'no-store' })
+                    .then(function (res) {
+                        if (!res.ok) { return formsFailedResponse(res); }
+                        afterFormsDelete();
+                    })
+                    .catch(function (err) {
+                        closeFormsDeleteModal();
+                        showFormsDeleteError(err);
+                    });
+            }
+
+            function runFormsBulkDelete(forms) {
+                var ids = forms.map(function (f) { return f.id; });
+                fetch(MRF_FORMS_API + MRF_FORMS_BULK_DELETE_SUFFIX, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids: ids })
+                })
+                    .then(function (res) {
+                        if (!res.ok) { return formsFailedResponse(res); }
+                        return res.json().then(function (body) {
+                            var names = {};
+                            forms.forEach(function (f) { names[f.id] = f.name; });
+                            var lines = (body.skipped || []).map(function (s) { return (names[s.id] || s.id) + ': ' + s.reason; });
+                            afterFormsDelete();
+                            showFormsError(lines.join(MRF_FORMS_DELETE_SKIP_JOIN));
+                        });
+                    })
+                    .catch(function (err) {
+                        closeFormsDeleteModal();
+                        showFormsDeleteError(err);
+                    });
+            }
+
+            function confirmFormsDelete() {
+                var forms = formsPendingDelete.slice();
+                if (!forms.length) { return; }
+                formsDeleteConfirmBtn.disabled = true;
+                if (formsPendingBulk) { runFormsBulkDelete(forms); } else { runFormsSingleDelete(forms[0]); }
+            }
+
             function formsRow(item) {
                 var tr = document.createElement('tr');
+                tr.appendChild(formsSelectCell(item));
                 tr.appendChild(formsCell(item.name));
                 var formsStTd = formsCell('', 'mrf-muted');
                 var formsStPill = document.createElement('span');
@@ -1193,10 +1651,12 @@
                 tr.appendChild(formsStTd);
                 tr.appendChild(formsCell(String(item.question_count), 'mrf-muted'));
                 tr.appendChild(formsCell(String(item.created_at || '').slice(0, MRF_FORMS_DATE_LENGTH), 'mrf-muted'));
+                tr.appendChild(formsActionsCell(item));
                 tr.className = 'mrf-req-row';
                 tr.tabIndex = 0;
                 tr.addEventListener('click', function () { formsPreviewOpen(item); });
                 tr.addEventListener('keydown', function (e) {
+                    if (e.target !== tr) { return; }
                     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); formsPreviewOpen(item); }
                 });
                 return tr;
@@ -1333,6 +1793,7 @@
                             return;
                         }
                         formsBody.replaceChildren();
+                        resetFormsSelection();
                         formsPager(body.total);
                         if (!body.data.length) {
                             formsBody.appendChild(formsMessageRow(MRF_FORMS_EMPTY_TEXT));
@@ -1347,9 +1808,16 @@
                         if (err.status === 401) { text = MRF_FORMS_ERROR_SESSION; }
                         else if (err.status === 403) { text = MRF_FORMS_ERROR_ACCESS; }
                         formsBody.replaceChildren(formsMessageRow(text));
+                        resetFormsSelection();
                         formsPager(0);
                     });
             }
+
+            setupFormsSelectAll();
+            formsDeleteSelectedBtn.addEventListener('click', function () {
+                askFormsDelete(Object.values(formsPicked), true);
+            });
+            formsDeleteConfirmBtn.addEventListener('click', confirmFormsDelete);
 
             formsStatus.addEventListener('change', function () {
                 formsPage = 1;
