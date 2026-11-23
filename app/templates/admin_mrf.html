@@ -49,6 +49,41 @@
         .mrf-review-q { font-weight: 700; font-size: 0.9rem; }
         .mrf-review-a { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.9rem; }
         .mrf-review-empty { color: var(--text-muted); font-size: 0.9rem; }
+        .mrf-review-stage { background: #E7E3D8; padding: 1rem; }
+        .mrf-paper { max-width: 49.5rem; margin: 0 auto; padding: 2.25rem 2.5rem; background: #fff; color: var(--accent-black); box-shadow: 0 0.5rem 2rem rgba(17, 17, 17, 0.18); }
+        .mrf-paper-stamp { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #7A5B00; white-space: nowrap; }
+        .mrf-paper-stamp[data-status="Approved"] { border-color: #15803D; color: #15803D; }
+        .mrf-paper-stamp[data-status="Rejected"] { border-color: #B42318; color: #B42318; }
+        .mrf-paper-title { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem 0 0.85rem; margin-bottom: 1.25rem; border-top: 3px solid var(--accent-black); border-bottom: 1px solid var(--border-light); }
+        .mrf-paper-title h2 { margin: 0; font-size: 1.6rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+        .mrf-paper-title p { margin: 0.25rem 0 0; font-size: 0.8rem; color: var(--text-muted); }
+        .mrf-paper-sec { margin-bottom: 1.25rem; }
+        .mrf-paper-hd { display: flex; align-items: center; gap: 0.85rem; margin: 0 0 0.6rem; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #7A5B00; }
+        .mrf-paper-hd::after { content: ""; flex: 1; height: 1px; background: var(--border-light); }
+        .mrf-paper-tbl { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1px; background: var(--border-light); border: 1px solid var(--accent-black); }
+        .mrf-paper-cell { min-height: 3.5rem; padding: 0.6rem 0.85rem; background: #fff; overflow-wrap: anywhere; }
+        .mrf-paper .mrf-review-label { display: block; padding: 0; font-size: 0.625rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+        .mrf-paper .mrf-review-value { margin-top: 0.35rem; font-size: 0.95rem; font-weight: 600; white-space: pre-wrap; }
+        .mrf-paper-sign { display: flex; gap: 3rem; margin-top: 1.5rem; }
+        .mrf-paper-sig { flex: 1; }
+        .mrf-paper-sig:last-child { flex: 0 0 9rem; }
+        .mrf-paper-sig-val { min-height: 1.75rem; font-size: 0.9rem; font-weight: 600; }
+        .mrf-paper-sig-label { padding-top: 0.35rem; border-top: 1px solid var(--accent-black); font-size: 0.7rem; color: var(--text-muted); }
+        #mrfReviewModal .modal-header.mrf-review-head { padding: 0.75rem 1rem 0.25rem; border-bottom: 0; background: #E7E3D8; }
+        #mrfReviewModal .mrf-paper #mrf-decide-remarks { border: 1px dashed #7A5B00; border-radius: 0.25rem; background: #FFFCF2; }
+        #mrf-print-root { display: none; }
+        @page { margin: 12mm; }
+        @media print {
+            body.mrf-printing > *:not(#mrf-print-root) { display: none !important; }
+            body.mrf-printing { display: block !important; overflow: visible !important; padding: 0 !important; background: #fff !important; }
+            body.mrf-printing #mrf-print-root { display: block; width: 100%; }
+            #mrf-print-root, #mrf-print-root * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            #mrf-print-root .mrf-paper { max-width: none; margin: 0; padding: 0; box-shadow: none; }
+            #mrf-print-root .mrf-noprint { display: none !important; }
+            #mrf-print-root textarea { border: 1px dashed #7A5B00; border-radius: 0.25rem; background: #FFFCF2; resize: none; }
+            #mrf-print-root .mrf-paper-cell, #mrf-print-root .mrf-paper-sign { break-inside: avoid; }
+            #mrf-print-root .mrf-paper-hd { break-after: avoid; }
+        }
         .mrf-pager { display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; padding: 0.75rem; font-size: 0.85rem; color: var(--text-muted); }
     </style>
     <style>
@@ -223,21 +258,32 @@
     <div class="modal fade" id="mrfReviewModal" tabindex="-1" aria-labelledby="mrfReviewModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="mrfReviewModalLabel"></h5>
+                <div class="modal-header mrf-review-head justify-content-end">
+                    <h5 class="modal-title visually-hidden" id="mrfReviewModalLabel"></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body" id="mrf-review-body"></div>
-                <div class="modal-footer">
-                    <div class="w-100" id="mrf-decide-box" hidden>
-                        <label class="form-label" for="mrf-decide-remarks">Remarks</label>
-                        <textarea class="form-control" id="mrf-decide-remarks" rows="3" placeholder="Required to reject"></textarea>
-                        <div class="text-muted small text-end" id="mrf-decide-count"></div>
-                        <div class="text-danger small mt-2" id="mrf-decide-error" role="alert" hidden></div>
+                <div class="modal-body mrf-review-stage">
+                    <div class="mrf-paper" id="mrf-paper">
+                        <div id="mrf-review-body"></div>
+                        <div class="mrf-paper-sec" id="mrf-decide-box" hidden>
+                            <div class="mrf-paper-hd">HR remarks</div>
+                            <label class="form-label" for="mrf-decide-remarks">Required when rejecting a request</label>
+                            <textarea class="form-control" id="mrf-decide-remarks" rows="3" placeholder="Required to reject"></textarea>
+                            <div class="text-muted small text-end mrf-noprint" id="mrf-decide-count"></div>
+                            <div class="text-danger small mt-2 mrf-noprint" id="mrf-decide-error" role="alert" hidden></div>
+                        </div>
+                        <div id="mrf-review-sign"></div>
                     </div>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-danger" id="mrf-decide-reject" hidden>Reject</button>
-                    <button type="button" class="btn mrf-add-btn" id="mrf-decide-approve" hidden>Approve</button>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-outline-dark" id="mrf-review-print" disabled>Download PDF</button>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-danger" id="mrf-decide-reject" hidden>Reject</button>
+                        <button type="button" class="btn mrf-add-btn" id="mrf-decide-approve" hidden>Approve</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -279,6 +325,22 @@
             var MRF_REQ_REVIEW_LOADING_TEXT = 'Loading request\u2026';
             var MRF_REQ_REVIEW_ERROR_OTHER = 'Could not load this request. Try again.';
             var MRF_REQ_REVIEW_NO_ANSWERS_TEXT = 'No answers were submitted.';
+            var MRF_REQ_REVIEW_COLS = 6;
+            var MRF_REQ_REVIEW_SPAN_SHORT = 2;
+            var MRF_REQ_REVIEW_SPAN_MEDIUM = 3;
+            var MRF_REQ_REVIEW_SHORT_MAX = 24;
+            var MRF_REQ_REVIEW_MEDIUM_MAX = 60;
+            var MRF_REQ_REVIEW_FORM_TITLE = 'Manpower Request Form';
+            var MRF_REQ_REVIEW_SUBMITTED_BY = 'Submitted by';
+            var MRF_REQ_REVIEW_ON_WORD = 'on';
+            var MRF_REQ_REVIEW_SEC_INFO = 'Request information';
+            var MRF_REQ_REVIEW_SEC_DETAILS = 'Request details';
+            var MRF_REQ_REVIEW_SEC_DECISION = 'HR decision';
+            var MRF_REQ_REVIEW_SIGN_REQUESTED = 'Requested by';
+            var MRF_REQ_REVIEW_SIGN_REVIEWED = 'Reviewed by (HR)';
+            var MRF_REQ_REVIEW_SIGN_DATE = 'Date reviewed';
+            var MRF_REQ_PRINT_ROOT_ID = 'mrf-print-root';
+            var MRF_REQ_PRINTING_CLASS = 'mrf-printing';
             var MRF_REQ_FILE_TYPE = 'FILE_UPLOAD';
             var MRF_REQ_FILE_VIEW_TEXT = 'View';
             var MRF_REQ_FILE_DOWNLOAD_TEXT = 'Download';
@@ -319,6 +381,8 @@
             var reviewModalEl = document.getElementById('mrfReviewModal');
             var reviewTitle = document.getElementById('mrfReviewModalLabel');
             var reviewBody = document.getElementById('mrf-review-body');
+            var reviewSign = document.getElementById('mrf-review-sign');
+            var reviewPrint = document.getElementById('mrf-review-print');
             var reviewLatest = 0;
             var decideBox = document.getElementById('mrf-decide-box');
             var decideRemarks = document.getElementById('mrf-decide-remarks');
@@ -464,59 +528,149 @@
 
             function reviewMessage(text, className) {
                 reviewBody.replaceChildren(reviewEl('div', className, text));
+                reviewSign.replaceChildren();
+                reviewPrint.disabled = true;
             }
 
             function reviewDate(value) {
                 return String(value || '').slice(0, MRF_REQ_DATE_LENGTH);
             }
 
+            function reviewPrintDocument() {
+                var oldRoot = document.getElementById(MRF_REQ_PRINT_ROOT_ID);
+                if (oldRoot) { oldRoot.remove(); }
+                var paper = document.getElementById('mrf-paper');
+                var root = reviewEl('div');
+                root.id = MRF_REQ_PRINT_ROOT_ID;
+                var copy = paper.cloneNode(true);
+                copy.removeAttribute('id');
+                copy.querySelectorAll('[id]').forEach(function (el) { el.removeAttribute('id'); });
+                var src = paper.querySelector('textarea');
+                var dst = copy.querySelector('textarea');
+                if (src && dst) { dst.value = src.value; dst.textContent = src.value; }
+                root.appendChild(copy);
+                document.body.appendChild(root);
+                document.body.classList.add(MRF_REQ_PRINTING_CLASS);
+                function cleanup() {
+                    window.removeEventListener('afterprint', cleanup);
+                    document.body.classList.remove(MRF_REQ_PRINTING_CLASS);
+                    root.remove();
+                }
+                window.addEventListener('afterprint', cleanup);
+                window.print();
+            }
+
+            function reviewPackCells(cells) {
+                var used = 0;
+                var last = null;
+                cells.forEach(function (c) {
+                    if (used + c.span > MRF_REQ_REVIEW_COLS) { last.span += MRF_REQ_REVIEW_COLS - used; used = 0; }
+                    used += c.span;
+                    last = c;
+                });
+                if (last && used < MRF_REQ_REVIEW_COLS) { last.span += MRF_REQ_REVIEW_COLS - used; }
+                cells.forEach(function (c) { c.el.style.gridColumn = 'span ' + c.span; });
+            }
+
             function reviewRender(d) {
                 reviewTitle.textContent = d.submitted_by;
-                var grid = reviewEl('div', 'mrf-review-grid');
-                function line(label, value) {
-                    grid.appendChild(reviewEl('div', 'mrf-review-label', label));
-                    grid.appendChild(reviewEl('div', 'mrf-review-value', value));
+                var L = MRF_REQ_REVIEW_LABELS;
+                var byName = d.decided_by || MRF_REQ_DECIDE_NAME_EMPTY;
+                var byRole = d.decided_by_role ? (MRF_REQ_DECIDE_ROLE_LABELS[d.decided_by_role] || d.decided_by_role) : '';
+
+                var stamp = reviewEl('div', 'mrf-paper-stamp', d.status);
+                stamp.setAttribute('data-status', d.status);
+
+                var title = reviewEl('div', 'mrf-paper-title');
+                var titleText = reviewEl('div');
+                titleText.appendChild(reviewEl('h2', '', MRF_REQ_REVIEW_FORM_TITLE));
+                titleText.appendChild(reviewEl('p', '', MRF_REQ_REVIEW_SUBMITTED_BY + ' ' + d.submitted_by + ' ' + MRF_REQ_REVIEW_ON_WORD + ' ' + reviewDate(d.created_at)));
+                title.appendChild(titleText);
+                title.appendChild(stamp);
+
+                function cell(label, spanCols, valueNode) {
+                    var el = reviewEl('div', 'mrf-paper-cell');
+                    el.appendChild(reviewEl('div', 'mrf-review-label', label));
+                    el.appendChild(valueNode);
+                    return { el: el, span: spanCols };
                 }
-                line(MRF_REQ_REVIEW_LABELS.form, d.form_name);
-                line(MRF_REQ_REVIEW_LABELS.classification, d.classification);
-                line(MRF_REQ_REVIEW_LABELS.department, d.department || '');
-                line(MRF_REQ_REVIEW_LABELS.assignment, d.assignment);
-                line(MRF_REQ_REVIEW_LABELS.submitted, reviewDate(d.created_at));
-                line(MRF_REQ_REVIEW_LABELS.status, d.status);
-                if (d.decided_at) {
-                    line(MRF_REQ_REVIEW_LABELS.decided, reviewDate(d.decided_at));
-                    var byName = d.decided_by || MRF_REQ_DECIDE_NAME_EMPTY;
-                    var byRole = d.decided_by_role ? (MRF_REQ_DECIDE_ROLE_LABELS[d.decided_by_role] || d.decided_by_role) : '';
-                    line(MRF_REQ_REVIEW_LABELS.decidedBy, byRole ? byName + ' (' + byRole + ')' : byName);
-                    if (d.remarks) { line(MRF_REQ_REVIEW_LABELS.remarks, d.remarks); }
+                function textCell(label, spanCols, value) {
+                    return cell(label, spanCols, reviewEl('div', 'mrf-review-value', value));
                 }
-                var wrap = reviewEl('div', 'mrf-review-answers');
+                function section(heading, cells) {
+                    var sec = reviewEl('div', 'mrf-paper-sec');
+                    sec.appendChild(reviewEl('div', 'mrf-paper-hd', heading));
+                    var tbl = reviewEl('div', 'mrf-paper-tbl');
+                    reviewPackCells(cells);
+                    cells.forEach(function (c) { tbl.appendChild(c.el); });
+                    sec.appendChild(tbl);
+                    return sec;
+                }
+
+                var nodes = [title, section(MRF_REQ_REVIEW_SEC_INFO, [
+                    textCell(L.form, MRF_REQ_REVIEW_SPAN_SHORT, d.form_name),
+                    textCell(L.classification, MRF_REQ_REVIEW_SPAN_SHORT, d.classification),
+                    textCell(L.department, MRF_REQ_REVIEW_SPAN_SHORT, d.department || ''),
+                    textCell(L.assignment, MRF_REQ_REVIEW_SPAN_MEDIUM, d.assignment),
+                    textCell(L.submitted, MRF_REQ_REVIEW_SPAN_MEDIUM, reviewDate(d.created_at))
+                ])];
+
                 if (!d.answers.length) {
-                    wrap.appendChild(reviewEl('div', 'mrf-review-empty', MRF_REQ_REVIEW_NO_ANSWERS_TEXT));
+                    var empty = reviewEl('div', 'mrf-paper-sec');
+                    empty.appendChild(reviewEl('div', 'mrf-paper-hd', MRF_REQ_REVIEW_SEC_DETAILS));
+                    empty.appendChild(reviewEl('div', 'mrf-review-empty', MRF_REQ_REVIEW_NO_ANSWERS_TEXT));
+                    nodes.push(empty);
+                } else {
+                    nodes.push(section(MRF_REQ_REVIEW_SEC_DETAILS, d.answers.map(function (a) {
+                        if (a.question_type === MRF_REQ_FILE_TYPE) {
+                            var fileUrl = MRF_REQ_API + '/' + encodeURIComponent(d.id) + '/answers/' + encodeURIComponent(a.question_id) + '/attachment';
+                            var fileRow = reviewEl('div', 'mrf-review-a');
+                            var sizeText = a.file_size >= MRF_REQ_FILE_MB ? (a.file_size / MRF_REQ_FILE_MB).toFixed(1) + ' MB' : Math.max(1, Math.round(a.file_size / MRF_REQ_FILE_KB)) + ' KB';
+                            fileRow.appendChild(document.createTextNode((a.file_name || '') + ' (' + sizeText + ') '));
+                            [[MRF_REQ_FILE_VIEW_TEXT, fileUrl], [MRF_REQ_FILE_DOWNLOAD_TEXT, fileUrl + '?download=true']].forEach(function (pair, i) {
+                                var link = document.createElement('a');
+                                link.textContent = pair[0];
+                                link.href = pair[1];
+                                if (i === 0) { link.target = '_blank'; link.rel = 'noopener'; }
+                                link.style.marginRight = '0.75rem';
+                                fileRow.appendChild(link);
+                            });
+                            return cell(a.question_text, MRF_REQ_REVIEW_COLS, fileRow);
+                        }
+                        var answerText = String(a.answer);
+                        var size = Math.max(a.question_text.length, answerText.length);
+                        var spanCols = MRF_REQ_REVIEW_COLS;
+                        if (answerText.indexOf('\n') === -1) {
+                            if (size <= MRF_REQ_REVIEW_SHORT_MAX) { spanCols = MRF_REQ_REVIEW_SPAN_SHORT; }
+                            else if (size <= MRF_REQ_REVIEW_MEDIUM_MAX) { spanCols = MRF_REQ_REVIEW_SPAN_MEDIUM; }
+                        }
+                        return textCell(a.question_text, spanCols, a.answer);
+                    })));
                 }
-                d.answers.forEach(function (a) {
-                    var box = reviewEl('div', 'mrf-review-item');
-                    box.appendChild(reviewEl('div', 'mrf-review-q', a.question_text));
-                    if (a.question_type === MRF_REQ_FILE_TYPE) {
-                        var fileUrl = MRF_REQ_API + '/' + encodeURIComponent(d.id) + '/answers/' + encodeURIComponent(a.question_id) + '/attachment';
-                        var fileRow = reviewEl('div', 'mrf-review-a');
-                        var sizeText = a.file_size >= MRF_REQ_FILE_MB ? (a.file_size / MRF_REQ_FILE_MB).toFixed(1) + ' MB' : Math.max(1, Math.round(a.file_size / MRF_REQ_FILE_KB)) + ' KB';
-                        fileRow.appendChild(document.createTextNode((a.file_name || '') + ' (' + sizeText + ') '));
-                        [[MRF_REQ_FILE_VIEW_TEXT, fileUrl], [MRF_REQ_FILE_DOWNLOAD_TEXT, fileUrl + '?download=true']].forEach(function (pair, i) {
-                            var link = document.createElement('a');
-                            link.textContent = pair[0];
-                            link.href = pair[1];
-                            if (i === 0) { link.target = '_blank'; link.rel = 'noopener'; }
-                            link.style.marginRight = '0.75rem';
-                            fileRow.appendChild(link);
-                        });
-                        box.appendChild(fileRow);
-                    } else {
-                        box.appendChild(reviewEl('div', 'mrf-review-a', a.answer));
-                    }
-                    wrap.appendChild(box);
+
+                if (d.decided_at) {
+                    var decCells = [
+                        textCell(L.decided, MRF_REQ_REVIEW_SPAN_SHORT, reviewDate(d.decided_at)),
+                        textCell(L.decidedBy, MRF_REQ_REVIEW_COLS - MRF_REQ_REVIEW_SPAN_SHORT, byRole ? byName + ' (' + byRole + ')' : byName)
+                    ];
+                    if (d.remarks) { decCells.push(textCell(L.remarks, MRF_REQ_REVIEW_COLS, d.remarks)); }
+                    nodes.push(section(MRF_REQ_REVIEW_SEC_DECISION, decCells));
+                }
+                reviewBody.replaceChildren.apply(reviewBody, nodes);
+
+                var sign = reviewEl('div', 'mrf-paper-sign');
+                [
+                    [MRF_REQ_REVIEW_SIGN_REQUESTED, d.submitted_by],
+                    [MRF_REQ_REVIEW_SIGN_REVIEWED, d.decided_at ? byName : ''],
+                    [MRF_REQ_REVIEW_SIGN_DATE, d.decided_at ? reviewDate(d.decided_at) : '']
+                ].forEach(function (pair) {
+                    var sig = reviewEl('div', 'mrf-paper-sig');
+                    sig.appendChild(reviewEl('div', 'mrf-paper-sig-val', pair[1]));
+                    sig.appendChild(reviewEl('div', 'mrf-paper-sig-label', pair[0]));
+                    sign.appendChild(sig);
                 });
-                reviewBody.replaceChildren(grid, wrap);
+                reviewSign.replaceChildren(sign);
+                reviewPrint.disabled = false;
             }
 
             function reviewOpen(item) {
@@ -659,6 +813,7 @@
                 decideCountUpdate();
                 if (decideConfirm !== null && !decideBusy) { decideReset(); }
             });
+            reviewPrint.addEventListener('click', reviewPrintDocument);
             decideApprove.addEventListener('click', function () { decideClick(MRF_REQ_DECIDE_APPROVED); });
             decideReject.addEventListener('click', function () { decideClick(MRF_REQ_DECIDE_REJECTED); });
             reqSearch.maxLength = MRF_REQ_SEARCH_MAX_LENGTH;
