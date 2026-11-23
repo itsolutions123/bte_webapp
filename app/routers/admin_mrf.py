@@ -1,11 +1,16 @@
 """Admin MRF endpoints (docs/API_CONTRACT.md, /api/v1/admin/mrf). Mounted in app/main.py with the session check.
 
 Summary, users list and approve, plus the forms endpoints (list, create, get one, update) and the question create, update and delete endpoints. Roles: SUPERADMIN and MANAGER (decided by the user 2026-11-10); RECRUITER gets 403."""
+import os
+import re
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
+from urllib.parse import quote
 from typing import Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi.responses import FileResponse
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,6 +34,7 @@ from app.mrf_lists import (
     MRF_REQUEST_STATUS_REJECTED,
     MRF_REQUEST_STATUSES,
 )
+from app.mrf_lists import MRF_ATTACHMENT_DEFAULT_STORAGE_PATH
 from app.roles import ROLE_MANAGER, ROLE_SUPERADMIN
 from app.routers.auth import require_roles
 from app.schemas import (
@@ -74,6 +80,8 @@ MRF_REQUESTS_DATE_ORDER = "Start date must not be after end date."
 
 # Request detail (docs/API_CONTRACT.md, GET /api/v1/admin/mrf/requests/{request_id}, part 80); the decision endpoint (step G) reuses it.
 MRF_REQUEST_NOT_FOUND = "Request not found."
+MRF_ATTACHMENT_NOT_FOUND = "Attachment not found."
+MRF_ATTACHMENT_DEFAULT_DOWNLOAD_NAME = "attachment.pdf"
 
 # Decision endpoint (docs/API_CONTRACT.md, POST /api/v1/admin/mrf/requests/{request_id}/decision, decided 2026-11-17 part 65 and 2026-11-18 part 81, option A).
 MRF_REMARKS_MAX_LENGTH = 500
@@ -110,13 +118,14 @@ MRF_FORM_NEEDS_CLASSIFICATION = (
 # The option messages are the same texts as the job form's create_question (admin.py), copied here on purpose (z1).
 MRF_QUESTION_TEXT_REQUIRED = "question_text must not be empty"
 MRF_QUESTION_TEXT_TOO_LONG = f"question_text must be at most {MRF_QUESTION_TEXT_MAX_LENGTH} characters"
-MRF_QUESTION_TYPE_INVALID = "question_type must be YES_NO, MULTIPLE_CHOICE or OPEN_ENDED"
+MRF_QUESTION_TYPE_INVALID = "question_type must be YES_NO, MULTIPLE_CHOICE, OPEN_ENDED or FILE_UPLOAD"
 MRF_QUESTION_OPTION_EMPTY = "option labels must not be empty"
 MRF_QUESTION_YES_NO_COUNT = "YES_NO options must be exactly 2 labels"
 MRF_QUESTION_YES_NO_DISTINCT = "the two YES_NO labels must be different"
 MRF_QUESTION_MC_MIN = "MULTIPLE_CHOICE requires at least 3 options"
 MRF_QUESTION_MC_DISTINCT = "MULTIPLE_CHOICE options must be distinct"
 MRF_QUESTION_OPEN_NO_OPTIONS = "OPEN_ENDED takes no options"
+MRF_QUESTION_FILE_NO_OPTIONS = "FILE_UPLOAD takes no options"
 MRF_QUESTION_CLASSIFICATION_TYPE = "is_classification is only allowed on a MULTIPLE_CHOICE question"
 MRF_QUESTION_CLASSIFICATION_OPTIONS = "a Classification question must have exactly these options: " + ", ".join(MRF_CLASSIFICATION_OPTIONS)
 MRF_QUESTION_CLASSIFICATION_EXISTS = "This form already has a Classification question."
@@ -291,6 +300,8 @@ async def get_mrf_request(
                 MrfFormQuestion.question_text,
                 MrfFormQuestion.question_type,
                 MrfRequestAnswer.answer,
+                MrfRequestAnswer.answer_file_name,
+                MrfRequestAnswer.answer_file_size,
             )
             .select_from(MrfRequestAnswer)
             .join(MrfFormQuestion, MrfFormQuestion.id == MrfRequestAnswer.question_id)
@@ -319,9 +330,51 @@ async def get_mrf_request(
                 question_text=qtext,
                 question_type=qtype,
                 answer=ans,
+                file_name=fname,
+                file_size=fsize,
             )
-            for qid, qtext, qtype, ans in answers
+            for qid, qtext, qtype, ans, fname, fsize in answers
         ],
+    )
+
+
+@router.get(
+    "/mrf/requests/{request_id}/answers/{question_id}/attachment",
+    dependencies=[Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER))],
+)
+async def get_mrf_request_attachment(
+    request_id: UUID,
+    question_id: UUID,
+    download: bool = Query(False),
+    db: AsyncSession = Depends(get_db),
+):
+    """The PDF stored for a FILE_UPLOAD answer (docs/API_CONTRACT.md, FILE_UPLOAD entry): inline, or a download."""
+    row = (
+        await db.execute(
+            select(MrfRequestAnswer.answer_file_path, MrfRequestAnswer.answer_file_name)
+            .where(MrfRequestAnswer.request_id == request_id, MrfRequestAnswer.question_id == question_id)
+        )
+    ).first()
+    if row is None or row[0] is None:
+        raise HTTPException(status_code=404, detail=MRF_ATTACHMENT_NOT_FOUND)
+    stored_path, stored_name = row
+
+    storage_root = Path(os.environ.get("MRF_ATTACHMENT_STORAGE_PATH", MRF_ATTACHMENT_DEFAULT_STORAGE_PATH)).resolve()
+    file_path = Path(stored_path).resolve()
+    if storage_root not in file_path.parents or not file_path.is_file():
+        raise HTTPException(status_code=404, detail=MRF_ATTACHMENT_NOT_FOUND)
+
+    name = re.sub(r'[\x00-\x1f\x7f"\\/]', "_", stored_name or "").strip() or MRF_ATTACHMENT_DEFAULT_DOWNLOAD_NAME
+    ascii_name = re.sub(r"[^A-Za-z0-9._ -]", "_", name)
+    disposition = "attachment" if download else "inline"
+    return FileResponse(
+        str(file_path),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": disposition + '; filename="' + ascii_name + "\"; filename*=UTF-8''" + quote(name, safe=""),
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
     )
 
 
@@ -729,9 +782,12 @@ async def create_mrf_question(
             raise HTTPException(status_code=422, detail=MRF_QUESTION_MC_MIN)
         if len(set(o.lower() for o in options)) != len(options):
             raise HTTPException(status_code=422, detail=MRF_QUESTION_MC_DISTINCT)
-    else:
+    elif qtype == MRF_QUESTION_TYPE_OPEN_ENDED:
         if options is not None:
             raise HTTPException(status_code=422, detail=MRF_QUESTION_OPEN_NO_OPTIONS)
+    else:
+        if options is not None:
+            raise HTTPException(status_code=422, detail=MRF_QUESTION_FILE_NO_OPTIONS)
 
     if payload.is_classification:
         if qtype != MRF_QUESTION_TYPE_MULTIPLE_CHOICE:
@@ -861,8 +917,10 @@ async def update_mrf_question(
             for label in labels:
                 kept = old_ids.get(label.lower())
                 new_options.append({"id": kept if kept is not None else uuid4().hex, "text": label})
-        else:
+        elif qtype == MRF_QUESTION_TYPE_OPEN_ENDED:
             raise HTTPException(status_code=422, detail=MRF_QUESTION_OPEN_NO_OPTIONS)
+        else:
+            raise HTTPException(status_code=422, detail=MRF_QUESTION_FILE_NO_OPTIONS)
 
     if new_text is not None:
         question.question_text = new_text

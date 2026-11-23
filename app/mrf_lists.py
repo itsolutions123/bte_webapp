@@ -49,10 +49,12 @@ MRF_ASSIGNMENTS = ("Store Operations", "Head Office", "Commissary", "Cali Beach"
 MRF_QUESTION_TYPE_YES_NO = "YES_NO"
 MRF_QUESTION_TYPE_MULTIPLE_CHOICE = "MULTIPLE_CHOICE"
 MRF_QUESTION_TYPE_OPEN_ENDED = "OPEN_ENDED"
+MRF_QUESTION_TYPE_FILE_UPLOAD = "FILE_UPLOAD"
 MRF_QUESTION_TYPES = (
     MRF_QUESTION_TYPE_YES_NO,
     MRF_QUESTION_TYPE_MULTIPLE_CHOICE,
     MRF_QUESTION_TYPE_OPEN_ENDED,
+    MRF_QUESTION_TYPE_FILE_UPLOAD,
 )
 
 # The Classification element in the form builder creates a MULTIPLE_CHOICE question with exactly these options, locked.
@@ -80,3 +82,9 @@ MRF_REQUEST_STATUSES = (
 # Trimmed OPEN_ENDED answers on a submitted MRF request are at most this long (DECIDED part 65 sign-off (b), option A;
 # longer returns 422 "Answers must be 1000 characters or fewer."). mrf_request_answers.answer itself is unbounded Text.
 MRF_ANSWER_MAX_LENGTH = 1000
+
+# FILE_UPLOAD attachments (docs/API_CONTRACT.md, POST /api/v1/mrf/requests, f6 to f9). The storage path is the
+# default for the MRF_ATTACHMENT_STORAGE_PATH env var; it is separate from the resume storage.
+MRF_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024
+MRF_ATTACHMENT_CHUNK_BYTES = 8192
+MRF_ATTACHMENT_DEFAULT_STORAGE_PATH = "/data/mrf_attachments"

@@ -2,15 +2,19 @@
 
 Sign-up, login and logout so far. Mounted in app/main.py WITHOUT get_current_user: sign-up, login and logout are
 public, and the portal never uses the admin session. The portal session guard dependency and me are here too (me needs the mrf_session_id cookie). The page guard comes later."""
+import json
+import os
 import secrets
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List
-from uuid import UUID
+from uuid import UUID, uuid4
 
+import aiofiles
 from email_validator import validate_email, EmailNotValidError
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
+from starlette.datastructures import UploadFile as StarletteUploadFile
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,7 +32,11 @@ from app.mrf_lists import (
     ALLOWED_EMAIL_DOMAINS,
     DEPARTMENTS,
     MRF_ANSWER_MAX_LENGTH,
+    MRF_ATTACHMENT_CHUNK_BYTES,
+    MRF_ATTACHMENT_DEFAULT_STORAGE_PATH,
+    MRF_ATTACHMENT_MAX_BYTES,
     MRF_FORM_STATUS_ACTIVE,
+    MRF_QUESTION_TYPE_FILE_UPLOAD,
     MRF_QUESTION_TYPE_OPEN_ENDED,
     MRF_QUESTION_TYPE_YES_NO,
     MRF_REQUEST_STATUS_PENDING,
@@ -40,7 +48,7 @@ from app.schemas import (
     MrfLoginRequest,
     MrfPortalFormDetail,
     MrfPortalFormListResponse,
-    MrfRequestCreate,
+    MrfRequestAnswerIn,
     MrfRequestListItem,
     MrfRequestListResponse,
     MrfSignupRequest,
@@ -353,6 +361,12 @@ MRF_SUBMIT_DUPLICATE_ANSWER = "Each question can be answered only once."
 MRF_SUBMIT_REQUIRED = "Answer every required question."
 MRF_SUBMIT_BAD_OPTION = "Choose one of the listed options."
 MRF_SUBMIT_TOO_LONG = "Answers must be " + str(MRF_ANSWER_MAX_LENGTH) + " characters or fewer."
+# FILE_UPLOAD texts (docs/API_CONTRACT.md, POST /api/v1/mrf/requests, multipart shape, f9).
+MRF_SUBMIT_BAD_ANSWERS = "answers must be a JSON list."
+MRF_SUBMIT_FILE_AS_ANSWER = "File answers must be sent as files."
+MRF_SUBMIT_FILE_NOT_ALLOWED = "A file was sent for a question that does not take one."
+MRF_SUBMIT_FILE_NOT_PDF = "Attachment must be a PDF."
+MRF_SUBMIT_FILE_TOO_LARGE = "Attachment must be " + str(MRF_ATTACHMENT_MAX_BYTES // (1024 * 1024)) + " MB or smaller."
 
 
 def question_labels(question: MrfFormQuestion) -> List[str]:
@@ -402,16 +416,78 @@ async def list_my_requests(
     }
 
 
+# FILE_UPLOAD attachment file handling (same owner-only modes as the resume storage in public.py).
+MRF_ATTACHMENT_FILE_MODE = 0o600
+MRF_ATTACHMENT_DIR_MODE = 0o700
+MRF_ATTACHMENT_NAME_MAX_LENGTH = 200
+MRF_ATTACHMENT_DEFAULT_NAME = "attachment.pdf"
+
+
+def _parse_answer_items(raw):
+    # The multipart "answers" field: a JSON list of {question_id, answer} for non-file questions only.
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, list):
+            raise ValueError
+        items = []
+        for entry in data:
+            if not isinstance(entry, dict) or not isinstance(entry.get("answer"), str):
+                raise ValueError
+            items.append(MrfRequestAnswerIn(question_id=UUID(str(entry.get("question_id"))), answer=entry["answer"]))
+        return items
+    except (ValueError, TypeError, AttributeError):
+        raise HTTPException(status_code=422, detail=MRF_SUBMIT_BAD_ANSWERS)
+
+
+def _remove_files(paths):
+    for path in paths:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
+def _attachment_display_name(filename):
+    name = os.path.basename((filename or "").replace("\\", "/")).strip()[:MRF_ATTACHMENT_NAME_MAX_LENGTH]
+    return name or MRF_ATTACHMENT_DEFAULT_NAME
+
+
+async def _save_attachment_temp(upload, storage_dir):
+    # Validate (content type, %PDF magic bytes, size cap) and stream to a temporary name. Returns (path, size).
+    if upload.content_type != "application/pdf":
+        raise HTTPException(status_code=422, detail=MRF_SUBMIT_FILE_NOT_PDF)
+    magic_bytes = await upload.read(4)
+    if magic_bytes != b"%PDF":
+        raise HTTPException(status_code=422, detail=MRF_SUBMIT_FILE_NOT_PDF)
+    tmp_path = os.path.join(storage_dir, "tmp_" + str(uuid4()) + ".pdf")
+    size = len(magic_bytes)
+    try:
+        async with aiofiles.open(tmp_path, "wb") as f:
+            await f.write(magic_bytes)
+            while chunk := await upload.read(MRF_ATTACHMENT_CHUNK_BYTES):
+                size += len(chunk)
+                if size > MRF_ATTACHMENT_MAX_BYTES:
+                    raise HTTPException(status_code=422, detail=MRF_SUBMIT_FILE_TOO_LARGE)
+                await f.write(chunk)
+        os.chmod(tmp_path, MRF_ATTACHMENT_FILE_MODE)
+    except BaseException:
+        _remove_files([tmp_path])
+        raise
+    return tmp_path, size
+
+
 @router.post("/requests", status_code=201, response_model=MrfRequestListItem)
 async def submit_request(
-    payload: MrfRequestCreate,
+    request: Request,
     response: Response,
+    form_id: UUID = Form(...),
+    answers: str = Form(...),
     user: MrfUser = Depends(get_current_mrf_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # One POST at the end of the wizard, one transaction (request row plus one row per non-blank answer).
+    # One multipart POST at the end of the wizard, one transaction (request row plus one row per answer).
     response.headers["Cache-Control"] = "no-store"
-    form = await db.scalar(select(MrfForm).where(MrfForm.id == payload.form_id))
+    form = await db.scalar(select(MrfForm).where(MrfForm.id == form_id))
     if form is None:
         raise HTTPException(status_code=404, detail=MRF_PORTAL_FORM_NOT_FOUND)
     questions = (
@@ -425,15 +501,35 @@ async def submit_request(
     if form.status != MRF_FORM_STATUS_ACTIVE or form.assignment is None or classification_question is None:
         raise HTTPException(status_code=409, detail=MRF_SUBMIT_FORM_UNAVAILABLE)
 
+    items = _parse_answer_items(answers)
     by_id = {q.id: q for q in questions}
-    if any(item.question_id not in by_id for item in payload.answers):
+    if any(item.question_id not in by_id for item in items):
         raise HTTPException(status_code=422, detail=MRF_SUBMIT_UNKNOWN_QUESTION)
-    if len({item.question_id for item in payload.answers}) != len(payload.answers):
+    if len({item.question_id for item in items}) != len(items):
         raise HTTPException(status_code=422, detail=MRF_SUBMIT_DUPLICATE_ANSWER)
+    if any(by_id[item.question_id].question_type == MRF_QUESTION_TYPE_FILE_UPLOAD for item in items):
+        raise HTTPException(status_code=422, detail=MRF_SUBMIT_FILE_AS_ANSWER)
+
+    # File parts: one per FILE_UPLOAD question, named by the raw question_id (multipart shape, f9).
+    uploads = {}
+    for key, value in (await request.form()).multi_items():
+        if not isinstance(value, StarletteUploadFile) or not value.filename:
+            continue  # a text field (form_id, answers) or an empty file input
+        try:
+            file_question_id = UUID(key)
+        except ValueError:
+            raise HTTPException(status_code=422, detail=MRF_SUBMIT_UNKNOWN_QUESTION)
+        if file_question_id not in by_id:
+            raise HTTPException(status_code=422, detail=MRF_SUBMIT_UNKNOWN_QUESTION)
+        if by_id[file_question_id].question_type != MRF_QUESTION_TYPE_FILE_UPLOAD:
+            raise HTTPException(status_code=422, detail=MRF_SUBMIT_FILE_NOT_ALLOWED)
+        if file_question_id in uploads:
+            raise HTTPException(status_code=422, detail=MRF_SUBMIT_DUPLICATE_ANSWER)
+        uploads[file_question_id] = value
 
     # A blank answer counts as not answered and is never stored (part 69, option A).
-    given = {item.question_id: item.answer for item in payload.answers if item.answer.strip() != ""}
-    if any((q.is_required or q.is_classification) and q.id not in given for q in questions):
+    given = {item.question_id: item.answer for item in items if item.answer.strip() != ""}
+    if any((q.is_required or q.is_classification) and q.id not in given and q.id not in uploads for q in questions):
         raise HTTPException(status_code=422, detail=MRF_SUBMIT_REQUIRED)
 
     stored = {}
@@ -453,6 +549,19 @@ async def submit_request(
             raise HTTPException(status_code=422, detail=MRF_SUBMIT_TOO_LONG)
         stored[question_id] = text
 
+    # Validate and stream every file to a temporary name before any database write (contract, f9).
+    storage_dir = os.environ.get("MRF_ATTACHMENT_STORAGE_PATH", MRF_ATTACHMENT_DEFAULT_STORAGE_PATH)
+    saved_files = {}
+    if uploads:
+        os.makedirs(storage_dir, mode=MRF_ATTACHMENT_DIR_MODE, exist_ok=True)
+    try:
+        for file_question_id, upload in uploads.items():
+            tmp_path, size = await _save_attachment_temp(upload, storage_dir)
+            saved_files[file_question_id] = (tmp_path, size, _attachment_display_name(upload.filename))
+    except BaseException:
+        _remove_files([entry[0] for entry in saved_files.values()])
+        raise
+
     # Values for the response are read before the commit (no lazy loads after it).
     form_name = form.name
     assignment = form.assignment
@@ -465,16 +574,36 @@ async def submit_request(
         status=MRF_REQUEST_STATUS_PENDING,
     )
     db.add(request_row)
+    created_paths = [entry[0] for entry in saved_files.values()]
     try:
         await db.flush()
         request_id = request_row.id
         created_at = request_row.created_at
         for question_id, value in stored.items():
             db.add(MrfRequestAnswer(request_id=request_id, question_id=question_id, answer=value))
+        for file_question_id, (tmp_path, size, display_name) in saved_files.items():
+            final_path = os.path.join(storage_dir, str(request_id) + "_" + str(file_question_id) + ".pdf")
+            os.replace(tmp_path, final_path)
+            created_paths.append(final_path)
+            db.add(
+                MrfRequestAnswer(
+                    request_id=request_id,
+                    question_id=file_question_id,
+                    answer=None,
+                    answer_file_path=final_path,
+                    answer_file_name=display_name,
+                    answer_file_size=size,
+                )
+            )
         await db.commit()
     except IntegrityError:
         await db.rollback()
+        _remove_files(created_paths)
         raise HTTPException(status_code=409, detail=MRF_SUBMIT_FORM_UNAVAILABLE)
+    except Exception:
+        await db.rollback()
+        _remove_files(created_paths)
+        raise
 
     return {
         "id": request_id,

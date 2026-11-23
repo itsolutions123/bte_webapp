@@ -25,10 +25,12 @@ services:
     volumes:
       - .:/app
       - ./data/resumes:/app/data/resumes
+      - ./data/mrf_attachments:/app/data/mrf_attachments
     ports:
       - "8000:8000"
     environment:
       - RESUME_STORAGE_PATH=/app/data/resumes
+      - MRF_ATTACHMENT_STORAGE_PATH=/app/data/mrf_attachments
       - WEBSITE_CAREERS_URL=http://10.0.10.37:8086/careers
       - TERMS_VERSION=v.1.0
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:?DB_PASSWORD must be set in .env}@db:5432/${DB_NAME:-bte_careers}

@@ -530,7 +530,10 @@ class MrfAdminRequestAnswerItem(BaseModel):
     question_id: UUID4
     question_text: str
     question_type: str
-    answer: str
+    # A FILE_UPLOAD answer has answer null and file_name/file_size set; every other type has both file fields null.
+    answer: Optional[str] = None
+    file_name: Optional[str] = None
+    file_size: Optional[int] = None
 
 
 class MrfAdminRequestDetail(MrfAdminRequestListItem):
