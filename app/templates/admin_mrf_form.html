@@ -101,12 +101,13 @@
                                 <button type="button" class="btn btn-outline-secondary mrf-form-element" data-question-type="OPEN_ENDED">Open ended</button>
                                 <button type="button" class="btn btn-outline-secondary mrf-form-element" data-question-type="MULTIPLE_CHOICE">Multiple Choice</button>
                                 <button type="button" class="btn btn-outline-secondary mrf-form-element" data-question-type="CLASSIFICATION">Classification</button>
+                                <button type="button" class="btn btn-outline-secondary mrf-form-element" data-question-type="FILE_UPLOAD">Attach file</button>
                             </div>
                         </div>
                         <div class="col-9 p-4">
                             <div class="mrf-form-label">FORM CONTENTS</div>
                             <div id="mrf-form-questions"></div>
-                            <div class="mrf-form-note">Shell: Edit name, Set status and Set assignment work. The questions above come from the form's stored questions. The Yes / No Question, Open ended, Multiple Choice and Classification buttons add a question. The Required switches do nothing yet.</div>
+                            <div class="mrf-form-note">Shell: Edit name, Set status and Set assignment work. The questions above come from the form's stored questions. The Yes / No Question, Open ended, Multiple Choice, Classification and Attach file buttons add a question. The Required switches do nothing yet.</div>
                         </div>
                     </div>
                 </div>
@@ -283,7 +284,7 @@
         errorEl.textContent = "";
 
         // Questions area: renders the questions array of the GET one response (docs/API_CONTRACT.md, Call site (questions area), part 55 step 5.4).
-        var MRF_FORM_TYPE_LABELS = { YES_NO: "Yes / No", MULTIPLE_CHOICE: "Multiple Choice", OPEN_ENDED: "Open ended" };
+        var MRF_FORM_TYPE_LABELS = { YES_NO: "Yes / No", MULTIPLE_CHOICE: "Multiple Choice", OPEN_ENDED: "Open ended", FILE_UPLOAD: "Attach file" };
         var MRF_FORM_NO_QUESTIONS = "No questions yet.";
         var questionsEl = document.getElementById("mrf-form-questions");
 

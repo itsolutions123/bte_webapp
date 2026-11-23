@@ -92,6 +92,9 @@
 
             var ANSWER_MAX_LENGTH = 1000;
             var REQUIRED_TEXT = "Answer every required question.";
+            var ATTACH_MAX_BYTES = 10 * 1024 * 1024;
+            var ATTACH_TOO_LARGE_TEXT = "Attachment must be " + (ATTACH_MAX_BYTES / (1024 * 1024)) + " MB or smaller.";
+            var ATTACH_NOT_PDF_TEXT = "Attachment must be a PDF.";
             var questionPanel = document.getElementById("mrf-question-panel");
             var reviewPanel = document.getElementById("mrf-review-panel");
             var reviewList = document.getElementById("mrf-review-list");
@@ -108,6 +111,7 @@
             var nextBtn = document.getElementById("mrf-next");
             var questions = [];
             var answers = {};
+            var files = {};
             var current = 0;
 
             function isRequired(q) {
@@ -116,6 +120,13 @@
 
             function isBlank(v) {
                 return v === undefined || v === null || String(v).trim() === "";
+            }
+
+            function isAnswered(q) {
+                if (q.question_type === "FILE_UPLOAD") {
+                    return files[q.id] !== undefined;
+                }
+                return !isBlank(answers[q.id]);
             }
 
             function optionLabels(q) {
@@ -194,7 +205,40 @@
                 qHint.textContent = isRequired(q) ? "Required" : "Optional";
                 qError.hidden = true;
                 optionsBox.textContent = "";
-                if (q.question_type === "OPEN_ENDED") {
+                if (q.question_type === "FILE_UPLOAD") {
+                    var fileNote = document.createElement("p");
+                    fileNote.textContent = files[q.id] ? files[q.id].name : "";
+                    var picker = document.createElement("input");
+                    picker.type = "file";
+                    picker.accept = "application/pdf";
+                    picker.addEventListener("change", function () {
+                        var file = picker.files && picker.files[0];
+                        qError.hidden = true;
+                        if (!file) {
+                            delete files[q.id];
+                            fileNote.textContent = "";
+                            return;
+                        }
+                        var problem = "";
+                        if (file.type !== "application/pdf") {
+                            problem = ATTACH_NOT_PDF_TEXT;
+                        } else if (file.size > ATTACH_MAX_BYTES) {
+                            problem = ATTACH_TOO_LARGE_TEXT;
+                        }
+                        if (problem !== "") {
+                            delete files[q.id];
+                            picker.value = "";
+                            fileNote.textContent = "";
+                            qError.textContent = problem;
+                            qError.hidden = false;
+                            return;
+                        }
+                        files[q.id] = file;
+                        fileNote.textContent = file.name;
+                    });
+                    optionsBox.appendChild(picker);
+                    optionsBox.appendChild(fileNote);
+                } else if (q.question_type === "OPEN_ENDED") {
                     var box = document.createElement("textarea");
                     box.className = "mrf-textbox";
                     box.maxLength = ANSWER_MAX_LENGTH;
@@ -253,7 +297,11 @@
                     ap.className = "mrf-review-a";
                     ap.style.whiteSpace = "pre-wrap";
                     var value = answers[q.id];
-                    ap.textContent = isBlank(value) ? "\u2014" : String(value).trim();
+                    if (q.question_type === "FILE_UPLOAD") {
+                        ap.textContent = files[q.id] ? files[q.id].name : "\u2014";
+                    } else {
+                        ap.textContent = isBlank(value) ? "\u2014" : String(value).trim();
+                    }
                     item.appendChild(qp);
                     item.appendChild(ap);
                     reviewList.appendChild(item);
@@ -263,6 +311,7 @@
             function startWizard(list) {
                 questions = list;
                 answers = {};
+                files = {};
                 answers = loadDraft();
                 current = 0;
                 renderQuestion();
@@ -277,7 +326,7 @@
 
             nextBtn.addEventListener("click", function () {
                 var q = questions[current];
-                if (isRequired(q) && isBlank(answers[q.id])) {
+                if (isRequired(q) && !isAnswered(q)) {
                     qError.textContent = REQUIRED_TEXT;
                     qError.hidden = false;
                     return;
@@ -355,18 +404,23 @@
                 submitError.textContent = "";
                 submitBtn.disabled = true;
                 var answerList = [];
+                var formData = new FormData();
                 questions.forEach(function (q) {
+                    if (q.question_type === "FILE_UPLOAD") {
+                        if (files[q.id]) {
+                            formData.append(q.id, files[q.id], files[q.id].name);
+                        }
+                        return;
+                    }
                     var value = answers[q.id];
                     if (!isBlank(value)) {
                         answerList.push({ question_id: q.id, answer: value });
                     }
                 });
+                formData.append("form_id", formIdFromPath());
+                formData.append("answers", JSON.stringify(answerList));
                 try {
-                    var response = await fetch(SUBMIT_URL, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ form_id: formIdFromPath(), answers: answerList })
-                    });
+                    var response = await fetch(SUBMIT_URL, { method: "POST", body: formData });
                     if (response.status === 201) {
                         clearDraft();
                         window.location.replace(REQUESTS_PAGE);

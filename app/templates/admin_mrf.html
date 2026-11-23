@@ -279,6 +279,11 @@
             var MRF_REQ_REVIEW_LOADING_TEXT = 'Loading request\u2026';
             var MRF_REQ_REVIEW_ERROR_OTHER = 'Could not load this request. Try again.';
             var MRF_REQ_REVIEW_NO_ANSWERS_TEXT = 'No answers were submitted.';
+            var MRF_REQ_FILE_TYPE = 'FILE_UPLOAD';
+            var MRF_REQ_FILE_VIEW_TEXT = 'View';
+            var MRF_REQ_FILE_DOWNLOAD_TEXT = 'Download';
+            var MRF_REQ_FILE_KB = 1024;
+            var MRF_REQ_FILE_MB = 1024 * 1024;
             var MRF_REQ_DECIDE_API_SUFFIX = '/decision';
             var MRF_REQ_DECIDE_REMARKS_MAX = 500;
             var MRF_REQ_DECIDE_CONFIRM_MS = 5000;
@@ -492,7 +497,23 @@
                 d.answers.forEach(function (a) {
                     var box = reviewEl('div', 'mrf-review-item');
                     box.appendChild(reviewEl('div', 'mrf-review-q', a.question_text));
-                    box.appendChild(reviewEl('div', 'mrf-review-a', a.answer));
+                    if (a.question_type === MRF_REQ_FILE_TYPE) {
+                        var fileUrl = MRF_REQ_API + '/' + encodeURIComponent(d.id) + '/answers/' + encodeURIComponent(a.question_id) + '/attachment';
+                        var fileRow = reviewEl('div', 'mrf-review-a');
+                        var sizeText = a.file_size >= MRF_REQ_FILE_MB ? (a.file_size / MRF_REQ_FILE_MB).toFixed(1) + ' MB' : Math.max(1, Math.round(a.file_size / MRF_REQ_FILE_KB)) + ' KB';
+                        fileRow.appendChild(document.createTextNode((a.file_name || '') + ' (' + sizeText + ') '));
+                        [[MRF_REQ_FILE_VIEW_TEXT, fileUrl], [MRF_REQ_FILE_DOWNLOAD_TEXT, fileUrl + '?download=true']].forEach(function (pair, i) {
+                            var link = document.createElement('a');
+                            link.textContent = pair[0];
+                            link.href = pair[1];
+                            if (i === 0) { link.target = '_blank'; link.rel = 'noopener'; }
+                            link.style.marginRight = '0.75rem';
+                            fileRow.appendChild(link);
+                        });
+                        box.appendChild(fileRow);
+                    } else {
+                        box.appendChild(reviewEl('div', 'mrf-review-a', a.answer));
+                    }
                     wrap.appendChild(box);
                 });
                 reviewBody.replaceChildren(grid, wrap);
@@ -968,7 +989,7 @@
             var MRF_FORMS_PREVIEW_ERROR_NOT_FOUND = 'Oops, this form no longer exists. The list has been refreshed.';
             var MRF_FORMS_PREVIEW_ERROR_OTHER = "Oops, couldn't load this form. Please try again.";
             var MRF_FORMS_PREVIEW_NO_QUESTIONS = 'No questions yet.';
-            var MRF_FORMS_PREVIEW_TYPE_LABELS = { YES_NO: 'Yes / No', MULTIPLE_CHOICE: 'Multiple Choice', OPEN_ENDED: 'Open ended' };
+            var MRF_FORMS_PREVIEW_TYPE_LABELS = { YES_NO: 'Yes / No', MULTIPLE_CHOICE: 'Multiple Choice', OPEN_ENDED: 'Open ended', FILE_UPLOAD: 'Attach file' };
             var MRF_FORMS_PREVIEW_CLASSIFICATION_LABEL = 'Classification';
             var MRF_FORMS_PREVIEW_STATUS_PREFIX = 'Status: ';
             var MRF_FORMS_PREVIEW_ASSIGNMENT_PREFIX = 'Assignment: ';
