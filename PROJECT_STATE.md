@@ -2780,3 +2780,13 @@ Side issue: the website careers page was empty only because every active job had
 Work mode: feature (migration, backend, frontend removal) plus documentation. What changed: backend, admin panel.
 Commits: ab8c0d0 (code: models.py, schemas.py, admin.py, public.py, admin_brand_detail.html, migration 029) and c3556fa (docs: API_CONTRACT, SCHEMA, PROJECT_STATE), pushed as 5c8247e..c3556fa on 2026-11-24 (plain push, no force, push output seen).
 NEXT: step F of the delete thread (test-data cleanup, only after the user confirms and the loss is named).
+
+
+## STEP MRF review modal: attachments moved into a dropup (2026-11-24, BUILT and browser-checked, code commit e8b1cd8)
+- Work mode: feature (UI change). Page: /admin/mrf/submissions review modal (app/templates/admin_mrf.html only). Backend, schema and endpoints: no change. Admin panel: review modal only.
+- User task: the attached files (KPI, Job Description, Immersion Plan) sat in Request Details with View and Download links; the user wanted them out of there and behind a dropdown button, since this view is only for admins and HR. The assistant recommendation was followed (standing rule: go with the recommendation, flag the choice).
+- Built: an Attachments (N) dropup in the modal footer beside Download PDF (opens upward because the modal clips downward menus; Bootstrap 5.3.0 bundle already loaded); hidden when the request has no file answers; each entry shows the question title, the file name and size, View (new tab) and Download. File answers are filtered out of Request Details and the old inline file-row branch is removed. The dropup is cleared and hidden whenever the modal shows its loading or error text, and refilled after a successful render. The Download PDF copy clones only the paper, so the dropup and the file rows are not in the printed form (a side effect the user wanted).
+- Hardcodes: removed the duplicated inline file-row code; added MRF_REQ_ATTACH_BUTTON_TEXT (the static footer button also carries the literal text Attachments, replaced from JS on render).
+- Docs: API_CONTRACT.md has a new Call site entry (review modal attachments), the stale layout wording about file answers was corrected, and the Last verified line was updated. SCHEMA.md and SECURITY.md: no change.
+- Not verified: Firefox and Safari, a narrow window, a request with many files, a very long file name (the CSS truncates it with an ellipsis, never seen), keyboard use of the dropup.
+- Backups (untracked, never git add): app/templates/admin_mrf.html.bak-attachdrop-20261124, docs/API_CONTRACT.md.bak-attachdrop-20261124, PROJECT_STATE.md.bak-attachdrop-20261124.
