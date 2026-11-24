@@ -156,6 +156,7 @@ class JobCreateRequest(BaseModel):
     location: Optional[str] = None
     pay_information: Optional[str] = None
     job_type: Optional[str] = None
+    employee_classification: Optional[str] = None
     is_active: bool = False
 
 class JobUpdateRequest(BaseModel):
@@ -165,6 +166,7 @@ class JobUpdateRequest(BaseModel):
     location: Optional[str] = None
     pay_information: Optional[str] = None
     job_type: Optional[str] = None
+    employee_classification: Optional[str] = None
     is_active: bool
 
 class JobResponse(BaseModel):
@@ -179,6 +181,7 @@ class JobResponse(BaseModel):
     location: Optional[str] = None
     pay_information: Optional[str] = None
     job_type: Optional[str] = None
+    employee_classification: Optional[str] = None
     created_at: datetime
     expires_at: datetime
     archived_at: Optional[datetime] = None

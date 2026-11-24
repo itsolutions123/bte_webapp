@@ -48,6 +48,7 @@ class Job(Base):
     location = Column(String, nullable=True)
     pay_information = Column(String, nullable=True)
     job_type = Column(String, nullable=True)
+    employee_classification = Column(String, nullable=True)
     assignee_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
 
     brand = relationship("Brand", back_populates="jobs")

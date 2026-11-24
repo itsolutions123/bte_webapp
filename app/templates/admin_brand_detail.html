@@ -139,7 +139,7 @@
         #jobDetailModal .ql-editor { min-height: 120px; max-height: 240px; overflow-y: auto; }
         #jobDetailModal .ql-container { font-family: inherit; font-size: .95rem; }
     </style>
-    {# Create Job modal. Location, Pay information and Type of job are a SHELL: not yet sent in the POST body or reset on show. #}
+    {# Create Job modal. Location, Pay information, Type of job and Employee Classification are sent in the POST body and reset on show. Employee Classification is HR-only (never public). #}
     <div class="modal fade" id="createJobModal" tabindex="-1" aria-labelledby="createJobModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
@@ -176,6 +176,18 @@
                                 <option value="Full-time">Full-time</option>
                                 <option value="Part-time">Part-time</option>
                                 <option value="Onsite">Onsite</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="create-job-classification" class="form-label fw-bold">Employee Classification</label>
+                            <select class="form-select mb-3" id="create-job-classification">
+                                <option value="">Not set</option>
+                                <option value="Rank and File">Rank and File</option>
+                                <option value="Supervisory">Supervisory</option>
+                                <option value="Managerial">Managerial</option>
                             </select>
                         </div>
                     </div>
@@ -402,6 +414,18 @@
                         <option value="Full-time">Full-time</option>
                         <option value="Part-time">Part-time</option>
                         <option value="Onsite">Onsite</option>
+                    </select>
+                </div>
+            </div>
+            <div class="jd-row">
+                <div class="jd-key">Classification</div>
+                <div class="jd-val">
+                    <div class="jd-pod" id="job-detail-classification" data-jd-view>&mdash;</div>
+                    <select class="form-select d-none" id="job-edit-classification" data-jd-edit>
+                        <option value="">Not set</option>
+                        <option value="Rank and File">Rank and File</option>
+                        <option value="Supervisory">Supervisory</option>
+                        <option value="Managerial">Managerial</option>
                     </select>
                 </div>
             </div>
@@ -688,6 +712,7 @@
             const locationInput = document.getElementById('job-edit-location');
             const payInput = document.getElementById('job-edit-pay');
             const typeSelect = document.getElementById('job-edit-type');
+            const classSelect = document.getElementById('job-edit-classification');
             const publishBtn = document.getElementById('job-edit-publish-btn');
             const saveBtn = document.getElementById('job-detail-save-btn');
             const errorEl = document.getElementById('job-edit-error');
@@ -758,6 +783,7 @@
                 document.getElementById('job-detail-location').textContent = loaded.location || dash;
                 document.getElementById('job-detail-pay').textContent = loaded.pay_information || dash;
                 document.getElementById('job-detail-type').textContent = loaded.job_type || dash;
+                document.getElementById('job-detail-classification').textContent = loaded.employee_classification || dash;
                 const isArchived = !!loaded.archived_at;
                 archivedBadge.classList.toggle('d-none', !isArchived);
                 editBtn.disabled = isArchived;
@@ -772,6 +798,7 @@
                 locationInput.value = loaded.location || '';
                 payInput.value = loaded.pay_information || '';
                 typeSelect.value = loaded.job_type || '';
+                classSelect.value = loaded.employee_classification || '';
                 setRte(descEditor, loaded.description);
                 setRte(reqEditor, loaded.requirements);
                 setPublishState('draft');
@@ -797,6 +824,7 @@
                             location: locationInput.value.trim(),
                             pay_information: payInput.value.trim(),
                             job_type: typeSelect.value,
+                            employee_classification: classSelect.value,
                             is_active: isActive
                         })
                     });
@@ -809,6 +837,7 @@
                         document.getElementById('job-detail-location').textContent = d.location || dash;
                         document.getElementById('job-detail-pay').textContent = d.pay_information || dash;
                         document.getElementById('job-detail-type').textContent = d.job_type || dash;
+                        document.getElementById('job-detail-classification').textContent = d.employee_classification || dash;
                         document.getElementById('job-detail-description').innerHTML = d.description || dash;
                         document.getElementById('job-detail-requirements').innerHTML = d.requirements || dash;
                         setEditing(false);
@@ -883,6 +912,7 @@
             const locationInput = document.getElementById('create-job-location');
             const payInput = document.getElementById('create-job-pay');
             const typeSelect = document.getElementById('create-job-type');
+            const classSelect = document.getElementById('create-job-classification');
             // Rich text (Quill 1.3.7, vendored): only the formats the server allowlist keeps (docs/SECURITY.md section 6).
             const rteOptions = JOB_RTE_OPTIONS;
             const descEditor = new Quill('#create-job-description', Object.assign({ placeholder: 'Description' }, rteOptions));
@@ -913,6 +943,7 @@
                 locationInput.value = '';
                 payInput.value = '';
                 typeSelect.value = '';
+                classSelect.value = '';
                 descEditor.setContents([]);
                 reqEditor.setContents([]);
                 errorEl.classList.add('d-none');
@@ -935,6 +966,7 @@
                             location: locationInput.value.trim(),
                             pay_information: payInput.value.trim(),
                             job_type: typeSelect.value,
+                            employee_classification: classSelect.value,
                             description: editorHtml(descEditor),
                             requirements: editorHtml(reqEditor),
                             is_active: isActive

@@ -246,6 +246,7 @@ async def create_business_unit(payload: BusinessUnitCreateRequest, db: AsyncSess
     return BusinessUnitResponse(id=business_unit.id, name=business_unit.name, slug=business_unit.slug)
 
 JOB_TYPES = ("Full-time", "Part-time", "Onsite")  # contract: "Job details fields"
+EMPLOYEE_CLASSIFICATIONS = ("Rank and File", "Supervisory", "Managerial")  # contract: "Employee Classification"
 JOB_DETAIL_MAX_LENGTH = 150
 
 
@@ -264,6 +265,15 @@ def clean_job_type(value: str | None) -> str | None:
         return None
     if value not in JOB_TYPES:
         raise HTTPException(status_code=422, detail="job_type must be one of: " + ", ".join(JOB_TYPES))
+    return value
+
+
+def clean_employee_classification(value: str | None) -> str | None:
+    value = (value or "").strip()
+    if not value:
+        return None
+    if value not in EMPLOYEE_CLASSIFICATIONS:
+        raise HTTPException(status_code=422, detail="employee_classification must be one of: " + ", ".join(EMPLOYEE_CLASSIFICATIONS))
     return value
 
 
@@ -287,6 +297,7 @@ async def create_job(brand_id: uuid.UUID, payload: JobCreateRequest, db: AsyncSe
     location = clean_job_detail_text(payload.location, "location")
     pay_information = clean_job_detail_text(payload.pay_information, "pay_information")
     job_type = clean_job_type(payload.job_type)
+    employee_classification = clean_employee_classification(payload.employee_classification)
 
     job = Job(
         brand_id=brand.id,
@@ -297,6 +308,7 @@ async def create_job(brand_id: uuid.UUID, payload: JobCreateRequest, db: AsyncSe
         location=location,
         pay_information=pay_information,
         job_type=job_type,
+        employee_classification=employee_classification,
         is_active=payload.is_active,
     )
     db.add(job)
@@ -315,6 +327,7 @@ async def create_job(brand_id: uuid.UUID, payload: JobCreateRequest, db: AsyncSe
         location=job.location,
         pay_information=job.pay_information,
         job_type=job.job_type,
+        employee_classification=job.employee_classification,
         created_at=to_app_tz(job.created_at),
         expires_at=to_app_tz(job.expires_at),
         archived_at=to_app_tz(job.archived_at) if job.archived_at else None,
@@ -343,6 +356,7 @@ async def get_brand_job(brand_id: uuid.UUID, job_id: uuid.UUID, db: AsyncSession
         location=job.location,
         pay_information=job.pay_information,
         job_type=job.job_type,
+        employee_classification=job.employee_classification,
         created_at=to_app_tz(job.created_at),
         expires_at=to_app_tz(job.expires_at),
         archived_at=to_app_tz(job.archived_at) if job.archived_at else None,
@@ -378,6 +392,7 @@ async def update_job(brand_id: uuid.UUID, job_id: uuid.UUID, payload: JobUpdateR
     job.location = clean_job_detail_text(payload.location, "location")
     job.pay_information = clean_job_detail_text(payload.pay_information, "pay_information")
     job.job_type = clean_job_type(payload.job_type)
+    job.employee_classification = clean_employee_classification(payload.employee_classification)
     job.is_active = payload.is_active
     await db.commit()
     await db.refresh(job)
@@ -394,6 +409,7 @@ async def update_job(brand_id: uuid.UUID, job_id: uuid.UUID, payload: JobUpdateR
         location=job.location,
         pay_information=job.pay_information,
         job_type=job.job_type,
+        employee_classification=job.employee_classification,
         created_at=to_app_tz(job.created_at),
         expires_at=to_app_tz(job.expires_at),
         archived_at=to_app_tz(job.archived_at) if job.archived_at else None,
@@ -431,6 +447,7 @@ async def archive_job(brand_id: uuid.UUID, job_id: uuid.UUID, db: AsyncSession =
         location=job.location,
         pay_information=job.pay_information,
         job_type=job.job_type,
+        employee_classification=job.employee_classification,
         created_at=to_app_tz(job.created_at),
         expires_at=to_app_tz(job.expires_at),
         archived_at=to_app_tz(job.archived_at) if job.archived_at else None,
