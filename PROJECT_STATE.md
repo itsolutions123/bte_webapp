@@ -2764,4 +2764,19 @@ CONFLICT OPEN: the preamble pauses bte_website work, but API_CONTRACT.md line 81
 Backups kept (untracked, never added): API_CONTRACT.md .bak-empclass, .bak-empclass2, .bak-empclass3; SCHEMA.md.bak-empclass; models.py, schemas.py, admin.py, admin_brand_detail.html and PROJECT_STATE.md .bak-empclass (all -20261124).
 Work mode: feature (migration, backend, frontend) plus documentation. What changed: backend, admin panel.
 Commits: 8e98c53 (code: models.py, schemas.py, admin.py, admin_brand_detail.html, migration 028) and d8ceb3e (docs: API_CONTRACT, SCHEMA, PROJECT_STATE), pushed as 6ab56ba..d8ceb3e on 2026-11-24 (plain push, no force, push output seen).
-NEXT: remove the job expiry feature and the circled job detail elements (step 0 inspection done, code step pending). Then step F of the delete thread (test-data cleanup, only after the user confirms and the loss is named).
+NEXT: done, see the Job expiry section below.
+
+STEP Jobs: remove the job expiry feature and four job detail panel elements
+Task (user, 2026-11-24): remove the circled items in the job detail panel (Job of counter, Next button, Expires row, Renew button) and "I think I wont be needing expiration for now, you can just disable it and remove it from working variables".
+Decisions (assistant, under the standing rule): the column jobs.expires_at is KEPT and made nullable (migration 029, reversible, old dates kept) instead of dropped; the public list, public get-one and the apply job check no longer filter on expiry; the admin responses no longer return expires_at or is_expired; the disabled Renew item in the job row menu and the unused CSS were removed too. Dropping the column is NOT done and would need the user's confirmation naming the lost dates.
+Built: migration 029; models.py (nullable, default removed); schemas.py (JobResponse); admin.py (four response builders); public.py (three filters); admin_brand_detail.html (counter, Next, Expires row, Renew button and its JS, row menu Renew item, .jd-crumb and .job-card-expiry CSS, two stale comments).
+SEEN: \d jobs after 029 (no NOT NULL, idx_jobs_expires_at kept), 14 of 14 old dates kept; git diff --stat; web log Application startup complete; public list returned 5 jobs (it returned 0 before) with 0 occurrences of employee_classification.
+Browser: the user reported "checks confirmed" (careers page and admin job detail panel). Individual cases were not itemised.
+NOT tested: curl of create, edit and archive responses after the change; the apply endpoint for a job that was past its old date; RECRUITER role. The unused timedelta import in models.py was left in place.
+HARDCODES: removed the 30-day default and the three expires_at filters. None added.
+DOCS: API_CONTRACT.md (Job expiry DISABLED addendum flipped to BUILT, older expiry wording rewritten, Last verified), SCHEMA.md line 35. SECURITY.md: no change. Some older contract wording (for example created_at and expires_at in PHT in the get-one entry) is still stale and is covered by the addendum.
+SLIPS (assistant): (1) the first UI removal script aborted (nothing written) because I assumed the hr line was unique; (2) I predicted 13 kept rows, the real count was 14; (3) I predicted a backend diff of 2 insertions and 15 deletions and left out the earlier uncommitted template removal (real: 3 and 47); (4) the earlier public leak check of 0 proved nothing because the public list was empty.
+Side issue: the website careers page was empty only because every active job had passed its old expiry; it shows jobs again now.
+Work mode: feature (migration, backend, frontend removal) plus documentation. What changed: backend, admin panel.
+Commits: not yet made (next step).
+NEXT: commit and push (code, then docs), record the hashes, then the handover. Then step F of the delete thread (test-data cleanup, only after the user confirms and the loss is named).
