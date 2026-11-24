@@ -123,6 +123,13 @@
         #newFormModal .form-control:focus, #mrfReviewModal .form-control:focus { border-color: var(--accent-gold); box-shadow: 0 0 0 0.25rem rgba(201, 162, 39, 0.2); }
         #newFormModal .modal-footer .btn-secondary, #mrfReviewModal .modal-footer .btn-secondary { background-color: var(--hover); border-color: var(--hover); color: var(--text-main); border-radius: 0.75rem; }
         #mrfReviewModal .modal-footer .btn-danger { border-radius: 0.75rem; }
+        #mrfReviewModal .mrf-attach-menu { min-width: 22rem; max-width: calc(100vw - 2rem); padding: 0.375rem; border: 1px solid var(--border-light); border-radius: 0.75rem; }
+        #mrfReviewModal .mrf-attach-item { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.5rem 0.625rem; border-radius: 0.5rem; }
+        #mrfReviewModal .mrf-attach-item:hover { background-color: var(--hover); }
+        #mrfReviewModal .mrf-attach-name { min-width: 0; display: flex; flex-direction: column; }
+        #mrfReviewModal .mrf-attach-label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+        #mrfReviewModal .mrf-attach-file { font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #mrfReviewModal .mrf-attach-actions { display: flex; gap: 0.75rem; flex-shrink: 0; font-size: 0.875rem; }
         .mrf-status { display: inline-block; padding: 0.25rem 0.875rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); background-color: color-mix(in srgb, currentColor 14%, transparent); }
         .mrf-status[data-status="Pending"] { color: #8A6A00; }
         .mrf-status[data-status="Approved"], .mrf-status[data-status="ACTIVE"] { color: #15803D; }
@@ -305,6 +312,10 @@
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                         <button type="button" class="btn btn-outline-dark" id="mrf-review-print" disabled>Download PDF</button>
+                        <div class="dropup" id="mrf-review-attach" hidden>
+                            <button type="button" class="btn btn-outline-dark dropdown-toggle" id="mrf-review-attach-btn" data-bs-toggle="dropdown" aria-expanded="false">Attachments</button>
+                            <ul class="dropdown-menu mrf-attach-menu" id="mrf-review-attach-menu"></ul>
+                        </div>
                     </div>
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-danger" id="mrf-decide-reject" hidden>Reject</button>
@@ -386,6 +397,7 @@
             var MRF_REQ_REVIEW_SIGN_REVIEWED = 'Reviewed by (HR)';
             var MRF_REQ_REVIEW_SIGN_DATE = 'Date reviewed';
             var MRF_REQ_PRINT_ROOT_ID = 'mrf-print-root';
+            var MRF_REQ_ATTACH_BUTTON_TEXT = 'Attachments';
             var MRF_REQ_PRINTING_CLASS = 'mrf-printing';
             var MRF_REQ_FILE_TYPE = 'FILE_UPLOAD';
             var MRF_REQ_FILE_VIEW_TEXT = 'View';
@@ -429,6 +441,9 @@
             var reviewBody = document.getElementById('mrf-review-body');
             var reviewSign = document.getElementById('mrf-review-sign');
             var reviewPrint = document.getElementById('mrf-review-print');
+            var reviewAttach = document.getElementById('mrf-review-attach');
+            var reviewAttachBtn = document.getElementById('mrf-review-attach-btn');
+            var reviewAttachMenu = document.getElementById('mrf-review-attach-menu');
             var reviewLatest = 0;
             var decideBox = document.getElementById('mrf-decide-box');
             var decideRemarks = document.getElementById('mrf-decide-remarks');
@@ -575,6 +590,7 @@
             function reviewMessage(text, className) {
                 reviewBody.replaceChildren(reviewEl('div', className, text));
                 reviewSign.replaceChildren();
+                reviewAttachClear();
                 reviewPrint.disabled = true;
             }
 
@@ -604,6 +620,51 @@
                 }
                 window.addEventListener('afterprint', cleanup);
                 window.print();
+            }
+
+            function reviewAttachClear() {
+                var dd = bootstrap.Dropdown.getInstance(reviewAttachBtn);
+                if (dd) { dd.hide(); }
+                reviewAttachMenu.replaceChildren();
+                reviewAttach.hidden = true;
+            }
+
+            function reviewAttachFill(d) {
+                reviewAttachClear();
+                var files = d.answers.filter(function (a) { return a.question_type === MRF_REQ_FILE_TYPE; });
+                if (!files.length) { return; }
+                files.forEach(function (a) {
+                    var fileUrl = MRF_REQ_API + '/' + encodeURIComponent(d.id) + '/answers/' + encodeURIComponent(a.question_id) + '/attachment';
+                    var sizeText = a.file_size >= MRF_REQ_FILE_MB ? (a.file_size / MRF_REQ_FILE_MB).toFixed(1) + ' MB' : Math.max(1, Math.round(a.file_size / MRF_REQ_FILE_KB)) + ' KB';
+                    var li = document.createElement('li');
+                    var item = document.createElement('div');
+                    item.className = 'mrf-attach-item';
+                    var name = document.createElement('div');
+                    name.className = 'mrf-attach-name';
+                    var label = document.createElement('span');
+                    label.className = 'mrf-attach-label';
+                    label.textContent = a.question_text;
+                    var file = document.createElement('span');
+                    file.className = 'mrf-attach-file';
+                    file.textContent = (a.file_name || '') + ' (' + sizeText + ')';
+                    name.appendChild(label);
+                    name.appendChild(file);
+                    var actions = document.createElement('div');
+                    actions.className = 'mrf-attach-actions';
+                    [[MRF_REQ_FILE_VIEW_TEXT, fileUrl], [MRF_REQ_FILE_DOWNLOAD_TEXT, fileUrl + '?download=true']].forEach(function (pair, i) {
+                        var link = document.createElement('a');
+                        link.textContent = pair[0];
+                        link.href = pair[1];
+                        if (i === 0) { link.target = '_blank'; link.rel = 'noopener'; }
+                        actions.appendChild(link);
+                    });
+                    item.appendChild(name);
+                    item.appendChild(actions);
+                    li.appendChild(item);
+                    reviewAttachMenu.appendChild(li);
+                });
+                reviewAttachBtn.textContent = MRF_REQ_ATTACH_BUTTON_TEXT + ' (' + files.length + ')';
+                reviewAttach.hidden = false;
             }
 
             function reviewPackCells(cells) {
@@ -667,22 +728,7 @@
                     empty.appendChild(reviewEl('div', 'mrf-review-empty', MRF_REQ_REVIEW_NO_ANSWERS_TEXT));
                     nodes.push(empty);
                 } else {
-                    nodes.push(section(MRF_REQ_REVIEW_SEC_DETAILS, d.answers.map(function (a) {
-                        if (a.question_type === MRF_REQ_FILE_TYPE) {
-                            var fileUrl = MRF_REQ_API + '/' + encodeURIComponent(d.id) + '/answers/' + encodeURIComponent(a.question_id) + '/attachment';
-                            var fileRow = reviewEl('div', 'mrf-review-a');
-                            var sizeText = a.file_size >= MRF_REQ_FILE_MB ? (a.file_size / MRF_REQ_FILE_MB).toFixed(1) + ' MB' : Math.max(1, Math.round(a.file_size / MRF_REQ_FILE_KB)) + ' KB';
-                            fileRow.appendChild(document.createTextNode((a.file_name || '') + ' (' + sizeText + ') '));
-                            [[MRF_REQ_FILE_VIEW_TEXT, fileUrl], [MRF_REQ_FILE_DOWNLOAD_TEXT, fileUrl + '?download=true']].forEach(function (pair, i) {
-                                var link = document.createElement('a');
-                                link.textContent = pair[0];
-                                link.href = pair[1];
-                                if (i === 0) { link.target = '_blank'; link.rel = 'noopener'; }
-                                link.style.marginRight = '0.75rem';
-                                fileRow.appendChild(link);
-                            });
-                            return cell(a.question_text, MRF_REQ_REVIEW_COLS, fileRow);
-                        }
+                    nodes.push(section(MRF_REQ_REVIEW_SEC_DETAILS, d.answers.filter(function (a) { return a.question_type !== MRF_REQ_FILE_TYPE; }).map(function (a) {
                         var answerText = String(a.answer);
                         var size = Math.max(a.question_text.length, answerText.length);
                         var spanCols = MRF_REQ_REVIEW_COLS;
@@ -716,6 +762,7 @@
                     sign.appendChild(sig);
                 });
                 reviewSign.replaceChildren(sign);
+                reviewAttachFill(d);
                 reviewPrint.disabled = false;
             }
 
