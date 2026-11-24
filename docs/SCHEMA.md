@@ -145,6 +145,16 @@ Scoring rules (older job-keyed design, SUPERSEDED where it mentions answer_point
 
 ## 4. Aggregation (Live Tally)
 
+**`candidates`** (migration 030, written 2026-11-24; applied to the live DB and verified 2026-11-24 (`\d candidates`)). An applicant moved to the hiring pipeline from the Applicants page; one row per application.
+- `id` (UUID, Primary Key, database default)
+- `application_id` (UUID, Foreign Key -> applications.id, Not Null, UNIQUE, ON DELETE CASCADE) - the unique key makes "move to candidate" safe to repeat (DECIDED 2026-11-24, recommendation).
+- `stage` (String, Not Null, default `initial_interview`, Indexed) - CHECK `ck_candidates_stage`, one of: `initial_interview`, `qualifiers_exam`, `final_interview`, `requirements`, `background_check`, `onboarding`, `onboarded`. Board order is the order listed.
+- `assigned_to_id` (UUID, Foreign Key -> users.id, nullable, ON DELETE SET NULL, Indexed) - the HR user handling this candidate; NULL = unassigned.
+- `moved_by_id` (UUID, Foreign Key -> users.id, nullable, ON DELETE SET NULL) - who pressed Move to Candidate.
+- `moved_at` (Timestamp with time zone, Not Null, default now(), Indexed) - shown as "Moved to Candidates".
+- `stage_changed_at` (Timestamp with time zone, Not Null, default now()).
+- Moving an applicant does NOT change `applications.status` (DECIDED 2026-11-24, recommendation).
+
 **`status_counts`** (Incrementally updated per Rule 13.3, avoids COUNT(*) table scans)
 - `job_id` (UUID, Foreign Key -> jobs.id)
 - `status` (String)
