@@ -37,6 +37,7 @@
 - `location` (String, nullable, no index) - DECIDED 2026-10-16 (user); migration 011, applied 2026-10-16 (existing jobs are NULL). Free text for the job location, e.g. "Remote in Manila". The API trims it, stores an empty value as NULL and rejects more than 150 characters (enforced by the API, not the DB). Shown on the job list cards and in the job detail "Job details" block.
 - `pay_information` (String, nullable, no index) - DECIDED 2026-10-16 (user); migration 011. Free text, same rules as `location`. A NULL shows as "Pay information not provided" on the website.
 - `job_type` (String, nullable, no index) - DECIDED 2026-10-16 (user, option A); migration 011. A fixed list validated by the API: Full-time, Part-time, Onsite (see API_CONTRACT.md "Job details fields"). There is no DB CHECK on purpose, so a new value is a contract and code change, not a migration.
+- `employee_classification` (String, nullable, no index) - DECIDED 2026-11-24 (user); migration 028, applied 2026-11-24 (existing jobs are NULL). HR-only, never returned by the public API. A fixed list validated by the API: Rank and File, Supervisory, Managerial (see API_CONTRACT.md "Employee Classification"). There is no DB CHECK on purpose, same as `job_type`.
 
 **`applicants`**
 - `id` (UUID, Primary Key)
