@@ -2763,5 +2763,5 @@ DOCS: API_CONTRACT.md (Employee Classification block, archive entry, Last verifi
 CONFLICT OPEN: the preamble pauses bte_website work, but API_CONTRACT.md line 81 records a verified website call site. Needs the user's decision.
 Backups kept (untracked, never added): API_CONTRACT.md .bak-empclass, .bak-empclass2, .bak-empclass3; SCHEMA.md.bak-empclass; models.py, schemas.py, admin.py, admin_brand_detail.html and PROJECT_STATE.md .bak-empclass (all -20261124).
 Work mode: feature (migration, backend, frontend) plus documentation. What changed: backend, admin panel.
-Commits: not yet made (next step).
-NEXT: commit and push this feature (on "awesome", after git status), then record the hashes. Then step F of the delete thread (test-data cleanup, only after the user confirms and the loss is named).
+Commits: 8e98c53 (code: models.py, schemas.py, admin.py, admin_brand_detail.html, migration 028) and d8ceb3e (docs: API_CONTRACT, SCHEMA, PROJECT_STATE), pushed as 6ab56ba..d8ceb3e on 2026-11-24 (plain push, no force, push output seen).
+NEXT: remove the job expiry feature and the circled job detail elements (step 0 inspection done, code step pending). Then step F of the delete thread (test-data cleanup, only after the user confirms and the loss is named).
