@@ -43,7 +43,7 @@ class Job(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=utc_now)
     form_id = Column(UUID(as_uuid=True), ForeignKey("forms.id"), nullable=True)
-    expires_at = Column(DateTime(timezone=True), nullable=False, default=lambda: utc_now() + timedelta(days=30))
+    expires_at = Column(DateTime(timezone=True), nullable=True)  # expiry disabled 2026-11-24 (migration 029): kept, never written
     archived_at = Column(DateTime(timezone=True), nullable=True)
     location = Column(String, nullable=True)
     pay_information = Column(String, nullable=True)

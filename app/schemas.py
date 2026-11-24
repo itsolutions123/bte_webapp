@@ -183,9 +183,7 @@ class JobResponse(BaseModel):
     job_type: Optional[str] = None
     employee_classification: Optional[str] = None
     created_at: datetime
-    expires_at: datetime
     archived_at: Optional[datetime] = None
-    is_expired: bool
 
 class BrandJobItem(BaseModel):
     id: UUID4

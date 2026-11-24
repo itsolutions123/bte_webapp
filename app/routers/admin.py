@@ -329,9 +329,7 @@ async def create_job(brand_id: uuid.UUID, payload: JobCreateRequest, db: AsyncSe
         job_type=job.job_type,
         employee_classification=job.employee_classification,
         created_at=to_app_tz(job.created_at),
-        expires_at=to_app_tz(job.expires_at),
         archived_at=to_app_tz(job.archived_at) if job.archived_at else None,
-        is_expired=job.expires_at <= datetime.now(timezone.utc),
     )
 
 @router.get("/brands/{brand_id}/jobs/{job_id}", response_model=JobResponse)
@@ -358,9 +356,7 @@ async def get_brand_job(brand_id: uuid.UUID, job_id: uuid.UUID, db: AsyncSession
         job_type=job.job_type,
         employee_classification=job.employee_classification,
         created_at=to_app_tz(job.created_at),
-        expires_at=to_app_tz(job.expires_at),
         archived_at=to_app_tz(job.archived_at) if job.archived_at else None,
-        is_expired=job.expires_at <= datetime.now(timezone.utc),
     )
 
 @router.patch("/brands/{brand_id}/jobs/{job_id}", response_model=JobResponse)
@@ -411,9 +407,7 @@ async def update_job(brand_id: uuid.UUID, job_id: uuid.UUID, payload: JobUpdateR
         job_type=job.job_type,
         employee_classification=job.employee_classification,
         created_at=to_app_tz(job.created_at),
-        expires_at=to_app_tz(job.expires_at),
         archived_at=to_app_tz(job.archived_at) if job.archived_at else None,
-        is_expired=job.expires_at <= datetime.now(timezone.utc),
     )
 
 
@@ -449,9 +443,7 @@ async def archive_job(brand_id: uuid.UUID, job_id: uuid.UUID, db: AsyncSession =
         job_type=job.job_type,
         employee_classification=job.employee_classification,
         created_at=to_app_tz(job.created_at),
-        expires_at=to_app_tz(job.expires_at),
         archived_at=to_app_tz(job.archived_at) if job.archived_at else None,
-        is_expired=job.expires_at <= datetime.now(timezone.utc),
     )
 
 

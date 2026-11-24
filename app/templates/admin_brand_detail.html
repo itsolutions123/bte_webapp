@@ -109,7 +109,7 @@
             {% include '_sidebar.html' %}
             <main class="col-md-10 px-4 pt-4 pb-5">
                 <div class="bp-page">
-                    <!-- SHELL (section 8): subtitle, tab counts and the Expires node are placeholders; title, search and job rows are wired -->
+                    <!-- SHELL (section 8): subtitle and tab counts are placeholders; title, search and job rows are wired -->
                     <div class="bp-title" id="brand-title">BRAND NAME</div>
                     {# part 89: placeholder subtitle removed (user request 2026-11-20) #}
 
@@ -219,7 +219,6 @@
         #jobDetailModal .jd-title { font-weight: 700; color: #1f2328; }
         #jobDetailModal.offcanvas { --bs-offcanvas-width: min(640px, 100vw); }
         #jobDetailModal .jd-head { padding: 1.1rem 1.5rem; border-bottom: 1px solid #f0f1f4; }
-        #jobDetailModal .jd-crumb { font-size: .8rem; color: #6b7280; font-weight: 700; margin-bottom: .2rem; }
         #jobDetailModal .jd-label { font-size: .75rem; font-weight: 800; letter-spacing: .08em; color: #374151; margin-bottom: .6rem; }
         #jobDetailModal .jd-title { font-size: 1.6rem; font-weight: 800; line-height: 1.2; letter-spacing: .2px; color: #111111; font-family: inherit; }
         #jobDetailModal .jd-body { padding: 1.25rem 1.5rem; }
@@ -277,10 +276,6 @@
         .job-card-form {
             position: absolute; right: 1.5rem; top: 50%; transform: translateY(-50%);
             font-weight: 800; font-size: 1.5rem; color: #111;
-        }
-        .job-card-expiry {
-            display: inline-block; margin-top: .35rem; padding: .1rem .7rem; border-radius: 999px;
-            font-size: .78rem; font-weight: 700; color: #7a6212; background: #fbf5df;
         }
     </style>
     <style>
@@ -354,18 +349,16 @@
         @media (prefers-reduced-motion: reduce) { .bp-row { transition: none; } }
     </style>
     <div class="offcanvas offcanvas-end" tabindex="-1" id="jobDetailModal" aria-labelledby="jobDetailModalLabel">
-        <!-- SHELL (section 8): breadcrumb, Next, status timeline, expiry chips and More are placeholders; everything else keeps its existing wiring -->
+        <!-- SHELL (section 8): status timeline and More are placeholders; everything else keeps its existing wiring -->
         <div class="jd-head">
             <div class="d-flex align-items-start justify-content-between gap-3">
                 <div>
-                    <div class="jd-crumb" id="job-detail-crumb">Job &mdash; of &mdash;</div>
                     <div class="d-flex align-items-center gap-2">
                         <h5 class="jd-title m-0" id="jobDetailModalLabel">Job Title</h5>
                         <span class="jd-chip d-none" id="job-detail-archived-badge">Archived</span>
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-2 flex-shrink-0">
-                    <button type="button" class="jd-btn" id="job-detail-next-btn" disabled title="Not wired yet">Next: &mdash; &rsaquo;</button>
                     <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
                 </div>
             </div>
@@ -373,22 +366,6 @@
         <div class="offcanvas-body jd-body">
             <div class="jd-label">Listing status</div>
             <div class="bp-status jd-status" id="job-detail-status"><span class="bp-status-dot"></span><span id="job-detail-status-label">&mdash;</span></div>
-            <div class="jd-row">
-                <div class="jd-key">Expires</div>
-                <div class="jd-val">
-                    <div class="d-flex flex-wrap gap-2">
-                        <button type="button" class="jd-btn" disabled title="Not wired yet">Never</button>
-                        <button type="button" class="jd-btn" disabled title="Not wired yet">14 days</button>
-                        <button type="button" class="jd-btn" disabled title="Not wired yet">30 days</button>
-                        <button type="button" class="jd-btn" disabled title="Not wired yet">Pick date&hellip;</button>
-                    </div>
-                    <div class="d-flex align-items-center flex-wrap gap-2 mt-2">
-                        <span class="jd-chip">Expires: <span id="job-detail-expiry">&mdash;</span></span>
-                        <input type="datetime-local" class="jd-input" id="job-detail-expiry-input">
-                        <button type="button" class="jd-btn jd-btn-gold" id="job-detail-set-duration-btn">Set duration</button>
-                    </div>
-                </div>
-            </div>
             <hr class="jd-hr">
             <div class="jd-label">Details</div>
             <div class="jd-row">
@@ -457,7 +434,6 @@
             <div class="text-danger small d-none w-100" id="job-edit-error"></div>
             <div class="d-flex align-items-center gap-2">
                 <button type="button" class="jd-btn" disabled title="Not wired yet">More &#9662;</button>
-                <button type="button" class="jd-btn jd-btn-gold" id="job-detail-renew-btn">Renew</button>
                 <button type="button" class="jd-btn" id="job-detail-archive-btn">Archive</button>
             </div>
             <div class="d-flex align-items-center gap-2 ms-auto">
@@ -584,7 +560,6 @@
                     menu.innerHTML = '<button type="button" class="bp-kebab" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Job actions">&#8942;</button>'
                         + '<ul class="dropdown-menu dropdown-menu-end">'
                         + '<li><button type="button" class="dropdown-item" disabled>Edit</button></li>'
-                        + '<li><button type="button" class="dropdown-item" disabled>Renew</button></li>'
                         + '<li><button type="button" class="dropdown-item" disabled>Archive</button></li>'
                         + '</ul>';
                     card.style.cursor = 'pointer';
@@ -702,9 +677,7 @@
             const modalEl = document.getElementById('jobDetailModal');
             if (!modalEl) return;
             const editBtn = document.getElementById('job-detail-edit-btn');
-            const renewBtn = document.getElementById('job-detail-renew-btn');
             const archiveBtn = document.getElementById('job-detail-archive-btn');
-            const setDurationBtn = document.getElementById('job-detail-set-duration-btn');
             const archivedBadge = document.getElementById('job-detail-archived-badge');
             const viewEls = modalEl.querySelectorAll('[data-jd-view]');
             const editEls = modalEl.querySelectorAll('[data-jd-edit]');
@@ -773,9 +746,7 @@
                     document.getElementById('job-detail-form-error').classList.add('d-none');
                 })();
                 editBtn.disabled = false;
-                renewBtn.disabled = false;
                 archiveBtn.disabled = false;
-                setDurationBtn.disabled = false;
             });
             modalEl.addEventListener('jobdetail:loaded', function (e) {
                 loaded = e.detail;
@@ -787,9 +758,7 @@
                 const isArchived = !!loaded.archived_at;
                 archivedBadge.classList.toggle('d-none', !isArchived);
                 editBtn.disabled = isArchived;
-                renewBtn.disabled = isArchived;
                 archiveBtn.disabled = isArchived;
-                setDurationBtn.disabled = isArchived;
             });
             editBtn.addEventListener('click', function () {
                 if (editing) { setEditing(false); return; }

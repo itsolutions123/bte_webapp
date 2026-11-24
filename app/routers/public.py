@@ -24,7 +24,6 @@ async def get_public_jobs(
     query = select(Job, Brand.name.label("brand_name"), Brand.slug.label("brand_slug")).join(Brand).where(
         Job.is_active == True,
         Job.archived_at.is_(None),
-        Job.expires_at > func.now(),
     )
     
     if brand_id:
@@ -69,7 +68,6 @@ async def get_public_job(
             Job.id == job_id,
             Job.is_active == True,
             Job.archived_at.is_(None),
-            Job.expires_at > func.now(),
         )
     )
     row = (await db.execute(query)).first()
@@ -205,7 +203,6 @@ async def submit_application(
             Job.id == job_id,
             Job.is_active == True,
             Job.archived_at.is_(None),
-            Job.expires_at > func.now(),
         )
     )
     if not job:
