@@ -153,6 +153,17 @@ class StatusCount(Base):
     status = Column(String, primary_key=True)
     count = Column(Integer, default=0, nullable=False)
 
+class Candidate(Base):
+    # docs/SCHEMA.md "candidates" (migration 030). One row per application; stage is limited by a database CHECK.
+    __tablename__ = "candidates"
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
+    application_id = Column(UUID(as_uuid=True), ForeignKey("applications.id", ondelete="CASCADE"), nullable=False, unique=True)
+    stage = Column(String, nullable=False, default="initial_interview", server_default="initial_interview")
+    assigned_to_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    moved_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    moved_at = Column(DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now())
+    stage_changed_at = Column(DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now())
+
 class User(Base):
     __tablename__ = "users"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

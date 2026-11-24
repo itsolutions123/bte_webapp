@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, HTTPException, Response, status
 from fastapi.responses import FileResponse
 from typing import Optional
 import logging
@@ -10,11 +10,14 @@ from urllib.parse import quote
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, literal, update
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import aliased
 
 from app.database import get_db
 from app.timeutil import to_app_tz, APP_TIMEZONE
 from app.html_clean import clean_rich_text
-from app.models import Application, Applicant
+from app.models import Application, Applicant, Candidate, User
+from app.routers.auth import get_current_user
 from app.models import Brand, BusinessUnit, Job, StatusCount, Parameter, Parameter, Form, JobQuestion, Answer, Answer
 from app.schemas import (
     SidebarMetadataResponse, SidebarBrandItem, SidebarFormItem, SidebarFormItem, SidebarBusinessUnitItem,
@@ -29,7 +32,9 @@ from app.schemas import (
     QuestionCreateRequest, QuestionResponse, QuestionUpdateRequest,
     JobSummaryItem, FormDetailResponse,
     AdminApplicationListItem, AdminApplicationListResponse,
-    AdminStatusPatchRequest,
+    AdminStatusPatchRequest, CandidateMoveResponse, AdminCandidateInfo, CandidateStageUpdate,
+    CandidateAssigneeItem, CandidateAssigneeListResponse,
+    AdminCandidateListItem, AdminCandidateListResponse, AdminCandidateAssignee,
     AdminApplicantDetail, AdminAnswerDetail, AdminApplicationDetailResponse,
 )
 
@@ -633,6 +638,16 @@ async def get_application_detail(
 
     score = (await compute_application_scores(db, [application.id])).get(application.id)
 
+    # docs/API_CONTRACT.md, GET /applications/{application_id}, candidate field: null unless moved to candidates.
+    candidate_row = await db.scalar(select(Candidate).where(Candidate.application_id == application.id))
+    candidate_info = None
+    if candidate_row is not None:
+        candidate_info = AdminCandidateInfo(
+            id=candidate_row.id,
+            stage=candidate_row.stage,
+            moved_at=to_app_tz(candidate_row.moved_at),
+        )
+
     return AdminApplicationDetailResponse(
         id=application.id,
         applicant=AdminApplicantDetail(
@@ -647,6 +662,7 @@ async def get_application_detail(
         score=score,
         status=application.status,
         answers=answers,
+        candidate=candidate_info,
     )
 
 
@@ -710,6 +726,280 @@ async def update_application_status(
         raise HTTPException(status_code=500, detail="Database transaction failed")
 
     return {"message": "Status updated", "new_status": new_status}
+
+
+# docs/API_CONTRACT.md, GET /api/v1/admin/candidates (list for the Candidates board).
+def _candidate_joins(query):
+    return (
+        query
+        .join(Application, Application.id == Candidate.application_id)
+        .join(Applicant, Applicant.id == Application.applicant_id)
+        .join(Job, Job.id == Application.job_id)
+        .join(Brand, Brand.id == Job.brand_id)
+    )
+
+
+def _user_display_name(user):
+    # One display-name rule for users in the candidates feature: full_name, else first + last, else email.
+    # Works on a User or on a row that has these four attributes. docs/API_CONTRACT.md (ASSUMPTION, 2026-11-24).
+    return (
+        user.full_name
+        or f"{user.first_name or ''} {user.last_name or ''}".strip()
+        or user.email
+    )
+
+
+def _candidate_list_item(cand, first, last, title, brand_name, classification, job_type, assignee_user, score):
+    # One place that turns a candidate row into the list/PATCH response item (assignee name fallback, timezone).
+    assigned_to = None
+    if assignee_user is not None:
+        assigned_to = AdminCandidateAssignee(id=assignee_user.id, name=_user_display_name(assignee_user))
+    return AdminCandidateListItem(
+        id=cand.id,
+        application_id=cand.application_id,
+        applicant_name=f"{first} {last}".strip(),
+        job_title=title,
+        brand_name=brand_name,
+        employee_classification=classification,
+        job_type=job_type,
+        score=score,
+        stage=cand.stage,
+        moved_at=to_app_tz(cand.moved_at),
+        assigned_to=assigned_to,
+    )
+
+
+@router.get("/candidates", response_model=AdminCandidateListResponse)
+async def list_candidates(
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=100),
+    search: Optional[str] = Query(None, max_length=100),
+    stage: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    if stage is not None and stage not in CANDIDATE_STAGE_VALUES:
+        raise HTTPException(status_code=422, detail="stage must be one of: " + ", ".join(CANDIDATE_STAGE_VALUES))
+
+    search_conditions = []
+    term = (search or "").strip()
+    if term:
+        escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = "%" + escaped + "%"
+        search_conditions.append(or_(
+            Applicant.first_name.ilike(pattern, escape="\\"),
+            Applicant.last_name.ilike(pattern, escape="\\"),
+            func.concat(Applicant.first_name, " ", Applicant.last_name).ilike(pattern, escape="\\"),
+            Job.title.ilike(pattern, escape="\\"),
+            Brand.name.ilike(pattern, escape="\\"),
+        ))
+    list_conditions = list(search_conditions)
+    if stage is not None:
+        list_conditions.append(Candidate.stage == stage)
+
+    count_query = _candidate_joins(select(func.count()).select_from(Candidate))
+    if list_conditions:
+        count_query = count_query.where(*list_conditions)
+    total = (await db.execute(count_query)).scalar_one()
+
+    stage_query = _candidate_joins(select(Candidate.stage, func.count()).select_from(Candidate))
+    if search_conditions:
+        stage_query = stage_query.where(*search_conditions)
+    stage_rows = (await db.execute(stage_query.group_by(Candidate.stage))).all()
+    stage_counts = {key: 0 for key in CANDIDATE_STAGE_VALUES}
+    for stage_key, stage_count in stage_rows:
+        stage_counts[stage_key] = stage_count
+
+    assignee = aliased(User)
+    list_query = _candidate_joins(
+        select(
+            Candidate, Applicant.first_name, Applicant.last_name, Job.title, Brand.name,
+            Job.employee_classification, Job.job_type, assignee,
+        ).select_from(Candidate)
+    ).outerjoin(assignee, assignee.id == Candidate.assigned_to_id)
+    if list_conditions:
+        list_query = list_query.where(*list_conditions)
+    rows = (
+        await db.execute(
+            list_query
+            .order_by(Candidate.moved_at.desc(), Candidate.id)
+            .offset((page - 1) * limit)
+            .limit(limit)
+        )
+    ).all()
+
+    scores = await compute_application_scores(db, [r[0].application_id for r in rows])
+
+    items = [
+        _candidate_list_item(
+            cand, first, last, title, brand_name, classification, job_type, assignee_user,
+            scores.get(cand.application_id),
+        )
+        for cand, first, last, title, brand_name, classification, job_type, assignee_user in rows
+    ]
+    return AdminCandidateListResponse(data=items, total=total, stage_counts=stage_counts)
+
+
+# docs/API_CONTRACT.md, POST /api/v1/admin/applications/{application_id}/candidate.
+# Must match the database CHECK ck_candidates_stage (migration 030) and the board order in the contract.
+CANDIDATE_STAGE_VALUES = (
+    "initial_interview", "qualifiers_exam", "final_interview",
+    "requirements", "background_check", "onboarding", "onboarded",
+)
+
+
+@router.post("/applications/{application_id}/candidate", response_model=CandidateMoveResponse, status_code=201)
+async def move_application_to_candidate(
+    application_id: uuid.UUID,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Creates one candidates row per application (UNIQUE). A repeat or concurrent call creates nothing and
+    # returns the existing row with created=false. applications.status and status_counts are NOT touched.
+    application = await db.get(Application, application_id)
+    if application is None:
+        raise HTTPException(status_code=404, detail="application not found")
+
+    existing = await db.scalar(select(Candidate).where(Candidate.application_id == application_id))
+    created = False
+    if existing is None:
+        try:
+            existing = Candidate(
+                application_id=application_id,
+                stage=CANDIDATE_STAGE_VALUES[0],
+                moved_by_id=current_user.id,
+            )
+            db.add(existing)
+            await db.commit()
+            await db.refresh(existing)
+            created = True
+        except IntegrityError:
+            await db.rollback()
+            existing = await db.scalar(select(Candidate).where(Candidate.application_id == application_id))
+            if existing is None:
+                logging.getLogger(__name__).error("Move to candidate failed for application %s", application_id)
+                raise HTTPException(status_code=500, detail="Database transaction failed")
+        except Exception:
+            await db.rollback()
+            logging.getLogger(__name__).error("Move to candidate failed for application %s", application_id)
+            raise HTTPException(status_code=500, detail="Database transaction failed")
+
+    if not created:
+        response.status_code = 200
+    return CandidateMoveResponse(
+        id=existing.id,
+        application_id=existing.application_id,
+        stage=existing.stage,
+        moved_at=to_app_tz(existing.moved_at),
+        created=created,
+    )
+
+
+# docs/API_CONTRACT.md, GET /api/v1/admin/candidate-assignees (choices for the "Assigned To" dropdown).
+@router.get("/candidate-assignees", response_model=CandidateAssigneeListResponse)
+async def list_candidate_assignees(
+    page: int = Query(1, ge=1),
+    limit: int = Query(100, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+):
+    # Any signed-in role. Same "can sign in" rule as login and the Users tabs: is_active and not archived.
+    # Only id, name fields, email (to build the name) and role are selected; no email is returned.
+    active = [User.is_active.is_(True), User.archived_at.is_(None)]
+    total = (await db.execute(select(func.count()).select_from(User).where(*active))).scalar_one()
+    sort_name = func.lower(
+        func.coalesce(
+            func.nullif(User.full_name, ""),
+            func.nullif(
+                func.trim(func.concat(func.coalesce(User.first_name, ""), " ", func.coalesce(User.last_name, ""))),
+                "",
+            ),
+            User.email,
+        )
+    )
+    rows = (
+        await db.execute(
+            select(User.id, User.full_name, User.first_name, User.last_name, User.email, User.role)
+            .where(*active)
+            .order_by(sort_name, User.id)
+            .offset((page - 1) * limit)
+            .limit(limit)
+        )
+    ).all()
+    return CandidateAssigneeListResponse(
+        data=[CandidateAssigneeItem(id=r.id, name=_user_display_name(r), role=r.role) for r in rows],
+        total=total,
+    )
+
+
+# docs/API_CONTRACT.md, PATCH /api/v1/admin/candidates/{candidate_id} (stage and/or assignee).
+@router.patch("/candidates/{candidate_id}", response_model=AdminCandidateListItem)
+async def update_candidate_stage(
+    candidate_id: uuid.UUID,
+    body: CandidateStageUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    sent = body.model_fields_set
+    if "stage" not in sent and "assigned_to_id" not in sent:
+        raise HTTPException(status_code=422, detail="send at least one of: stage, assigned_to_id")
+    if "stage" in sent and body.stage not in CANDIDATE_STAGE_VALUES:
+        raise HTTPException(status_code=422, detail="stage must be one of: " + ", ".join(CANDIDATE_STAGE_VALUES))
+
+    candidate = await db.get(Candidate, candidate_id)
+    if candidate is None:
+        raise HTTPException(status_code=404, detail="candidate not found")
+
+    # The assignee (when one is set, not when cleared) must be an active, non-archived user. Checked before any
+    # write so a bad assignee never leaves a half-applied change.
+    if "assigned_to_id" in sent and body.assigned_to_id is not None:
+        assignee_ok = await db.scalar(
+            select(User.id).where(
+                User.id == body.assigned_to_id, User.is_active.is_(True), User.archived_at.is_(None)
+            )
+        )
+        if assignee_ok is None:
+            raise HTTPException(status_code=422, detail="assigned_to_id must be an active user")
+
+    # A field equal to the stored value changes nothing. Only a real stage change touches stage_changed_at; an
+    # assignee-only change leaves it alone. applications.status is never touched. One commit for both fields.
+    changed = False
+    if "stage" in sent and candidate.stage != body.stage:
+        candidate.stage = body.stage
+        candidate.stage_changed_at = func.now()
+        changed = True
+    if "assigned_to_id" in sent and candidate.assigned_to_id != body.assigned_to_id:
+        candidate.assigned_to_id = body.assigned_to_id
+        changed = True
+    if changed:
+        try:
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            logging.getLogger(__name__).error("Candidate update failed for candidate %s", candidate_id)
+            raise HTTPException(status_code=500, detail="Database transaction failed")
+
+    assignee = aliased(User)
+    row = (
+        await db.execute(
+            _candidate_joins(
+                select(
+                    Candidate, Applicant.first_name, Applicant.last_name, Job.title, Brand.name,
+                    Job.employee_classification, Job.job_type, assignee,
+                ).select_from(Candidate)
+            )
+            .outerjoin(assignee, assignee.id == Candidate.assigned_to_id)
+            .where(Candidate.id == candidate_id),
+            execution_options={"populate_existing": True},
+        )
+    ).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="candidate not found")
+
+    cand, first, last, title, brand_name, classification, job_type, assignee_user = row
+    scores = await compute_application_scores(db, [cand.application_id])
+    return _candidate_list_item(
+        cand, first, last, title, brand_name, classification, job_type, assignee_user,
+        scores.get(cand.application_id),
+    )
 
 
 @router.get("/applications/{application_id}/resume")

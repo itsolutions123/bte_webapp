@@ -4,6 +4,7 @@
 <symbol id="ch" viewBox="0 0 10 10"><path d="M2 0l6 5-6 5z"/></symbol>
 <symbol id="i-dash" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
 <symbol id="i-app" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6M16 4.5a3.5 3.5 0 0 1 0 7M18 14.3c2 .8 3.5 2.8 3.5 5.7"/></symbol>
+<symbol id="i-can" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></symbol>
 <symbol id="i-mrf" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM9 12h6M9 16h4"/></symbol>
 <symbol id="i-usr" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></symbol>
 <symbol id="i-ho" viewBox="0 0 24 24"><path d="M4 21V5l8-2 8 2v16M9 9h2M13 9h2M9 13h2M13 13h2M10 21v-4h4v4"/></symbol>
@@ -22,6 +23,7 @@
     <div class="nav flex-column">
         <a href="/admin/home" class="{% if active_page == 'dashboard' %}active{% endif %}"><svg class="sb-i" aria-hidden="true"><use href="#i-dash"/></svg>Dashboard</a>
         <a href="/admin/applicants" class="{% if active_page == 'applicants' %}active{% endif %}"><svg class="sb-i" aria-hidden="true"><use href="#i-app"/></svg>Applicants</a>
+        <a href="/admin/candidates" class="{% if active_page == 'candidates' %}active{% endif %}"><svg class="sb-i" aria-hidden="true"><use href="#i-can"/></svg>Candidates</a>
         {# MRF: links to /admin/mrf (shell built 2026-11-10), shown to SUPERADMIN and MANAGER only, like Users. The badge is hidden at 0 and filled by initMrfBadge in admin-sidebar.js from GET /api/v1/admin/mrf/summary (polls every 60 s while the tab is visible). Users links to /admin/users (shell confirmed 2026-11-05). #}
         {% if request is defined and request.state.user is defined and request.state.user.role in ['SUPERADMIN', 'MANAGER'] %}
         <a href="/admin/mrf" class="{% if active_page == 'mrf' %}active{% endif %}"><svg class="sb-i" aria-hidden="true"><use href="#i-mrf"/></svg>MRF <span class="mrf-nav-badge" id="mrf-nav-badge" hidden>0</span></a>

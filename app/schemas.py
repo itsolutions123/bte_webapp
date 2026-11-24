@@ -84,6 +84,12 @@ class AdminDuplicateApplication(BaseModel):
     status: str
     date: datetime
 
+class AdminCandidateInfo(BaseModel):
+    id: UUID
+    stage: str
+    moved_at: datetime
+
+
 class AdminApplicationDetailResponse(BaseModel):
     id: UUID4
     applicant: AdminApplicantDetail
@@ -91,9 +97,61 @@ class AdminApplicationDetailResponse(BaseModel):
     score: Optional[int]
     status: str
     answers: List[AdminAnswerDetail]
+    candidate: Optional[AdminCandidateInfo] = None
 
 class AdminStatusPatchRequest(BaseModel):
     status: str
+
+
+class AdminCandidateAssignee(BaseModel):
+    id: UUID
+    name: str
+
+
+class AdminCandidateListItem(BaseModel):
+    id: UUID
+    application_id: UUID
+    applicant_name: str
+    job_title: str
+    brand_name: str
+    employee_classification: Optional[str] = None
+    job_type: Optional[str] = None
+    score: Optional[int] = None
+    stage: str
+    moved_at: datetime
+    assigned_to: Optional[AdminCandidateAssignee] = None
+
+
+class AdminCandidateListResponse(BaseModel):
+    data: List[AdminCandidateListItem]
+    total: int
+    stage_counts: Dict[str, int]
+
+
+class CandidateMoveResponse(BaseModel):
+    id: UUID
+    application_id: UUID
+    stage: str
+    moved_at: datetime
+    created: bool
+
+
+class CandidateStageUpdate(BaseModel):
+    # Both optional; at least one must be sent (checked in the endpoint with model_fields_set so that an absent
+    # field and an explicit null can be told apart). docs/API_CONTRACT.md, PATCH /api/v1/admin/candidates/{id}.
+    stage: Optional[str] = None
+    assigned_to_id: Optional[UUID] = None
+
+
+class CandidateAssigneeItem(BaseModel):
+    id: UUID
+    name: str
+    role: str
+
+
+class CandidateAssigneeListResponse(BaseModel):
+    data: List[CandidateAssigneeItem]
+    total: int
 
 
 class FormCreateRequest(BaseModel):

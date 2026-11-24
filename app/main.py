@@ -238,6 +238,11 @@ async def serve_admin_applicants(request: Request):
     # Shell only (section 8): no data is fetched yet.
     return templates.TemplateResponse(request=request, name="admin_applicants.html", context=admin_sidebar_context(request), headers=NO_STORE)
 
+@app.get("/admin/candidates", include_in_schema=False, dependencies=[Depends(require_page_session)])
+async def serve_admin_candidates(request: Request):
+    # Shell only (section 8): placeholder rows, no data is fetched yet.
+    return templates.TemplateResponse(request=request, name="admin_candidates.html", context=admin_sidebar_context(request), headers=NO_STORE)
+
 @app.get("/admin/forms/{form_id}", include_in_schema=False, dependencies=[Depends(require_page_session)])
 async def serve_admin_form_detail(request: Request, form_id: str):
     # Shell only (section 8): form_id is accepted but not used to fetch data yet.

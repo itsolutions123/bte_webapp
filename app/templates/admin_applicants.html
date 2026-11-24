@@ -168,6 +168,8 @@
         .detail-actions { display: flex; gap: 0.6rem; margin-top: 1.1rem; }
         .detail-actions .btn { flex: 1 1 auto; }
         .detail-actions .dropdown .btn { flex: 0 0 auto; }
+        .detail-actions .btn-move-candidate { flex: 0 0 auto; white-space: nowrap; }
+        .detail-actions .btn.btn-move-candidate.is-moved { color: #1f7a42; background-color: rgba(31, 122, 66, 0.12); border-color: transparent; opacity: 1; }
         .detail-fields-title {
             font-size: 0.8rem;
             font-weight: 800;
@@ -467,6 +469,7 @@
                         <li><button type="button" class="dropdown-item text-danger" data-status="FAILED">Failed</button></li>
                     </ul>
                 </div>
+                <button type="button" class="btn btn-outline-dark fw-bold btn-move-candidate" id="applicant-detail-move-candidate" disabled>Move to Candidate</button>
                 <div class="dropdown">
                     <button type="button" class="btn btn-outline-dark fw-bold" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions">&hellip;</button>
                     <ul class="dropdown-menu dropdown-menu-end">
@@ -820,11 +823,61 @@
             handleStatusChange(item.dataset.status);
         });
 
+        // docs/API_CONTRACT.md: POST /api/v1/admin/applications/{application_id}/candidate and the candidate field of GET /applications/{application_id}.
+        const moveCandBtnEl = document.getElementById('applicant-detail-move-candidate');
+        const MOVE_CAND_TEXT = 'Move to Candidate';
+        const MOVED_CAND_TEXT = 'Moved to Candidates';
+
+        function resetMoveCandidateUI() {
+            moveCandBtnEl.disabled = true;
+            moveCandBtnEl.classList.remove('is-moved');
+            moveCandBtnEl.textContent = MOVE_CAND_TEXT;
+        }
+
+        function renderMoveCandidate(candidate) {
+            if (candidate) {
+                moveCandBtnEl.classList.add('is-moved');
+                moveCandBtnEl.textContent = MOVED_CAND_TEXT;
+                moveCandBtnEl.disabled = true;
+            } else {
+                moveCandBtnEl.classList.remove('is-moved');
+                moveCandBtnEl.textContent = MOVE_CAND_TEXT;
+                moveCandBtnEl.disabled = false;
+            }
+        }
+
+        async function handleMoveToCandidate() {
+            if (!applicantDetailCurrentId) return;
+            const id = applicantDetailCurrentId;
+            moveCandBtnEl.disabled = true;
+            let message = 'Could not move to candidates. Please try again.';
+            try {
+                const res = await fetch('/api/v1/admin/applications/' + encodeURIComponent(id) + '/candidate', { method: 'POST' });
+                if (!res.ok) {
+                    try {
+                        const errBody = await res.json();
+                        if (errBody && typeof errBody.detail === 'string') message = errBody.detail;
+                    } catch (parseErr) { /* keep the generic message */ }
+                    throw new Error('HTTP ' + res.status);
+                }
+                const body = await res.json();
+                if (id !== applicantDetailCurrentId) return;
+                renderMoveCandidate(body);
+            } catch (err) {
+                console.error('Move to candidate failed:', err);
+                alert(message);
+                if (id === applicantDetailCurrentId) moveCandBtnEl.disabled = false;
+            }
+        }
+
+        moveCandBtnEl.addEventListener('click', handleMoveToCandidate);
+
         async function loadApplicantDetail(applicationId) {
             const requestNo = ++applicantDetailRequest;
             setDetailHeader({ name: 'Loading...' });
             setResumeButton(null);
             resetDetailStatusUI();
+            resetMoveCandidateUI();
             if (!applicationId) {
                 setDetailHeader({ name: 'Could not load applicant.' });
                 return;
@@ -845,6 +898,7 @@
                 });
                 setResumeButton(applicationId);
                 renderDetailStatus(d.status);
+                renderMoveCandidate(d.candidate);
             } catch (err) {
                 console.error('Applicant detail load failed:', err);
                 if (requestNo !== applicantDetailRequest) return;
