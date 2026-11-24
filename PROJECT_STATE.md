@@ -2778,5 +2778,5 @@ DOCS: API_CONTRACT.md (Job expiry DISABLED addendum flipped to BUILT, older expi
 SLIPS (assistant): (1) the first UI removal script aborted (nothing written) because I assumed the hr line was unique; (2) I predicted 13 kept rows, the real count was 14; (3) I predicted a backend diff of 2 insertions and 15 deletions and left out the earlier uncommitted template removal (real: 3 and 47); (4) the earlier public leak check of 0 proved nothing because the public list was empty.
 Side issue: the website careers page was empty only because every active job had passed its old expiry; it shows jobs again now.
 Work mode: feature (migration, backend, frontend removal) plus documentation. What changed: backend, admin panel.
-Commits: not yet made (next step).
-NEXT: commit and push (code, then docs), record the hashes, then the handover. Then step F of the delete thread (test-data cleanup, only after the user confirms and the loss is named).
+Commits: ab8c0d0 (code: models.py, schemas.py, admin.py, public.py, admin_brand_detail.html, migration 029) and c3556fa (docs: API_CONTRACT, SCHEMA, PROJECT_STATE), pushed as 5c8247e..c3556fa on 2026-11-24 (plain push, no force, push output seen).
+NEXT: step F of the delete thread (test-data cleanup, only after the user confirms and the loss is named).
