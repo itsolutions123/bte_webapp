@@ -575,3 +575,11 @@ main .mrf-toolbar, main .users-toolbar, main .applicants-toolbar { display: flex
 main .mrf-search, main .mrf-req-search, main .users-search, main .applicants-search { min-height: 2.75rem; padding: 0 1rem; font-size: 0.9rem; border: 1px solid var(--border-light); border-radius: 0.75rem; background-color: var(--bg-card); }
 main .mrf-search:focus, main .mrf-req-search:focus, main .users-search:focus, main .applicants-search:focus { border-color: var(--accent-gold); box-shadow: 0 0 0 0.25rem rgba(201, 162, 39, 0.2); }
 main .applicants-search:disabled { background-color: var(--bg-card); opacity: 1; }
+
+/* D2 (2026-11-25): sidebar row density closer to BTE_Careers___Applicants_Redesign.html (rows about 34px, icons 17px). Gold/black palette and collapsible units unchanged. */
+.sidebar a { min-height: 2.25rem; font-size: .84375rem; }
+.business-unit-toggle { min-height: 2.25rem; }
+.business-unit-title { font-size: .84375rem; }
+.brand-row > a { font-size: .8125rem; }
+.sb-i { width: 1.0625rem; height: 1.0625rem; }
+.business-unit-add, .forms-add { top: .125rem; }
