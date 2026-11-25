@@ -538,9 +538,10 @@ async def list_applications(
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=100),
     form_id: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    # docs/API_CONTRACT.md: page, limit and form_id are wired; job_id, status, search come later.
+    # docs/API_CONTRACT.md: page, limit, form_id and status (E3) are wired; job_id and search come later.
     form_uuid = None
     if form_id is not None:
         try:
@@ -548,7 +549,14 @@ async def list_applications(
         except ValueError:
             raise HTTPException(status_code=422, detail="form_id must be a valid UUID")
 
+    if status is not None and status not in APPLICATION_STATUS_VALUES:
+        raise HTTPException(
+            status_code=422,
+            detail="status must be one of: " + ", ".join(APPLICATION_STATUS_VALUES),
+        )
+
     count_query = select(func.count()).select_from(Application)
+    status_counts_query = select(Application.status, func.count()).select_from(Application).group_by(Application.status)
     list_query = (
         select(Application, Applicant.first_name, Applicant.last_name, Job.title, Brand.name)
         .join(Applicant, Applicant.id == Application.applicant_id)
@@ -558,6 +566,10 @@ async def list_applications(
     if form_uuid is not None:
         count_query = count_query.join(Job, Job.id == Application.job_id).where(Job.form_id == form_uuid)
         list_query = list_query.where(Job.form_id == form_uuid)
+        status_counts_query = status_counts_query.join(Job, Job.id == Application.job_id).where(Job.form_id == form_uuid)
+    if status is not None:
+        count_query = count_query.where(Application.status == status)
+        list_query = list_query.where(Application.status == status)
 
     total_result = await db.execute(count_query)
     total = total_result.scalar_one()
@@ -585,7 +597,13 @@ async def list_applications(
         )
         for app_row, first, last, title, brand_name in rows
     ]
-    return AdminApplicationListResponse(data=items, total=total)
+    counts_rows = (await db.execute(status_counts_query)).all()
+    status_counts = {s: 0 for s in APPLICATION_STATUS_VALUES}
+    for st, n in counts_rows:
+        if st in status_counts:
+            status_counts[st] = n
+    status_counts = {"ALL": sum(n for _, n in counts_rows), **status_counts}
+    return AdminApplicationListResponse(data=items, total=total, status_counts=status_counts)
 
 
 @router.get("/applications/{application_id}", response_model=AdminApplicationDetailResponse)

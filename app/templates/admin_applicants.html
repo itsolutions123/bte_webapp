@@ -338,6 +338,10 @@
         .applicant-list-head .alh-status { flex: 0 0 6rem; text-align: center; }
         .applicant-list-head .alh-score { flex: 0 0 auto; min-width: 6.5rem; text-align: right; }
         @media (max-width: 767.98px) { .applicant-list-head .alh-brand, .applicant-list-head .alh-date { display: none; } }
+        /* E3 (2026-11-25): the tabs are buttons now; reset the button look and keep the gold underline for the active one. */
+        button.applicants-tab { background: none; border-style: solid; border-width: 0 0 3px; border-color: transparent; font-family: inherit; font-size: inherit; cursor: pointer; }
+        button.applicants-tab.active { border-bottom-color: var(--accent-gold); }
+        button.applicants-tab:focus-visible { outline: 2px solid var(--accent-gold); outline-offset: 2px; }
         .applicants-footer { margin-top: 1rem; }
         .applicants-footer .btn { min-height: 2.75rem; padding: 0 1.25rem; border: 1px solid var(--border-light); border-radius: 0.75rem; background-color: transparent; color: var(--text-main); }
         .applicants-footer .btn:hover:not(:disabled) { border-color: var(--accent-gold); background-color: transparent; color: var(--text-main); }
@@ -397,12 +401,7 @@
                     </div>
                 </div>
 
-                <div class="applicants-tabs">
-                    <span class="applicants-tab active">All</span>
-                    <span class="applicants-tab">New</span>
-                    <span class="applicants-tab">In review</span>
-                    <span class="applicants-tab">Interview</span>
-                </div>
+                <div class="applicants-tabs" id="applicants-tabs"></div>
 
                 <div class="applicants-card">
                     <div class="applicants-toolbar">
@@ -538,6 +537,33 @@
         // Applicants list: GET /api/v1/admin/applications (docs/API_CONTRACT.md). Cells use textContent only.
         const APPLICANTS_PAGE_SIZE = 50;
         let applicantsPage = 1;
+        let applicantsStatus = '';
+        let applicantsCounts = null;
+        // E3: tab keys and labels must match APPLICATION_STATUS_VALUES in app/routers/admin.py ('' means All, counted under ALL).
+        const APPLICANT_TABS = [['', 'All'], ['NEW', 'New'], ['POOLING', 'Pooling'], ['ENDORSED', 'Endorsed'], ['HIRED', 'Hired'], ['FAILED', 'Failed']];
+        function renderApplicantTabs() {
+            const box = document.getElementById('applicants-tabs');
+            box.textContent = '';
+            APPLICANT_TABS.forEach(function (t) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'applicants-tab' + (t[0] === applicantsStatus ? ' active' : '');
+                btn.setAttribute('aria-pressed', t[0] === applicantsStatus ? 'true' : 'false');
+                btn.appendChild(document.createTextNode(t[1]));
+                const n = document.createElement('span');
+                n.className = 'applicants-tab-count';
+                const key = t[0] || 'ALL';
+                n.textContent = (applicantsCounts && applicantsCounts[key] !== undefined) ? String(applicantsCounts[key]) : '';
+                btn.appendChild(n);
+                btn.addEventListener('click', function () {
+                    if (t[0] === applicantsStatus) return;
+                    applicantsStatus = t[0];
+                    applicantsPage = 1;
+                    loadApplicants();
+                });
+                box.appendChild(btn);
+            });
+        }
 
         function applicantsMessageRow(text) {
             const div = document.createElement('div');
@@ -552,17 +578,20 @@
             const next = document.getElementById('applicants-next');
             const label = document.getElementById('applicants-page-label');
             tbody.textContent = '';
+            renderApplicantTabs();
             tbody.appendChild(applicantsMessageRow('Loading...'));
             prev.disabled = true;
             next.disabled = true;
             try {
-                const res = await fetch('/api/v1/admin/applications?page=' + applicantsPage + '&limit=' + APPLICANTS_PAGE_SIZE);
+                const res = await fetch('/api/v1/admin/applications?page=' + applicantsPage + '&limit=' + APPLICANTS_PAGE_SIZE + (applicantsStatus ? '&status=' + applicantsStatus : ''));
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const body = await res.json();
+                applicantsCounts = body.status_counts || null;
+                renderApplicantTabs();
                 const totalPages = Math.max(1, Math.ceil(body.total / APPLICANTS_PAGE_SIZE));
                 tbody.textContent = '';
                 if (body.data.length === 0) {
-                    tbody.appendChild(applicantsMessageRow('No applicants yet'));
+                    tbody.appendChild(applicantsMessageRow(applicantsStatus ? 'No applicants with this status' : 'No applicants yet'));
                 }
                 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                 const initialsOf = function (name) {

@@ -65,6 +65,7 @@ class AdminApplicationListItem(BaseModel):
 class AdminApplicationListResponse(BaseModel):
     data: List[AdminApplicationListItem]
     total: int
+    status_counts: dict[str, int] = {}
 
 class AdminApplicantDetail(BaseModel):
     name: str
