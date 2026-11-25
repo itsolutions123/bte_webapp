@@ -2837,3 +2837,14 @@ NEXT: step F of the delete thread (test-data cleanup, only after the user confir
 - Hardcodes: APPLICANTS_PAGE_SIZE 50 must match the backend default; the 130px brand column width; the em dash fallback. '[Brand]' removed.
 - Docs: API_CONTRACT.md list entry has the brand_name bullet and response shape, Last verified line carries 4911f9a. SCHEMA.md and SECURITY.md: no change.
 - Backups (untracked, never git add): app/routers/admin.py.bak-20261125-e1, app/schemas.py.bak-20261125-e1, app/templates/admin_applicants.html.bak-20261125-e1, docs/API_CONTRACT.md.bak-20261125-e1 and -e1b, PROJECT_STATE.md.bak-20261125-e1.
+
+## Applicants E2 - "Applied for" prefix and column header row (2026-11-25, code 0bf1936, docs 40ada80)
+- Built (frontend only, app/templates/admin_applicants.html): the job line of each row reads "Applied for <job_title>"; a static header row (Applicant, Brand, Date applied, Status, Score) sits above #applicants-rows, outside it so loadApplicants does not clear it, with flex values mirroring the card cells; status pills have one fixed width (6rem) so the Status header lines up. No endpoint or response change.
+- Evidence: the user reported "checks confirmed" for four browser points (prefix, header row, header labels over their columns, equal pill widths); the screen was not described to the assistant.
+- Not tested: Firefox, Safari, a narrow window beyond the existing 767.98px rule, a long job title or brand name, more than one page, a RECRUITER account.
+- Slip (assistant) and repair: the E1 contract edit (8ef1418) used an anchor that stopped before the closing backtick of the list response shape line, so that backtick ended up at the end of the new brand_name bullet. Found from an unexpected git diff --stat during the E2 contract edit, repaired in 40ada80 (line 135 backtick restored, stray one removed). Lesson: when an anchor ends a line that is inside backticks, include the closing backtick in the anchor.
+- Decisions (assistant, "always go with your recommendation" rule, flagged): fixed 6rem pill width is a small visible change; header labels are literal text, no shared variable.
+- Hardcodes: the "Applied for " prefix, the five header labels, the 6rem width.
+- Docs: API_CONTRACT.md has the E2 call-site bullet and the Last verified line carries 0bf1936. SCHEMA.md and SECURITY.md: no change.
+- Open: HANDOFF to Structure on per-section score bars still unanswered (does not block). Next: E3 tabs with counts (needs a contract: status filter and per-status totals on GET /applications), then E4 classification and employment type.
+- Backups (untracked, never git add): app/templates/admin_applicants.html.bak-20261125-e2, docs/API_CONTRACT.md.bak-20261125-e2 and -e2b, PROJECT_STATE.md.bak-20261125-e2.
