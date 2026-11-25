@@ -861,6 +861,7 @@
                     throw new Error('HTTP ' + res.status);
                 }
                 const body = await res.json();
+                if (typeof window.refreshCandidatesBadge === 'function') { window.refreshCandidatesBadge(); }
                 if (id !== applicantDetailCurrentId) return;
                 renderMoveCandidate(body);
             } catch (err) {

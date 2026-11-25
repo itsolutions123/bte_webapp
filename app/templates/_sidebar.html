@@ -23,7 +23,7 @@
     <div class="nav flex-column">
         <a href="/admin/home" class="{% if active_page == 'dashboard' %}active{% endif %}"><svg class="sb-i" aria-hidden="true"><use href="#i-dash"/></svg>Dashboard</a>
         <a href="/admin/applicants" class="{% if active_page == 'applicants' %}active{% endif %}"><svg class="sb-i" aria-hidden="true"><use href="#i-app"/></svg>Applicants</a>
-        <a href="/admin/candidates" class="{% if active_page == 'candidates' %}active{% endif %}"><svg class="sb-i" aria-hidden="true"><use href="#i-can"/></svg>Candidates</a>
+        <a href="/admin/candidates" class="{% if active_page == 'candidates' %}active{% endif %}"><svg class="sb-i" aria-hidden="true"><use href="#i-can"/></svg>Candidates <span class="cand-nav-badge" id="cand-nav-badge" hidden>0</span></a>
         {# MRF: links to /admin/mrf (shell built 2026-11-10), shown to SUPERADMIN and MANAGER only, like Users. The badge is hidden at 0 and filled by initMrfBadge in admin-sidebar.js from GET /api/v1/admin/mrf/summary (polls every 60 s while the tab is visible). Users links to /admin/users (shell confirmed 2026-11-05). #}
         {% if request is defined and request.state.user is defined and request.state.user.role in ['SUPERADMIN', 'MANAGER'] %}
         <a href="/admin/mrf" class="{% if active_page == 'mrf' %}active{% endif %}"><svg class="sb-i" aria-hidden="true"><use href="#i-mrf"/></svg>MRF <span class="mrf-nav-badge" id="mrf-nav-badge" hidden>0</span></a>

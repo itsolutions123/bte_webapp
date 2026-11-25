@@ -472,6 +472,9 @@ body {
 .sidebar a.active { background-color: color-mix(in srgb, var(--accent-gold) 15%, transparent); color: var(--text-main); font-weight: 700; }
 .sidebar a.active::after { content: ""; position: absolute; left: 0; top: 0.5rem; bottom: 0.5rem; width: 3px; border-radius: 1rem; background: var(--accent-gold); }
 .mrf-nav-badge { margin-left: auto; }
+/* Candidates count badge (2026-11-25): red count like the MRF badge, with the same ping. Filled by initCandidatesBadge in admin-sidebar.js. */
+.cand-nav-badge { display: inline-block; min-width: 1.25rem; padding: 0 0.4rem; margin-left: auto; border-radius: 999px; background: #dc3545; color: #fff; font-size: 0.7rem; line-height: 1.25rem; text-align: center; }
+.cand-nav-badge[hidden] { display: none; }
 .business-unit-toggle { background: none; border-left: 0; border-radius: 0.625rem; padding: 0 0.5rem; min-height: 2.5rem; }
 .business-unit-toggle:hover { background: var(--hover); }
 .business-unit.has-active-child .business-unit-toggle { background: color-mix(in srgb, var(--accent-gold) 10%, transparent); }
@@ -548,14 +551,14 @@ body {
 
 /* MRF badge ping, profile pill hover */
 @keyframes sb-ping { 0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, .55); } 70%, 100% { box-shadow: 0 0 0 .5rem rgba(220, 53, 69, 0); } }
-.mrf-nav-badge:not([hidden]) { animation: sb-ping 2.4s ease-out infinite; }
+.mrf-nav-badge:not([hidden]), .cand-nav-badge:not([hidden]) { animation: sb-ping 2.4s ease-out infinite; }
 .profile-pill-avatar { transition: transform .35s var(--ease); }
 .profile-pill:hover .profile-pill-avatar { transform: rotate(-10deg) scale(1.08); }
 .profile-pill-logout svg { transition: transform .35s var(--ease); }
 .profile-pill-logout:hover svg { transform: translateX(.25rem); }
 
 @media (prefers-reduced-motion: reduce) {
-    .sidebar > *, .sidebar a.active::before, .sidebar a.active::after, .mrf-nav-badge { animation: none !important; }
+    .sidebar > *, .sidebar a.active::before, .sidebar a.active::after, .mrf-nav-badge, .cand-nav-badge { animation: none !important; }
     .sub, .sb-i, .business-unit-chevron { transition-duration: .01ms !important; transition-delay: 0s !important; }
 }
 

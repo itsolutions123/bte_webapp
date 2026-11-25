@@ -1321,6 +1321,71 @@
         btnLogout.addEventListener('click', logOut);
     }
 
+    // Candidates count badge on the sidebar Candidates item (any signed-in role).
+    // Contract: GET /api/v1/admin/candidates?limit=1, reads total (docs/API_CONTRACT.md). Polls only while the tab is visible.
+    const CAND_BADGE_POLL_MS = 60000;
+    const CAND_BADGE_MAX_BACKOFF_MS = 300000;
+
+    function initCandidatesBadge() {
+        const badge = document.getElementById('cand-nav-badge');
+        if (!badge) return;
+        function showCount(n) {
+            if (n > 0) {
+                badge.textContent = String(n);
+                badge.hidden = false;
+            } else {
+                badge.hidden = true;
+            }
+        }
+        let delay = CAND_BADGE_POLL_MS;
+        let timer = null;
+        let stopped = false;
+        let inFlight = false;
+
+        function schedule() {
+            clearTimeout(timer);
+            if (stopped || document.hidden) return;
+            timer = setTimeout(refreshCandidatesBadge, delay);
+        }
+
+        async function refreshCandidatesBadge() {
+            if (stopped || inFlight) return;
+            inFlight = true;
+            try {
+                const res = await fetch('/api/v1/admin/candidates?limit=1', { headers: { 'Accept': 'application/json' } });
+                if (res.status === 401 || res.status === 403) {
+                    stopped = true;
+                    showCount(0);
+                    return;
+                }
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                const n = Number(data.total);
+                showCount(Number.isInteger(n) ? n : 0);
+                delay = CAND_BADGE_POLL_MS;
+            } catch (err) {
+                console.error('Candidates badge load failed:', err);
+                showCount(0);
+                delay = Math.min(delay * 2, CAND_BADGE_MAX_BACKOFF_MS);
+            } finally {
+                inFlight = false;
+                schedule();
+            }
+        }
+
+        window.refreshCandidatesBadge = refreshCandidatesBadge;
+
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) {
+                clearTimeout(timer);
+            } else if (!stopped) {
+                refreshCandidatesBadge();
+            }
+        });
+
+        refreshCandidatesBadge();
+    }
+
     // MRF pending-accounts badge on the sidebar MRF item (SUPERADMIN and MANAGER only: the element exists only for them).
     // Contract: GET /api/v1/admin/mrf/summary (docs/API_CONTRACT.md). Polls only while the tab is visible.
     const MRF_BADGE_POLL_MS = 60000;
@@ -1394,6 +1459,7 @@
     initProfilePill();
     refreshSidebar();
     initMrfBadge();
+    initCandidatesBadge();
 })();
 
 // part 89: sidebar entrance stagger (mockup: items rise in one after another). Sets --i on each direct child of the sidebar nav; CSS does the rest.
