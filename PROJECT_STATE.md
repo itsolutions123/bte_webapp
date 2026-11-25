@@ -2818,3 +2818,12 @@ NEXT: step F of the delete thread (test-data cleanup, only after the user confir
 - Test data (do not delete without asking): candidates rows now include e8779076-cc5b-41e9-ab8c-6a0d6b8c2bd4 (application 911096b0-1d28-4010-b704-8cbc0291b9d4, stage qualifiers_exam, moved 2026-11-24 07:27, creator unknown, presumably the user) and 802af192-88df-4ca3-9e31-a88164c9b324 (application 708cb637-5eb3-4297-9d0c-bc22effd43ad, ZZ scoring test job, created by the badge refresh test; keep or delete is undecided). Two more ZZ applications still have no candidates row: 84a7ee84-8fb3-42bc-bd18-73d866d04387 and 843e0a47-0794-4555-af0d-d0725507b1e8. The live candidate count is 4.
 - Still to do: D2 sidebar layout rework (ask the user exactly what to change first; the mockup has flat Business Unit and Forms groups, ours are collapsible); E remaining Applicants page UI from the mockup (check first whether per-section score data exists).
 - Backups (untracked, never git add): app/templates/_sidebar.html.bak-20261125, app/static/admin-sidebar.css.bak-20261125, app/static/admin-sidebar.js.bak-20261125, app/templates/admin_applicants.html.bak-20261125, docs/API_CONTRACT.md.bak-20261125, PROJECT_STATE.md.bak-20261125.
+
+## Sidebar D2 - row density closer to the Applicants redesign mockup (2026-11-25, code 0e3a105)
+- Decision (assistant, "always go with your recommendation" rule, flagged): option 2 of the sidebar layout rework. Business Unit and Forms stay collapsible units; only row proportions follow BTE_Careers___Applicants_Redesign.html. Palette stays gold/black.
+- Change: one CSS block appended at the end of app/static/admin-sidebar.css. Sidebar links and unit toggles min-height 2.25rem, labels .84375rem, brand rows .8125rem, .sb-i icons 1.0625rem, "+" buttons top .125rem. No markup, JS, endpoint or call site change, so docs/API_CONTRACT.md was not edited.
+- Evidence: user reported "checks confirmed" for three browser checks (tighter rows; "+" buttons on Business Unit and Forms still centred on their rows; units still expand and the red Candidates badge stays right-aligned). The verify output (brace count, git status) was not pasted to the assistant.
+- Not tested: narrow window, Firefox, Safari, a RECRUITER account, the Archive link row.
+- Hardcodes: literal rem sizes copied from the mockup's 13.5px and 17px, no shared variable.
+- Test candidate row 802af192-88df-4ca3-9e31-a88164c9b324 was kept (no delete requested).
+- Next: E (Applicants UI from the mockup); first check whether per-section score breakdown data exists.
