@@ -550,9 +550,10 @@ async def list_applications(
 
     count_query = select(func.count()).select_from(Application)
     list_query = (
-        select(Application, Applicant.first_name, Applicant.last_name, Job.title)
+        select(Application, Applicant.first_name, Applicant.last_name, Job.title, Brand.name)
         .join(Applicant, Applicant.id == Application.applicant_id)
         .join(Job, Job.id == Application.job_id)
+        .join(Brand, Brand.id == Job.brand_id)
     )
     if form_uuid is not None:
         count_query = count_query.join(Job, Job.id == Application.job_id).where(Job.form_id == form_uuid)
@@ -576,12 +577,13 @@ async def list_applications(
             id=app_row.id,
             applicant_name=f"{first} {last}".strip(),
             job_title=title,
+            brand_name=brand_name,
             score=scores.get(app_row.id),
             status=app_row.status,
             has_hard_fail_flag=bool(app_row.has_hard_fail_flag),
             created_at=to_app_tz(app_row.created_at),
         )
-        for app_row, first, last, title in rows
+        for app_row, first, last, title, brand_name in rows
     ]
     return AdminApplicationListResponse(data=items, total=total)
 

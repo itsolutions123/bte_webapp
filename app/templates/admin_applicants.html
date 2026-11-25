@@ -574,7 +574,7 @@
                     const who = addEl(card, 'div', 'applicant-who');
                     addEl(who, 'div', 'applicant-card-name', a.applicant_name);
                     addEl(who, 'div', 'applicant-card-job', a.job_title);
-                    addEl(card, 'span', 'applicant-cell applicant-cell-brand', '[Brand]');
+                    addEl(card, 'span', 'applicant-cell applicant-cell-brand', a.brand_name || '\u2014');
                     addEl(card, 'span', 'applicant-cell applicant-cell-date', applied);
                     const statusText = String(a.status || '');
                     const statusBadge = addEl(card, 'span', 'applicant-status', statusText.charAt(0) + statusText.slice(1).toLowerCase());
