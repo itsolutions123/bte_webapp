@@ -328,6 +328,16 @@
         .applicant-status[data-status="NEW"] { color: #1D4ED8; }
         .applicant-status[data-status="HIRED"] { color: #15803D; }
         .applicant-status[data-status="POOLING"] { color: #8A6A00; }
+        /* E2 (2026-11-25): column header row like BTE_Careers___Applicants_Redesign.html; flex values mirror the card cells so the columns line up. Status pills get one fixed width so the Status header can line up. */
+        .applicant-status[data-status] { flex: 0 0 6rem; text-align: center; }
+        .applicant-list-head { display: flex; align-items: center; gap: 1rem; padding: 0 calc(1.125rem + 1px) 0.5rem; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-muted); }
+        .applicant-list-head .alh-avatar { flex: 0 0 2.75rem; }
+        .applicant-list-head .alh-who { flex: 1.6 1 0; }
+        .applicant-list-head .alh-brand { flex: 1 1 0; }
+        .applicant-list-head .alh-date { flex: 1.2 1 0; }
+        .applicant-list-head .alh-status { flex: 0 0 6rem; text-align: center; }
+        .applicant-list-head .alh-score { flex: 0 0 auto; min-width: 6.5rem; text-align: right; }
+        @media (max-width: 767.98px) { .applicant-list-head .alh-brand, .applicant-list-head .alh-date { display: none; } }
         .applicants-footer { margin-top: 1rem; }
         .applicants-footer .btn { min-height: 2.75rem; padding: 0 1.25rem; border: 1px solid var(--border-light); border-radius: 0.75rem; background-color: transparent; color: var(--text-main); }
         .applicants-footer .btn:hover:not(:disabled) { border-color: var(--accent-gold); background-color: transparent; color: var(--text-main); }
@@ -398,6 +408,14 @@
                     <div class="applicants-toolbar">
                         <input type="search" class="form-control applicants-search" placeholder="Search applicants or positions" disabled aria-label="Search applicants">
                         <button type="button" class="btn applicants-filters-btn" disabled>Filters</button>
+                    </div>
+                    <div class="applicant-list-head" aria-hidden="true">
+                        <span class="alh-avatar"></span>
+                        <span class="alh-who">Applicant</span>
+                        <span class="alh-brand">Brand</span>
+                        <span class="alh-date">Date applied</span>
+                        <span class="alh-status">Status</span>
+                        <span class="alh-score">Score</span>
                     </div>
                     <div class="applicant-list" id="applicants-rows">
                         <div class="text-muted p-3">Loading...</div>
@@ -573,7 +591,7 @@
                     addEl(card, 'div', 'applicant-avatar', initialsOf(a.applicant_name));
                     const who = addEl(card, 'div', 'applicant-who');
                     addEl(who, 'div', 'applicant-card-name', a.applicant_name);
-                    addEl(who, 'div', 'applicant-card-job', a.job_title);
+                    addEl(who, 'div', 'applicant-card-job', 'Applied for ' + a.job_title);
                     addEl(card, 'span', 'applicant-cell applicant-cell-brand', a.brand_name || '\u2014');
                     addEl(card, 'span', 'applicant-cell applicant-cell-date', applied);
                     const statusText = String(a.status || '');
