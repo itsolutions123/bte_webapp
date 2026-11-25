@@ -2827,3 +2827,13 @@ NEXT: step F of the delete thread (test-data cleanup, only after the user confir
 - Hardcodes: literal rem sizes copied from the mockup's 13.5px and 17px, no shared variable.
 - Test candidate row 802af192-88df-4ca3-9e31-a88164c9b324 was kept (no delete requested).
 - Next: E (Applicants UI from the mockup); first check whether per-section score breakdown data exists.
+
+## Applicants E1 - real brand name on the applications list (2026-11-25, code 4911f9a, docs 8ef1418)
+- Built: GET /api/v1/admin/applications list items gain brand_name (applications to jobs to brands, one extra join in the same page query, no new index). list_applications in app/routers/admin.py, AdminApplicationListItem in app/schemas.py. app/templates/admin_applicants.html loadApplicants renders a.brand_name (em dash fallback) instead of the '[Brand]' literal, which is removed.
+- Evidence: curl live test, login 200, GET /applications?limit=3 returned 200 with total 15 and brand_name matched the database brand on all 3 rows; limit=101 returned 422; limit=1 returned 1 row. The browser result is the user's "checks confirmed"; the screen was not described to the assistant.
+- Not tested: page 2, an archived brand, Firefox, Safari, a narrow window, a very long brand name in the 130px brand column, a RECRUITER account.
+- Decisions (assistant, "always go with your recommendation" rule, flagged): E1 limited to one new field. Per-section score bars from the mockup are NOT built: job_questions has no section column (app/models.py JobQuestion), so option C was taken (overall score plus per-question pass/fail, no schema change). HANDOFF to Structure written: add a nullable section label on job_questions (option A), break down by question type (B) or skip (C). Open until the user answers.
+- Proposed order for the rest of step E (not confirmed by the user): E2 "Applied for" prefix and column header row (frontend only); E3 tabs with counts (needs a contract: status filter and per-status totals on GET /applications, both contracted but not built); E4 classification and employment type (jobs.employee_classification and jobs.job_type exist; the candidates code in admin.py already maps them, store type has no column).
+- Hardcodes: APPLICANTS_PAGE_SIZE 50 must match the backend default; the 130px brand column width; the em dash fallback. '[Brand]' removed.
+- Docs: API_CONTRACT.md list entry has the brand_name bullet and response shape, Last verified line carries 4911f9a. SCHEMA.md and SECURITY.md: no change.
+- Backups (untracked, never git add): app/routers/admin.py.bak-20261125-e1, app/schemas.py.bak-20261125-e1, app/templates/admin_applicants.html.bak-20261125-e1, docs/API_CONTRACT.md.bak-20261125-e1 and -e1b, PROJECT_STATE.md.bak-20261125-e1.
