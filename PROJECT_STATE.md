@@ -2886,3 +2886,26 @@ NEXT: step F of the delete thread (test-data cleanup, only after the user confir
 - Open: HANDOFF to Structure, Recruiters metrics: route, data source and which metrics, before the placeholder can be wired. Earlier open items (a), (c), (d), (e), (f) still stand.
 - Backups (untracked, never git add): app/templates/_sidebar.html.bak-20261126-metrics, app/static/admin-sidebar.js.bak-20261126-metrics, app/static/admin-sidebar.css.bak-20261126-metrics, PROJECT_STATE.md.bak-20261126-metrics.
 - Next: E4 (classification and employment type on list rows, contract before code), then E5.
+
+## Applicants E4: employee_classification and job_type on the list (2026-11-26)
+
+Work mode: feature-wiring step. Page: Applicants list (/admin/applicants), E4 of the Applicants redesign. Code commit 10e1bbd, docs commit d55460a.
+
+What changed:
+- Backend: GET /api/v1/admin/applications items gain employee_classification and job_type (raw strings from jobs, nullable). Same Job join already used in list_applications. AdminApplicationListItem gets two Optional[str] = None fields. No migration, no index.
+- Frontend: classification is a second muted line under the brand name, job type a second muted line under the date, em dash when null (.applicant-cell-sub, 0.75rem). Status pill, E2 header row and the 767.98px rule unchanged.
+- Admin panel: no other change.
+- Deliberate departure from the mockup: the mockup puts classification under the status pill. Not done here, to protect updateApplicantRowStatus and the E2 header row.
+- Value lists in admin.py (lines 253-254): JOB_TYPES = Full-time, Part-time, Onsite; EMPLOYEE_CLASSIFICATIONS = Rank and File, Supervisory, Managerial.
+
+Verified (curl, user-run): login 200; limit=3 matched the database on 3 rows; limit=101 gave 422; status=NEW gave 7 rows all NEW; status_counts present. The browser check is the user's words ("checks confirmed"), not observed by the assistant.
+
+Slip and correction: an earlier handover said jobs.job_type and jobs.employee_classification were null on all test data. Wrong: the job behind application 911096b0 (Cook at Pares Retiro) has job_type = Part-time and classification null; the other two rows checked were null/null. Claims about test data must be verified with a query before they are repeated.
+
+NOT tested: a RECRUITER account; a real employee_classification value (no tested row has one); long brand, job title, classification or job type text; page 2 of the list; status filter combined with form_id and paging; Firefox, Safari, narrow window beyond the 767.98px rule.
+
+HANDOFF -> Structure (store type): the mockup's Store type column has no column on brands or jobs. Stated in the E4 contract bullet. Options: A) add a column on brands (migration 031 and a contract change), B) add it on jobs, C) skip. Current build: skipped. Blocked until: Structure decides.
+
+Open items carried forward: per-section score bars (build is option C, overall score plus per-question pass/fail); Recruiters metrics route and data source (Metrics > Recruiters is still a placeholder); naming of Workspace > Applicants next to Metrics > Applicants; page headings still say "Dashboard"; whether jobs.assignee_user_id pre-fills a candidate's assignee on move; archived-user handling for candidates.assigned_to_id; handleMoveToCandidate re-enables its button after a failure alert (untested after a 409); whether the Applicants panel still has the contract's primary advance button.
+
+Next: E5, Applicants slide-over panel additions from the mockup (Assessment Score card, resume preview, Application Details and Candidate Information layout).
