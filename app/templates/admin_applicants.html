@@ -848,6 +848,19 @@
             return res.json();
         }
 
+        // E3b: after a saved status change, refresh only the tab counts (docs/API_CONTRACT.md, PATCH status, call site: tab counts refresh).
+        async function refreshApplicantCounts() {
+            try {
+                const res = await fetch('/api/v1/admin/applications?page=1&limit=1');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const body = await res.json();
+                applicantsCounts = body.status_counts || applicantsCounts;
+                renderApplicantTabs();
+            } catch (err) {
+                console.error('Tab counts refresh failed:', err);
+            }
+        }
+
         async function handleStatusChange(newStatus) {
             if (!applicantDetailCurrentId) return;
             const id = applicantDetailCurrentId;
@@ -855,6 +868,7 @@
             try {
                 await patchApplicantStatus(id, newStatus);
                 updateApplicantRowStatus(id, newStatus);
+                refreshApplicantCounts();
                 if (id !== applicantDetailCurrentId) return;
                 renderDetailStatus(newStatus);
             } catch (err) {
