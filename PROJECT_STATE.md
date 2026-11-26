@@ -2909,3 +2909,33 @@ HANDOFF -> Structure (store type): the mockup's Store type column has no column 
 Open items carried forward: per-section score bars (build is option C, overall score plus per-question pass/fail); Recruiters metrics route and data source (Metrics > Recruiters is still a placeholder); naming of Workspace > Applicants next to Metrics > Applicants; page headings still say "Dashboard"; whether jobs.assignee_user_id pre-fills a candidate's assignee on move; archived-user handling for candidates.assigned_to_id; handleMoveToCandidate re-enables its button after a failure alert (untested after a 409); whether the Applicants panel still has the contract's primary advance button.
 
 Next: E5, Applicants slide-over panel additions from the mockup (Assessment Score card, resume preview, Application Details and Candidate Information layout).
+
+## Applicants E5a: slide-over panel body and is_passed computed on read (2026-11-26)
+
+Work mode: feature-wiring step (UI from existing data, plus one backend change). Page: Applicants slide-over panel (/admin/applicants), E5a of the Applicants redesign. Code commit da6e745, docs commit 08eac50.
+
+What changed:
+- Frontend (app/templates/admin_applicants.html): the panel body is now two columns on screens 992px and wider (panel width min(1120px, 96vw)) and stacks below that. Left column: an Assessment score card (score ring copied from the list, a label "N of M scored questions passed", one row per answer with a Passed, Not passed or Not scored pill) and a Candidate information card (same five fields and ids as before). Right column: a Resume card with an inline iframe preview on the existing resume endpoint and a Full view button that still opens the modal viewer. The iframe is reset to about:blank when the panel closes. Header, status stepper, status dropdown, Move to Candidate and previous/next are unchanged.
+- Backend (app/routers/admin.py): new helper answer_is_correct(question_type, key, applicant_answer), returns True, False or None. compute_application_scores now calls it (behaviour unchanged by design) and get_application_detail uses it to fill answers[].is_passed. The stored answers.is_passed column is neither read nor written by this change (apply still stores NULL).
+- Docs: API_CONTRACT.md (score bullet reworded, new answers[].is_passed bullet, Last verified), SCHEMA.md line 138 (stale definition marked).
+- No migration, no new index, no new query.
+
+Why the backend change: the pills first read the stored is_passed, which is NULL on all 76 answers (the only write is the capture-first apply, which stores None), so the ring showed a score while every pill said Not scored. The score itself is calculated on read from job_questions.correct_answer.
+
+Verified (curl, user-run): login 200; all 15 applications: list score, detail score and the score rebuilt from the pills agreed on every row, 0 rows differ. By eye on application 911096b0 (Cook): key NO answered YES gives Not passed, two NO/NO and one YES/YES give Passed, the multiple choice answer is in the key list and gives Passed, so 4 of 5 and score 80. The browser check is the user's words ("checks confirmed"), not observed by the assistant. Because pills and score share one helper, the agreement test shows ring and pills agree, not that the rule itself is right; the by-eye check covers the rule for that one application.
+
+Resume auto-download (diagnosed, no code change): the resume opened as a download in the iframe and in Full view, also in other browsers. By curl the endpoint returns Content-Disposition inline and application/pdf, and only ?download=true returns attachment. The browser's PDF setting was already Open PDFs in Chrome. DevTools showed the request as "204 Intercepted by the IDM Advanced Integration": Internet Download Manager intercepted the PDF request. The fix is IDM configuration on the user's machine, not code. The user then said "nice"; the render itself was not described or observed by the assistant.
+
+Operations: after the admin.py edit the uvicorn --reload stayed at "Waiting for connections to close", /health returned no answer, and bte_careers_web was restarted with docker restart (web container only, nothing lost). Health returned 200 on the fourth try and the log showed Application startup complete. Cause of the hang not confirmed (an open browser connection is suspected).
+
+Slips (assistant): guessed the Chrome PDF setting as the cause of the download, wrong (the DevTools request showed IDM); the first contract verify pattern used a period where the text has a backtick, so it matched nothing and the new bullet's tail was only checked in a second step; a diff stat of 3 insertions and 2 deletions was first read as one file when it covered two.
+
+NOT tested: a RECRUITER account on the panel or detail endpoint; a question whose key has an unsupported shape (the helper returns null, no test row has one); an application whose resume file is missing (404 path, shown as a blank frame); long question or answer text; Firefox and Safari; narrow window below 992px and below 767.98px in a real browser; the panel with 100 or more answers; keyboard use of the panel; reduced motion.
+
+Observation, data not code: the multiple choice key on the Cook form lists all four option ids, so that question can never fail. The form's answer key may be unintended; the form owner should look at it.
+
+HANDOFF items and open work: (a) E5b, Application Details card (position, brand, store type, employment type, classification, date submitted) needs brand_name, job_type, employee_classification and created_at added to GET /applications/{application_id}, contract first; store type still has no column (HANDOFF to Structure from E4). (b) E5c, Assigned To card: candidate has an assignee but an unmoved applicant has none; recommendation is read-only and shown only when the applicant is a candidate, editable before the move would need a new endpoint and a Structure HANDOFF. (c) A Good fit style label is not built (it would need a threshold; jobs.pass_threshold exists but is not on the detail response). (d) Dead CSS for #applicant-detail-answers .list-group-item is now unused. (e) The subline still reads "Applied for X · Application details" and does not show the brand yet (E5b).
+
+Hardcodes added: pill colours #1f7a42 and #b42318 (repeated from existing rules), resume frame height 70vh and min-height 24rem, the 992px breakpoint and 1120px panel width, the strings Passed, Not passed, Not scored, No resume to show., No answers recorded., No scored questions, the ring constants (viewBox 0 0 36 36, dash 100.5) copied from the list. Removed: the inline copy of the scoring rule.
+
+Next: E5b (contract, then backend, then the Application Details card and the subline).
