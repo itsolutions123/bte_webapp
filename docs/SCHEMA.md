@@ -135,7 +135,7 @@ Scoring rules (older job-keyed design, SUPERSEDED where it mentions answer_point
 - `application_id` (UUID, Foreign Key -> applications.id)
 - `job_question_id` (UUID, Foreign Key -> job_questions.id)
 - `applicant_answer` (String)
-- `is_passed` (Boolean, nullable) - True when the chosen answer has no FAIL row in answer_points (YES_NO and MULTIPLE_CHOICE); NULL for OPEN_ENDED (not scored). For OPEN_ENDED, `applicant_answer` holds the applicant's full text. Migration 012 (applied 2026-10-19) dropped NOT NULL on the live column and `Answer.is_passed` is `nullable=True` in the model; the capture-first apply stores NULL for every answer until scoring exists.
+- `is_passed` (Boolean, nullable) - STALE definition, never implemented by any code: True when the chosen answer has no FAIL row in answer_points (YES_NO and MULTIPLE_CHOICE); NULL for OPEN_ENDED (not scored). For OPEN_ENDED, `applicant_answer` holds the applicant's full text. Migration 012 (applied 2026-10-19) dropped NOT NULL on the live column and `Answer.is_passed` is `nullable=True` in the model; the capture-first apply stores NULL for every answer and nothing writes the column since. The admin detail endpoint no longer reads it: `answers[].is_passed` there is computed on read from `job_questions.correct_answer` (docs/API_CONTRACT.md, 2026-11-26).
 
 **`application_fits`** (PROPOSED 2026-10-15, not migrated yet, migration number TO BE RENUMBERED by Structure: 011 and 012 are taken; job-level suggested fit)
 - `application_id` (UUID, Foreign Key -> applications.id, Not Null)
