@@ -387,6 +387,34 @@
         .detail-footer-next { min-height: 2.5rem; padding: 0 0.875rem; border-radius: 0.625rem; transition: background-color 0.2s; }
         .detail-footer-next:not(:disabled):hover { background-color: var(--hover); }
         @media (prefers-reduced-motion: reduce) { .applicant-panel { transition: none; } }
+        /* E5a (2026-11-26): Applicants panel body, two columns (cards left, resume preview right). CSS only. */
+        .detail-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-content: start; }
+        @media (min-width: 992px) { .applicant-panel { width: min(1120px, 96vw); } .detail-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); } }
+        .detail-col { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; }
+        .detail-card { background-color: var(--bg-card); border: 1px solid var(--border-light); border-radius: 1rem; padding: 1.125rem 1.25rem; }
+        .detail-card-title { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-muted); }
+        .detail-card > .detail-card-title { margin-bottom: 0.75rem; }
+        .detail-card-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem; }
+        .assess-top { display: flex; align-items: center; gap: 1rem; }
+        .assess-ring { width: 4.5rem; height: 4.5rem; flex: 0 0 4.5rem; }
+        .assess-ring b { font-size: 1.25rem; }
+        .assess-label { font-weight: 800; font-size: 1rem; }
+        .assess-sub { font-size: 0.8125rem; color: var(--text-muted); }
+        .assess-list { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+        .assess-q { border: 1px solid var(--border-light); border-radius: 0.75rem; padding: 0.625rem 0.75rem; }
+        .assess-q-text { font-weight: 700; font-size: 0.875rem; overflow-wrap: anywhere; }
+        .assess-q-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 0.25rem; }
+        .assess-q-answer { font-size: 0.8125rem; color: var(--text-muted); overflow-wrap: anywhere; min-width: 0; }
+        .assess-q-pill { flex: 0 0 auto; font-size: 0.6875rem; font-weight: 800; border-radius: 999px; padding: 0.125rem 0.55rem; }
+        .assess-q-pill.is-pass { color: #1f7a42; background-color: rgba(31, 122, 66, 0.12); }
+        .assess-q-pill.is-fail { color: #b42318; background-color: rgba(180, 35, 24, 0.12); }
+        .assess-q-pill.is-none { color: var(--text-muted); background-color: var(--hover); }
+        .assess-empty { font-size: 0.8125rem; color: var(--text-muted); }
+        .detail-card-resume { position: sticky; top: 0; }
+        .detail-resume-frame { display: block; width: 100%; height: 70vh; min-height: 24rem; border: 1px solid var(--border-light); border-radius: 0.75rem; background-color: #fff; }
+        .detail-resume-empty { font-size: 0.875rem; color: var(--text-muted); padding: 2rem 0; text-align: center; }
+        .detail-resume-frame[hidden], .detail-resume-empty[hidden] { display: none; }
+        @media (max-width: 991.98px) { .detail-card-resume { position: static; } .detail-resume-frame { height: 60vh; } }
     </style>
 </head>
 <body>
@@ -498,31 +526,53 @@
             </div>
         </div>
         <div class="detail-body">
-            <div class="detail-fields-title">From the application form</div>
-            <div class="detail-fields">
-                <div class="detail-field">
-                    <div class="detail-field-name">Contact number</div>
-                    <div class="detail-field-text" id="applicant-detail-phone">&mdash;</div>
-                </div>
-                <div class="detail-field">
-                    <div class="detail-field-name">Age</div>
-                    <div class="detail-field-text" id="applicant-detail-age">&mdash;</div>
-                </div>
-                <div class="detail-field">
-                    <div class="detail-field-name">Gender</div>
-                    <div class="detail-field-text" id="applicant-detail-gender">&mdash;</div>
-                </div>
-                <div class="detail-field detail-field-full">
-                    <div class="detail-field-name">Email</div>
-                    <div class="detail-field-text" id="applicant-detail-email">&mdash;</div>
-                </div>
-                <div class="detail-field detail-field-full">
-                    <div class="detail-field-name">Address</div>
-                    <div class="detail-field-text" id="applicant-detail-address">&mdash;</div>
-                </div>
+            <div class="detail-col">
+                <section class="detail-card" aria-labelledby="applicant-detail-assess-title">
+                    <div class="detail-card-title" id="applicant-detail-assess-title">Assessment score</div>
+                    <div class="assess-top">
+                        <div class="applicant-ring assess-ring" id="applicant-detail-score-ring" aria-hidden="true"></div>
+                        <div>
+                            <div class="assess-label" id="applicant-detail-score-label">&mdash;</div>
+                            <div class="assess-sub">Based on questionnaire responses</div>
+                        </div>
+                    </div>
+                    <div class="assess-list" id="applicant-detail-answers"></div>
+                </section>
+                <section class="detail-card">
+                    <div class="detail-card-title">Candidate information</div>
+                    <div class="detail-fields">
+                        <div class="detail-field">
+                            <div class="detail-field-name">Contact number</div>
+                            <div class="detail-field-text" id="applicant-detail-phone">&mdash;</div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-name">Age</div>
+                            <div class="detail-field-text" id="applicant-detail-age">&mdash;</div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-name">Gender</div>
+                            <div class="detail-field-text" id="applicant-detail-gender">&mdash;</div>
+                        </div>
+                        <div class="detail-field detail-field-full">
+                            <div class="detail-field-name">Email</div>
+                            <div class="detail-field-text" id="applicant-detail-email">&mdash;</div>
+                        </div>
+                        <div class="detail-field detail-field-full">
+                            <div class="detail-field-name">Address</div>
+                            <div class="detail-field-text" id="applicant-detail-address">&mdash;</div>
+                        </div>
+                    </div>
+                </section>
             </div>
-            <div class="detail-resume">
-                <button type="button" class="btn btn-outline-dark fw-bold w-100" id="applicant-detail-resume" disabled>View resume</button>
+            <div class="detail-col">
+                <section class="detail-card detail-card-resume">
+                    <div class="detail-card-head">
+                        <div class="detail-card-title">Resume</div>
+                        <button type="button" class="btn btn-outline-dark btn-sm fw-bold" id="applicant-detail-resume" disabled>Full view</button>
+                    </div>
+                    <iframe class="detail-resume-frame" id="applicant-detail-resume-frame" title="Applicant resume preview" src="about:blank" hidden></iframe>
+                    <div class="detail-resume-empty" id="applicant-detail-resume-empty">No resume to show.</div>
+                </section>
             </div>
         </div>
         <div class="detail-footer">
@@ -687,9 +737,91 @@
         let applicantDetailRequest = 0;
         let applicantDetailResumeId = null;
         const resumeBtnEl = document.getElementById('applicant-detail-resume');
+        // E5a: inline resume preview (same endpoint as the full-view modal) and the Assessment score card.
+        const DETAIL_SVGNS = 'http://www.w3.org/2000/svg';
+        function setResumeFrame(applicationId) {
+            const frame = document.getElementById('applicant-detail-resume-frame');
+            const empty = document.getElementById('applicant-detail-resume-empty');
+            if (applicationId) {
+                frame.src = '/api/v1/admin/applications/' + encodeURIComponent(applicationId) + '/resume#toolbar=0&navpanes=0&view=FitH';
+                frame.hidden = false;
+                empty.hidden = true;
+            } else {
+                frame.src = 'about:blank';
+                frame.hidden = true;
+                empty.hidden = false;
+            }
+        }
+        function renderDetailAssessment(d) {
+            const ringEl = document.getElementById('applicant-detail-score-ring');
+            const labelEl = document.getElementById('applicant-detail-score-label');
+            const listEl = document.getElementById('applicant-detail-answers');
+            ringEl.textContent = '';
+            listEl.textContent = '';
+            const dash = '\u2014';
+            if (!d) { labelEl.textContent = dash; return; }
+            const hasScore = !(d.score === null || d.score === undefined);
+            const pct = hasScore ? Math.max(0, Math.min(100, Number(d.score) || 0)) : 0;
+            const svg = document.createElementNS(DETAIL_SVGNS, 'svg');
+            svg.setAttribute('viewBox', '0 0 36 36');
+            svg.setAttribute('aria-hidden', 'true');
+            const track = document.createElementNS(DETAIL_SVGNS, 'circle');
+            track.setAttribute('cx', '18');
+            track.setAttribute('cy', '18');
+            track.setAttribute('r', '16');
+            svg.appendChild(track);
+            if (hasScore) {
+                const arc = document.createElementNS(DETAIL_SVGNS, 'circle');
+                arc.setAttribute('class', 'applicant-ring-arc');
+                arc.setAttribute('cx', '18');
+                arc.setAttribute('cy', '18');
+                arc.setAttribute('r', '16');
+                arc.style.strokeDashoffset = (100.5 * (1 - pct / 100)).toFixed(1);
+                svg.appendChild(arc);
+            }
+            ringEl.appendChild(svg);
+            const num = document.createElement('b');
+            num.textContent = hasScore ? String(d.score) : dash;
+            ringEl.appendChild(num);
+            const answers = Array.isArray(d.answers) ? d.answers : [];
+            const scored = answers.filter(function (a) { return a.is_passed === true || a.is_passed === false; });
+            const passed = scored.filter(function (a) { return a.is_passed === true; }).length;
+            labelEl.textContent = scored.length
+                ? passed + ' of ' + scored.length + ' scored questions passed'
+                : 'No scored questions';
+            if (answers.length === 0) {
+                const none = document.createElement('div');
+                none.className = 'assess-empty';
+                none.textContent = 'No answers recorded.';
+                listEl.appendChild(none);
+                return;
+            }
+            answers.forEach(function (a) {
+                const item = document.createElement('div');
+                item.className = 'assess-q';
+                const q = document.createElement('div');
+                q.className = 'assess-q-text';
+                q.textContent = a.question;
+                item.appendChild(q);
+                const row = document.createElement('div');
+                row.className = 'assess-q-row';
+                const ans = document.createElement('span');
+                ans.className = 'assess-q-answer';
+                ans.textContent = a.applicant_answer;
+                row.appendChild(ans);
+                const pill = document.createElement('span');
+                const state = a.is_passed === true ? 'pass' : (a.is_passed === false ? 'fail' : 'none');
+                pill.className = 'assess-q-pill is-' + state;
+                pill.textContent = state === 'pass' ? 'Passed' : (state === 'fail' ? 'Not passed' : 'Not scored');
+                row.appendChild(pill);
+                item.appendChild(row);
+                listEl.appendChild(item);
+            });
+        }
         function setResumeButton(applicationId) {
             applicantDetailResumeId = applicationId || null;
             resumeBtnEl.disabled = !applicantDetailResumeId;
+            setResumeFrame(applicantDetailResumeId);
             const dl = document.getElementById('applicant-detail-resume-download');
             dl.classList.toggle('disabled', !applicantDetailResumeId);
             dl.setAttribute('aria-disabled', applicantDetailResumeId ? 'false' : 'true');
@@ -792,6 +924,7 @@
 
         function closeApplicantDetail() {
             closeResumeViewer();
+            setResumeFrame(null);
             detailModalEl.classList.remove('is-open');
             detailModalEl.setAttribute('aria-hidden', 'true');
             detailBackdropEl.classList.remove('is-open');
@@ -946,6 +1079,7 @@
             setResumeButton(null);
             resetDetailStatusUI();
             resetMoveCandidateUI();
+            renderDetailAssessment(null);
             if (!applicationId) {
                 setDetailHeader({ name: 'Could not load applicant.' });
                 return;
@@ -967,6 +1101,7 @@
                 setResumeButton(applicationId);
                 renderDetailStatus(d.status);
                 renderMoveCandidate(d.candidate);
+                renderDetailAssessment(d);
             } catch (err) {
                 console.error('Applicant detail load failed:', err);
                 if (requestNo !== applicantDetailRequest) return;

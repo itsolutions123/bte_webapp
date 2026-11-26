@@ -47,6 +47,17 @@ JOB_SEARCH_SIMILARITY_THRESHOLD = 0.5
 JOB_SEARCH_MAX_LENGTH = 100
 
 
+def answer_is_correct(question_type, key, applicant_answer):
+    # Shared by compute_application_scores and get_application_detail (docs/API_CONTRACT.md, 2026-11-26).
+    # True or False for a keyed YES_NO or MULTIPLE_CHOICE answer; None when the question is not scored
+    # (no key, OPEN_ENDED, or a key shape this rule does not handle).
+    if question_type == "YES_NO" and isinstance(key, str):
+        return applicant_answer == key
+    if question_type == "MULTIPLE_CHOICE" and isinstance(key, list):
+        return applicant_answer in [str(k) for k in key]
+    return None
+
+
 async def compute_application_scores(db: AsyncSession, application_ids):
     # Read-time form score (docs/API_CONTRACT.md, ASSUMPTIONS until verified live).
     # One query for all given applications. Returns {application_id: int percent or None}.
@@ -72,11 +83,8 @@ async def compute_application_scores(db: AsyncSession, application_ids):
     scored = {}
     correct = {}
     for app_id, applicant_answer, question_type, key in rows:
-        if question_type == "YES_NO" and isinstance(key, str):
-            is_correct = applicant_answer == key
-        elif question_type == "MULTIPLE_CHOICE" and isinstance(key, list):
-            is_correct = applicant_answer in [str(k) for k in key]
-        else:
+        is_correct = answer_is_correct(question_type, key, applicant_answer)
+        if is_correct is None:
             continue
         scored[app_id] = scored.get(app_id, 0) + 1
         if is_correct:
@@ -644,6 +652,7 @@ async def get_application_detail(
     answers = []
     for ans, q in answer_rows:
         value = ans.applicant_answer
+        passed = answer_is_correct(q.question_type, q.correct_answer, ans.applicant_answer)
         if q.question_type == "MULTIPLE_CHOICE":
             for o in (q.options or []):
                 if isinstance(o, dict) and str(o.get("id")) == value:
@@ -654,7 +663,7 @@ async def get_application_detail(
                 question=q.question_text,
                 question_type=q.question_type,
                 applicant_answer=value,
-                is_passed=ans.is_passed,
+                is_passed=passed,
             )
         )
 
