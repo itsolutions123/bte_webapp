@@ -345,6 +345,8 @@
         .applicants-footer { margin-top: 1rem; }
         .applicants-footer .btn { min-height: 2.75rem; padding: 0 1.25rem; border: 1px solid var(--border-light); border-radius: 0.75rem; background-color: transparent; color: var(--text-main); }
         .applicants-footer .btn:hover:not(:disabled) { border-color: var(--accent-gold); background-color: transparent; color: var(--text-main); }
+        /* E4: second muted line under the brand (classification) and the date (job type). */
+        .applicant-cell-sub { font-size: 0.75rem; opacity: 0.8; }
         @media (max-width: 767.98px) { .applicant-cell-brand, .applicant-cell-date { display: none; } }
         @media (prefers-reduced-motion: reduce) { .applicant-card, .applicant-card::before, .applicant-avatar { transition: none; } .applicant-card:hover { transform: none; } }
     </style>
@@ -621,8 +623,12 @@
                     const who = addEl(card, 'div', 'applicant-who');
                     addEl(who, 'div', 'applicant-card-name', a.applicant_name);
                     addEl(who, 'div', 'applicant-card-job', 'Applied for ' + a.job_title);
-                    addEl(card, 'span', 'applicant-cell applicant-cell-brand', a.brand_name || '\u2014');
-                    addEl(card, 'span', 'applicant-cell applicant-cell-date', applied);
+                    const brandCell = addEl(card, 'span', 'applicant-cell applicant-cell-brand');
+                    addEl(brandCell, 'div', '', a.brand_name || '\u2014');
+                    addEl(brandCell, 'div', 'applicant-cell-sub', a.employee_classification || '\u2014');
+                    const dateCell = addEl(card, 'span', 'applicant-cell applicant-cell-date');
+                    addEl(dateCell, 'div', '', applied);
+                    addEl(dateCell, 'div', 'applicant-cell-sub', a.job_type || '\u2014');
                     const statusText = String(a.status || '');
                     const statusBadge = addEl(card, 'span', 'applicant-status', statusText.charAt(0) + statusText.slice(1).toLowerCase());
                     statusBadge.dataset.status = statusText.toUpperCase();

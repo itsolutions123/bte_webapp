@@ -558,7 +558,7 @@ async def list_applications(
     count_query = select(func.count()).select_from(Application)
     status_counts_query = select(Application.status, func.count()).select_from(Application).group_by(Application.status)
     list_query = (
-        select(Application, Applicant.first_name, Applicant.last_name, Job.title, Brand.name)
+        select(Application, Applicant.first_name, Applicant.last_name, Job.title, Brand.name, Job.employee_classification, Job.job_type)
         .join(Applicant, Applicant.id == Application.applicant_id)
         .join(Job, Job.id == Application.job_id)
         .join(Brand, Brand.id == Job.brand_id)
@@ -590,12 +590,14 @@ async def list_applications(
             applicant_name=f"{first} {last}".strip(),
             job_title=title,
             brand_name=brand_name,
+            employee_classification=classification,
+            job_type=job_type,
             score=scores.get(app_row.id),
             status=app_row.status,
             has_hard_fail_flag=bool(app_row.has_hard_fail_flag),
             created_at=to_app_tz(app_row.created_at),
         )
-        for app_row, first, last, title, brand_name in rows
+        for app_row, first, last, title, brand_name, classification, job_type in rows
     ]
     counts_rows = (await db.execute(status_counts_query)).all()
     status_counts = {s: 0 for s in APPLICATION_STATUS_VALUES}

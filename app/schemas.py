@@ -57,6 +57,8 @@ class AdminApplicationListItem(BaseModel):
     applicant_name: str
     job_title: str
     brand_name: str
+    employee_classification: Optional[str] = None
+    job_type: Optional[str] = None
     score: Optional[int]
     status: str
     has_hard_fail_flag: bool
