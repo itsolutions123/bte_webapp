@@ -583,3 +583,6 @@ main .applicants-search:disabled { background-color: var(--bg-card); opacity: 1;
 .brand-row > a { font-size: .8125rem; }
 .sb-i { width: 1.0625rem; height: 1.0625rem; }
 .business-unit-add, .forms-add { top: .125rem; }
+
+/* Metrics: Recruiters placeholder, no route yet (shell). */
+.sb-soon { opacity: .55; cursor: default; pointer-events: none; }

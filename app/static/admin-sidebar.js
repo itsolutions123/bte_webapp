@@ -110,10 +110,13 @@
             }
         });
     }
-    function setupFormsUnit(hasActive) {
-        const wrap = document.getElementById('forms-unit');
-        const toggle = document.getElementById('forms-toggle');
-        const sub = document.getElementById('forms-sub');
+    function setupFormsUnit(hasActive) { setupStaticUnit('forms', hasActive); }
+    function setupMetricsUnit() { setupStaticUnit('metrics', !!document.querySelector('#metrics-sub a.active')); }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupMetricsUnit); else setupMetricsUnit();
+    function setupStaticUnit(key, hasActive) {
+        const wrap = document.getElementById(key + '-unit');
+        const toggle = document.getElementById(key + '-toggle');
+        const sub = document.getElementById(key + '-sub');
         if (!wrap || !toggle || !sub) return;
         function setOpen(open, instant) {
             wrap.classList.toggle('is-open', open);
@@ -126,12 +129,12 @@
             toggle.addEventListener('click', function () {
                 const next = !wrap.classList.contains('is-open');
                 setOpen(next);
-                storeUnitOpen('forms', next);
+                storeUnitOpen(key, next);
             });
             toggle.addEventListener('keydown', function (ev) {
                 if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle.click(); }
             });
-            setOpen(hasActive || storedUnitOpen('forms') === '1', true);
+            setOpen(hasActive || storedUnitOpen(key) === '1', true);
         } else if (hasActive) {
             setOpen(true, true);
         }

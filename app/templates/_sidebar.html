@@ -21,7 +21,20 @@
 
     <div class="nav-section">WORKSPACE</div>
     <div class="nav flex-column">
-        <a href="/admin/home" class="{% if active_page == 'dashboard' %}active{% endif %}"><svg class="sb-i" aria-hidden="true"><use href="#i-dash"/></svg>Dashboard</a>
+        {# Metrics: collapsible unit like Forms (setupStaticUnit in admin-sidebar.js). Applicants child = the existing dashboard (/admin/home, active_page dashboard). Recruiters is a placeholder, no route yet (SHELL, section 8). #}
+        <div class="business-unit metrics-unit{% if active_page == 'dashboard' %} has-active-child{% endif %}" id="metrics-unit">
+            <div class="unit-head">
+                <span class="business-unit-toggle d-flex align-items-center flex-grow-1" id="metrics-toggle" role="button" tabindex="0" aria-expanded="false" aria-controls="metrics-sub"><svg class="sb-i" aria-hidden="true"><use href="#i-dash"/></svg><span class="business-unit-title">Metrics</span><span class="business-unit-chevron" aria-hidden="true"><svg class="sb-chev" aria-hidden="true"><use href="#ch"/></svg></span></span>
+            </div>
+            <div class="sub" id="metrics-sub">
+                <div class="sub-inner">
+                    <div class="nav flex-column">
+                        <a href="/admin/home" class="{% if active_page == 'dashboard' %}active{% endif %}">Applicants</a>
+                        <a role="link" aria-disabled="true" tabindex="-1" class="sb-soon">Recruiters</a>
+                    </div>
+                </div>
+            </div>
+        </div>
         <a href="/admin/applicants" class="{% if active_page == 'applicants' %}active{% endif %}"><svg class="sb-i" aria-hidden="true"><use href="#i-app"/></svg>Applicants</a>
         <a href="/admin/candidates" class="{% if active_page == 'candidates' %}active{% endif %}"><svg class="sb-i" aria-hidden="true"><use href="#i-can"/></svg>Candidates <span class="cand-nav-badge" id="cand-nav-badge" hidden>0</span></a>
         {# MRF: links to /admin/mrf (shell built 2026-11-10), shown to SUPERADMIN and MANAGER only, like Users. The badge is hidden at 0 and filled by initMrfBadge in admin-sidebar.js from GET /api/v1/admin/mrf/summary (polls every 60 s while the tab is visible). Users links to /admin/users (shell confirmed 2026-11-05). #}
