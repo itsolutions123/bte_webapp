@@ -572,6 +572,12 @@ class MrfRequestListResponse(BaseModel):
     page_size: int
 
 
+class MrfRequestRecruiter(BaseModel):
+    # The recruiter credited for an MRF request (migration 032, docs/API_CONTRACT.md PATCH .../recruiter, CONTRACTED 2026-11-27).
+    id: UUID4
+    name: str
+
+
 class MrfAdminRequestListItem(BaseModel):
     # Admin list row (docs/API_CONTRACT.md, GET /api/v1/admin/mrf/requests, part 79). remarks, decided_at, decided_by and decided_by_role are null while Pending (decided_by and decided_by_role: part 82).
     id: UUID4
@@ -588,6 +594,8 @@ class MrfAdminRequestListItem(BaseModel):
     decided_by_role: Optional[str] = None
     # Set once, when the status becomes CLOSED MRF (migration 031, docs/API_CONTRACT.md PATCH .../status); null otherwise.
     closed_at: Optional[datetime] = None
+    # Recruiter credited for this request (migration 032); null means Unassigned (docs/API_CONTRACT.md PATCH .../recruiter).
+    recruiter: Optional[MrfRequestRecruiter] = None
 
 
 class MrfAdminRequestListResponse(BaseModel):
@@ -618,6 +626,12 @@ class MrfRequestStatusUpdate(BaseModel):
     # A non-string status or remarks still gets FastAPI's own list-style 422 before the handler runs.
     status: Optional[str] = None
     remarks: Optional[str] = None
+
+
+class MrfRequestRecruiterUpdate(BaseModel):
+    # Body of PATCH /api/v1/admin/mrf/requests/{request_id}/recruiter. The key must be sent: null clears the recruiter,
+    # a missing key is a 422 (the handler checks model_fields_set, like the candidates PATCH). A malformed id is FastAPI's own 422.
+    recruiter_user_id: Optional[UUID4] = None
 
 
 class MrfFormDetail(BaseModel):

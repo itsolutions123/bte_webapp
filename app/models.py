@@ -296,6 +296,9 @@ class MrfRequest(Base):
     decided_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     decided_at = Column(DateTime(timezone=True), nullable=True)
     closed_at = Column(DateTime(timezone=True), nullable=True)
+    # Recruiter credited for this MRF (migration 032, DECIDED 2026-11-27, nullable; NULL means Unassigned and scores nobody).
+    # Set through PATCH /api/v1/admin/mrf/requests/{request_id}/recruiter; only an active, non-archived RECRUITER can be chosen.
+    recruiter_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     __table_args__ = (
         Index("idx_mrf_requests_status", "status"),
@@ -304,6 +307,7 @@ class MrfRequest(Base):
         Index("idx_mrf_requests_created_at", "created_at"),
         Index("idx_mrf_requests_user_id", "user_id"),
         Index("idx_mrf_requests_form_id", "form_id"),
+        Index("idx_mrf_requests_recruiter_user_id", "recruiter_user_id"),
     )
 
 

@@ -10,6 +10,7 @@ from typing import Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy.orm import aliased
 from fastapi.responses import FileResponse
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
@@ -36,7 +37,7 @@ from app.mrf_lists import (
     MRF_REQUEST_STATUSES,
 )
 from app.mrf_lists import MRF_ATTACHMENT_DEFAULT_STORAGE_PATH
-from app.roles import ROLE_MANAGER, ROLE_SUPERADMIN
+from app.roles import ROLE_MANAGER, ROLE_RECRUITER, ROLE_SUPERADMIN
 from app.routers.auth import require_roles
 from app.schemas import (
     MrfFormCreate,
@@ -51,9 +52,11 @@ from app.schemas import (
     MrfQuestionReorder,
     MrfQuestionReorderResponse,
     MrfAdminRequestListItem,
+    MrfRequestRecruiter,
     MrfAdminRequestListResponse,
     MrfAdminRequestAnswerItem,
     MrfAdminRequestDetail,
+    MrfRequestRecruiterUpdate,
     MrfRequestStatusUpdate,
     MrfUserListItem,
     MrfUserListResponse,
@@ -64,6 +67,8 @@ from app.schemas import (
 from app.timeutil import APP_TIMEZONE, to_app_tz
 
 router = APIRouter()
+# Second join on users for the recruiter of a request (migration 032); the first join on User is the deciding admin.
+RecruiterUser = aliased(User)
 
 STATUS_PENDING = "pending"  # same value as the MrfUser.status default
 STATUS_APPROVED = "approved"
@@ -94,6 +99,10 @@ MRF_STATUS_INVALID = "Choose a valid status."
 MRF_STATUS_CHANGE_NOT_ALLOWED = "That status change is not allowed."
 MRF_STATUS_REMARKS_REQUIRED = "Add remarks to cancel a request."
 MRF_STATUS_REMARKS_TOO_LONG = f"Remarks must be {MRF_REMARKS_MAX_LENGTH} characters or fewer."
+
+# Recruiter endpoint (docs/API_CONTRACT.md, PATCH /api/v1/admin/mrf/requests/{request_id}/recruiter, CONTRACTED 2026-11-27, migration 032).
+MRF_RECRUITER_KEY_REQUIRED = "Send recruiter_user_id (a user id or null)."
+MRF_RECRUITER_INVALID = "Choose an active recruiter."
 
 # Forms list limits and messages (docs/API_CONTRACT.md, GET /api/v1/admin/mrf/forms, decided by the user 2026-11-12, part 43, option A).
 MRF_FORMS_DEFAULT_PAGE_SIZE = 10
@@ -237,11 +246,15 @@ async def list_mrf_requests(
             select(
                 MrfRequest, MrfUser.first_name, MrfUser.last_name, MrfForm.name,
                 User.first_name.label("decider_first"), User.last_name.label("decider_last"), User.role.label("decider_role"),
+                RecruiterUser.id.label("recruiter_id"), RecruiterUser.full_name.label("recruiter_full_name"),
+                RecruiterUser.first_name.label("recruiter_first"), RecruiterUser.last_name.label("recruiter_last"),
+                RecruiterUser.email.label("recruiter_email"),
             )
             .select_from(MrfRequest)
             .join(MrfUser, MrfUser.id == MrfRequest.user_id)
             .join(MrfForm, MrfForm.id == MrfRequest.form_id)
             .outerjoin(User, User.id == MrfRequest.decided_by_user_id)
+            .outerjoin(RecruiterUser, RecruiterUser.id == MrfRequest.recruiter_user_id)
             .where(*flt)
             .order_by(MrfRequest.created_at.desc(), MrfRequest.id)
             .offset((page - 1) * page_size)
@@ -266,13 +279,24 @@ async def list_mrf_requests(
                 decided_by=_decided_by_name(dfirst, dlast),
                 decided_by_role=drole,
                 closed_at=to_app_tz(r.closed_at),
+                recruiter=_recruiter_item(rid, rfull, rfirst, rlast, remail),
             )
-            for r, first, last, form_name, dfirst, dlast, drole in rows
+            for r, first, last, form_name, dfirst, dlast, drole, rid, rfull, rfirst, rlast, remail in rows
         ],
         total=total,
         page=page,
         page_size=page_size,
     )
+
+
+def _recruiter_item(rid, full_name, first, last, email):
+    """Recruiter object for a request row (docs/API_CONTRACT.md, PATCH .../recruiter, CONTRACTED 2026-11-27): None when
+    unassigned. name follows the candidate-assignees rule (full_name, else first plus last, else email); the same rule
+    as _user_display_name in app/routers/admin.py, copied here so no router imports another router's private helper."""
+    if rid is None:
+        return None
+    name = full_name or f"{first or ''} {last or ''}".strip() or email
+    return MrfRequestRecruiter(id=rid, name=name)
 
 
 def _decided_by_name(first, last):
@@ -298,17 +322,21 @@ async def get_mrf_request(
             select(
                 MrfRequest, MrfUser.first_name, MrfUser.last_name, MrfForm.name,
                 User.first_name.label("decider_first"), User.last_name.label("decider_last"), User.role.label("decider_role"),
+                RecruiterUser.id.label("recruiter_id"), RecruiterUser.full_name.label("recruiter_full_name"),
+                RecruiterUser.first_name.label("recruiter_first"), RecruiterUser.last_name.label("recruiter_last"),
+                RecruiterUser.email.label("recruiter_email"),
             )
             .select_from(MrfRequest)
             .join(MrfUser, MrfUser.id == MrfRequest.user_id)
             .join(MrfForm, MrfForm.id == MrfRequest.form_id)
             .outerjoin(User, User.id == MrfRequest.decided_by_user_id)
+            .outerjoin(RecruiterUser, RecruiterUser.id == MrfRequest.recruiter_user_id)
             .where(MrfRequest.id == request_id)
         )
     ).first()
     if row is None:
         raise HTTPException(status_code=404, detail=MRF_REQUEST_NOT_FOUND)
-    r, first, last, form_name, dfirst, dlast, drole = row
+    r, first, last, form_name, dfirst, dlast, drole, rid, rfull, rfirst, rlast, remail = row
 
     answers = (
         await db.execute(
@@ -342,6 +370,7 @@ async def get_mrf_request(
         decided_by=_decided_by_name(dfirst, dlast),
         decided_by_role=drole,
         closed_at=to_app_tz(r.closed_at),
+        recruiter=_recruiter_item(rid, rfull, rfirst, rlast, remail),
         answers=[
             MrfAdminRequestAnswerItem(
                 question_id=qid,
@@ -436,12 +465,16 @@ async def update_mrf_request_status(
     if new_status == MRF_REQUEST_STATUS_CLOSED:
         req.closed_at = now
 
-    first, last, form_name = (
+    first, last, form_name, rid, rfull, rfirst, rlast, remail = (
         await db.execute(
-            select(MrfUser.first_name, MrfUser.last_name, MrfForm.name)
+            select(
+                MrfUser.first_name, MrfUser.last_name, MrfForm.name,
+                RecruiterUser.id, RecruiterUser.full_name, RecruiterUser.first_name, RecruiterUser.last_name, RecruiterUser.email,
+            )
             .select_from(MrfRequest)
             .join(MrfUser, MrfUser.id == MrfRequest.user_id)
             .join(MrfForm, MrfForm.id == MrfRequest.form_id)
+            .outerjoin(RecruiterUser, RecruiterUser.id == MrfRequest.recruiter_user_id)
             .where(MrfRequest.id == req.id)
         )
     ).one()
@@ -459,6 +492,78 @@ async def update_mrf_request_status(
         decided_by=_decided_by_name(admin.first_name, admin.last_name),
         decided_by_role=admin.role,
         closed_at=to_app_tz(req.closed_at),
+        recruiter=_recruiter_item(rid, rfull, rfirst, rlast, remail),
+    )
+    await db.commit()
+    response.headers["Cache-Control"] = "no-store"
+    return item
+
+
+@router.patch(
+    "/mrf/requests/{request_id}/recruiter",
+    response_model=MrfAdminRequestListItem,
+)
+async def update_mrf_request_recruiter(
+    request_id: UUID,
+    payload: MrfRequestRecruiterUpdate,
+    response: Response,
+    admin: User = Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Sets or clears the recruiter credited for one MRF request (any status). The row is locked while it is changed.
+    Order of checks: 404, 422 (key missing), 422 (not an active, non-archived RECRUITER). Status, decided_by_user_id,
+    decided_at and closed_at are not touched."""
+    req = await db.scalar(select(MrfRequest).where(MrfRequest.id == request_id).with_for_update())
+    if req is None:
+        raise HTTPException(status_code=404, detail=MRF_REQUEST_NOT_FOUND)
+    if "recruiter_user_id" not in payload.model_fields_set:
+        raise HTTPException(status_code=422, detail=MRF_RECRUITER_KEY_REQUIRED)
+
+    recruiter_id = payload.recruiter_user_id
+    if recruiter_id is not None:
+        valid = await db.scalar(
+            select(User.id).where(
+                User.id == recruiter_id,
+                User.is_active.is_(True),
+                User.archived_at.is_(None),
+                User.role == ROLE_RECRUITER,
+            )
+        )
+        if valid is None:
+            raise HTTPException(status_code=422, detail=MRF_RECRUITER_INVALID)
+    req.recruiter_user_id = recruiter_id
+    await db.flush()
+
+    first, last, form_name, dfirst, dlast, drole, rid, rfull, rfirst, rlast, remail = (
+        await db.execute(
+            select(
+                MrfUser.first_name, MrfUser.last_name, MrfForm.name,
+                User.first_name, User.last_name, User.role,
+                RecruiterUser.id, RecruiterUser.full_name, RecruiterUser.first_name, RecruiterUser.last_name, RecruiterUser.email,
+            )
+            .select_from(MrfRequest)
+            .join(MrfUser, MrfUser.id == MrfRequest.user_id)
+            .join(MrfForm, MrfForm.id == MrfRequest.form_id)
+            .outerjoin(User, User.id == MrfRequest.decided_by_user_id)
+            .outerjoin(RecruiterUser, RecruiterUser.id == MrfRequest.recruiter_user_id)
+            .where(MrfRequest.id == req.id)
+        )
+    ).one()
+    item = MrfAdminRequestListItem(
+        id=req.id,
+        submitted_by=(first + " " + last).strip(),
+        classification=req.classification,
+        department=req.department,
+        assignment=req.assignment,
+        form_name=form_name,
+        created_at=to_app_tz(req.created_at),
+        status=req.status,
+        remarks=req.remarks,
+        decided_at=to_app_tz(req.decided_at),
+        decided_by=_decided_by_name(dfirst, dlast),
+        decided_by_role=drole,
+        closed_at=to_app_tz(req.closed_at),
+        recruiter=_recruiter_item(rid, rfull, rfirst, rlast, remail),
     )
     await db.commit()
     response.headers["Cache-Control"] = "no-store"
