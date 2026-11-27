@@ -299,6 +299,13 @@
                 <div class="modal-body mrf-review-stage">
                     <div class="mrf-paper" id="mrf-paper">
                         <div id="mrf-review-body"></div>
+                        <div class="mrf-paper-sec mrf-noprint" id="mrf-recruiter-box" hidden>
+                            <div class="mrf-paper-hd">Recruiter</div>
+                            <label class="form-label" for="mrf-recruiter-select">Credited recruiter</label>
+                            <select class="form-select" id="mrf-recruiter-select" disabled></select>
+                            <div class="text-muted small mt-1" id="mrf-recruiter-note" hidden></div>
+                            <div class="text-danger small mt-2" id="mrf-recruiter-error" role="alert" hidden></div>
+                        </div>
                         <div class="mrf-paper-sec" id="mrf-decide-box" hidden>
                             <div class="mrf-paper-hd">HR remarks</div>
                             <div class="mrf-noprint mb-3">
@@ -409,6 +416,19 @@
             var MRF_REQ_FILE_KB = 1024;
             var MRF_REQ_FILE_MB = 1024 * 1024;
             var MRF_REQ_STATUS_API_SUFFIX = '/status';
+            var MRF_REQ_RECRUITER_API_SUFFIX = '/recruiter';
+            var MRF_REQ_RECRUITER_LIST_URL = '/api/v1/admin/candidate-assignees?limit=200';
+            var MRF_REQ_RECRUITER_ROLE = {{ mrf_recruiter_role | tojson }};
+            var MRF_REQ_RECRUITER_UNASSIGNED_TEXT = 'Unassigned';
+            var MRF_REQ_RECRUITER_LOADING_TEXT = 'Loading...';
+            var MRF_REQ_RECRUITER_UNAVAILABLE_TEXT = 'Unavailable';
+            var MRF_REQ_RECRUITER_NOT_IN_LIST_SUFFIX = ' (not in the list)';
+            var MRF_REQ_RECRUITER_NOTE_FIRST = 'Showing the first ';
+            var MRF_REQ_RECRUITER_NOTE_OF = ' of ';
+            var MRF_REQ_RECRUITER_NOTE_TAIL = ' users; some recruiters may be missing.';
+            var MRF_REQ_RECRUITER_LIST_ERROR = 'Could not load the recruiter list.';
+            var MRF_REQ_RECRUITER_ERROR_ACCESS = 'You do not have access to change the recruiter.';
+            var MRF_REQ_RECRUITER_ERROR_OTHER = 'Could not save the recruiter. Try again.';
             var MRF_REQ_DECIDE_REMARKS_MAX = 500;
             var MRF_REQ_DECIDE_CONFIRM_MS = 5000;
             var MRF_REQ_STATUS_TRANSITIONS = {{ mrf_request_status_transitions | tojson }};
@@ -460,6 +480,15 @@
             var decideConfirm = null;
             var decideTimer = null;
             var decideBusy = false;
+            var recruiterBox = document.getElementById('mrf-recruiter-box');
+            var recruiterSelect = document.getElementById('mrf-recruiter-select');
+            var recruiterNote = document.getElementById('mrf-recruiter-note');
+            var recruiterError = document.getElementById('mrf-recruiter-error');
+            var recruiterCurrent = null;
+            var recruiterList = null;
+            var recruiterLoading = false;
+            var recruiterFailed = false;
+            var recruiterBusy = false;
 
             function reqMessageRow(text) {
                 var tr = document.createElement('tr');
@@ -831,6 +860,7 @@
             }
 
             function decideHide() {
+                recruiterHide();
                 decideCurrent = null;
                 decideBox.hidden = true;
                 decideSave.hidden = true;
@@ -840,6 +870,7 @@
             }
 
             function decideSetup(d) {
+                recruiterSetup(d);
                 decideReset();
                 decideClearError();
                 var next = d ? (MRF_REQ_STATUS_TRANSITIONS[d.status] || []) : [];
@@ -918,6 +949,136 @@
                     });
             }
 
+            function recruiterAddOption(value, text) {
+                var o = document.createElement('option');
+                o.value = value;
+                o.textContent = text;
+                recruiterSelect.appendChild(o);
+            }
+
+            function recruiterShowError(text) {
+                recruiterError.textContent = text;
+                recruiterError.hidden = false;
+            }
+
+            function recruiterClearError() {
+                recruiterError.textContent = '';
+                recruiterError.hidden = true;
+            }
+
+            function recruiterRender() {
+                recruiterSelect.replaceChildren();
+                if (!recruiterCurrent) {
+                    recruiterSelect.disabled = true;
+                    return;
+                }
+                if (recruiterList === null) {
+                    recruiterAddOption('', recruiterFailed ? MRF_REQ_RECRUITER_UNAVAILABLE_TEXT : MRF_REQ_RECRUITER_LOADING_TEXT);
+                    recruiterSelect.disabled = true;
+                    return;
+                }
+                var cur = recruiterCurrent.recruiter || null;
+                var inList = false;
+                recruiterAddOption('', MRF_REQ_RECRUITER_UNASSIGNED_TEXT);
+                recruiterList.forEach(function (u) {
+                    if (cur && cur.id === u.id) { inList = true; }
+                    recruiterAddOption(u.id, u.name);
+                });
+                if (cur && !inList) { recruiterAddOption(cur.id, cur.name + MRF_REQ_RECRUITER_NOT_IN_LIST_SUFFIX); }
+                recruiterSelect.value = cur ? cur.id : '';
+                recruiterSelect.disabled = recruiterBusy;
+            }
+
+            function recruiterLoad() {
+                if (recruiterList !== null || recruiterLoading) { return; }
+                recruiterLoading = true;
+                recruiterFailed = false;
+                recruiterNote.hidden = true;
+                fetch(MRF_REQ_RECRUITER_LIST_URL, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+                    .then(function (res) {
+                        if (res.status === 401) { window.location.replace(MRF_REQ_LOGIN_PATH); throw new Error('unauthorized'); }
+                        if (!res.ok) { throw new Error('request failed'); }
+                        return res.json();
+                    })
+                    .then(function (b) {
+                        var all = (b && b.data) || [];
+                        recruiterList = all.filter(function (u) { return u.role === MRF_REQ_RECRUITER_ROLE; });
+                        recruiterLoading = false;
+                        if (b && b.total > all.length) {
+                            recruiterNote.textContent = MRF_REQ_RECRUITER_NOTE_FIRST + all.length + MRF_REQ_RECRUITER_NOTE_OF + b.total + MRF_REQ_RECRUITER_NOTE_TAIL;
+                            recruiterNote.hidden = false;
+                        }
+                        recruiterRender();
+                    })
+                    .catch(function () {
+                        recruiterLoading = false;
+                        recruiterFailed = true;
+                        recruiterNote.textContent = MRF_REQ_RECRUITER_LIST_ERROR;
+                        recruiterNote.hidden = false;
+                        recruiterRender();
+                    });
+            }
+
+            function recruiterSetup(d) {
+                recruiterCurrent = d;
+                recruiterClearError();
+                recruiterBox.hidden = false;
+                recruiterRender();
+                recruiterLoad();
+            }
+
+            function recruiterHide() {
+                recruiterCurrent = null;
+                recruiterBusy = false;
+                recruiterBox.hidden = true;
+                recruiterClearError();
+                recruiterSelect.replaceChildren();
+            }
+
+            function recruiterChange() {
+                if (!recruiterCurrent || recruiterBusy) { return; }
+                var newId = recruiterSelect.value || null;
+                var oldId = recruiterCurrent.recruiter ? recruiterCurrent.recruiter.id : null;
+                if (newId === oldId) { return; }
+                var mine = reviewLatest;
+                var reqId = recruiterCurrent.id;
+                recruiterBusy = true;
+                recruiterSelect.disabled = true;
+                recruiterClearError();
+                fetch(MRF_REQ_API + '/' + encodeURIComponent(reqId) + MRF_REQ_RECRUITER_API_SUFFIX, {
+                    method: 'PATCH',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ recruiter_user_id: newId })
+                })
+                    .then(function (res) {
+                        if (res.ok) { return res.json(); }
+                        return res.json().catch(function () { return null; }).then(function (b) {
+                            var err = new Error('request failed');
+                            err.status = res.status;
+                            err.detail = (b && typeof b.detail === 'string') ? b.detail : '';
+                            throw err;
+                        });
+                    })
+                    .then(function (item) {
+                        recruiterBusy = false;
+                        if (mine === reviewLatest && recruiterCurrent && recruiterCurrent.id === reqId) {
+                            recruiterCurrent = Object.assign({}, recruiterCurrent, item);
+                            recruiterRender();
+                        }
+                    })
+                    .catch(function (err) {
+                        recruiterBusy = false;
+                        if (err.status === 401) { window.location.replace(MRF_REQ_LOGIN_PATH); return; }
+                        if (mine !== reviewLatest || !recruiterCurrent || recruiterCurrent.id !== reqId) { return; }
+                        recruiterRender();
+                        var msg = MRF_REQ_RECRUITER_ERROR_OTHER;
+                        if (err.status === 403) { msg = MRF_REQ_RECRUITER_ERROR_ACCESS; }
+                        else if ((err.status === 404 || err.status === 422) && err.detail) { msg = err.detail; }
+                        recruiterShowError(msg);
+                    });
+            }
+
             function reqFilterChanged() {
                 reqPage = 1;
                 loadRequests();
@@ -931,6 +1092,7 @@
             });
             reviewPrint.addEventListener('click', reviewPrintDocument);
             decideSave.addEventListener('click', decideClick);
+            recruiterSelect.addEventListener('change', recruiterChange);
             decideSelect.addEventListener('change', function () {
                 if (!decideBusy) { decideReset(); }
                 decideClearError();

@@ -45,7 +45,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 
-from app.roles import ROLE_SUPERADMIN, ROLE_MANAGER
+from app.roles import ROLE_SUPERADMIN, ROLE_MANAGER, ROLE_RECRUITER
 from app.password_rules import RULES_LEAD_IN, RULE_PHRASES, PASSWORD_MIN_BYTES, PASSWORD_MAX_BYTES
 from app.mrf_lists import DEPARTMENTS, MRF_ASSIGNMENTS, MRF_CLASSIFICATION_OPTIONS, MRF_REQUEST_STATUSES, MRF_REQUEST_STATUS_TRANSITIONS, POSITIONS
 from app.routers.mrf import get_current_mrf_user
@@ -279,6 +279,8 @@ MRF_ADMIN_SUBMISSIONS_CONTEXT = {
     "mrf_request_statuses": MRF_REQUEST_STATUSES,
     # Allowed next statuses per current status (one source of truth: app/mrf_lists.py); the review modal reads this, no rule in JS.
     "mrf_request_status_transitions": {k: list(v) for k, v in MRF_REQUEST_STATUS_TRANSITIONS.items()},
+    # Role of the users the review modal can credit as recruiter (one source: app/roles.py; docs/API_CONTRACT.md PATCH .../recruiter).
+    "mrf_recruiter_role": ROLE_RECRUITER,
     "mrf_classifications": MRF_CLASSIFICATION_OPTIONS,
     "mrf_departments": DEPARTMENTS,
 }
