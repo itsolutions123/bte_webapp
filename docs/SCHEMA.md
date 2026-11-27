@@ -282,6 +282,14 @@ APPLIED and VERIFIED by read-back 2026-11-17 (migration 024, 0 rows). answer is 
 - Index on question_id (DECIDED, part 65 sign-off (g), option A, rule 18.1): serves the answered-question
   DELETE 409 check.
 
+### mrf_recruiter_points
+ADDED 2026-11-27 (migration 033, migrations/033_mrf_recruiter_points.sql, APPLIED and VERIFIED by read-back with the user's explicit confirmation; additive; code commit 68bfe9f). The points a closed MRF earns per assignment and classification, used by the Recruiters metrics page (feature F2; scores are computed live from this table, so editing points rescores past closed MRFs).
+- assignment VARCHAR NOT NULL, classification VARCHAR NOT NULL; primary key (assignment, classification) named pk_mrf_recruiter_points (no extra index, 12 rows)
+- points INTEGER NOT NULL, CHECK 0 to 100 (ck_mrf_recruiter_points_points; keep in step with MRF_RECRUITER_POINTS_MAX in app/routers/admin_metrics.py)
+- updated_at timestamptz NOT NULL default now(); updated_by_user_id UUID NULL FK users.id ON DELETE SET NULL (a PUT stamps both on every row)
+- No CHECK on the two key columns: the code validates them against MRF_ASSIGNMENTS and MRF_CLASSIFICATION_OPTIONS (app/mrf_lists.py), so a new assignment needs only new rows.
+- Seed (the mockup's numbers, NOT confirmed by the user, editable through PUT /api/v1/admin/metrics/recruiter-points): Head Office, Commissary and Cali Beach: Managerial 5, Supervisory 3, Rank and File 2; Store Operations: Managerial 3, Supervisory 2, Rank and File 1. A pair with no row scores 0 (the live ZZ del test throwaway values have no row).
+
 ### Fixed lists (confirmed by user; one documented constant, app/mrf_lists.py, validated server-side)
 - Position: Head, OIC, Manager
 - Department: Accounting, Admin, Audit, BCC, Executive, Human Resources, Marketing, Operations, Procurement, Project Management, Research and Development, Sales, Repairs and Maintenance
