@@ -665,3 +665,26 @@ class MrfBulkDeleteSkipped(BaseModel):
 class MrfBulkDeleteResponse(BaseModel):
     deleted: List[UUID]
     skipped: List[MrfBulkDeleteSkipped]
+
+
+class RecruiterPointsItem(BaseModel):
+    # One row of the Recruiters scoring guideline (docs/API_CONTRACT.md, GET /api/v1/admin/metrics/recruiter-points).
+    assignment: str
+    classification: str
+    points: int
+
+
+class RecruiterPointsListResponse(BaseModel):
+    data: List[RecruiterPointsItem]
+    total: int
+
+
+class RecruiterPointsUpdateItem(BaseModel):
+    # points is loose on purpose (any JSON value) so the endpoint returns its own 422 text for a decimal, a boolean or a string.
+    assignment: str
+    classification: str
+    points: object
+
+
+class RecruiterPointsUpdate(BaseModel):
+    data: List[RecruiterPointsUpdateItem]

@@ -330,3 +330,15 @@ class MrfRequestAnswer(Base):
         Index("idx_mrf_request_answers_request_question", "request_id", "question_id", unique=True),
         Index("idx_mrf_request_answers_question_id", "question_id"),
     )
+
+
+class MrfRecruiterPoints(Base):
+    # Points a closed MRF earns per assignment and classification (migration 033, docs/API_CONTRACT.md recruiter-points, CONTRACTED 2026-11-27).
+    # 12 rows today (assignments times classifications in app/mrf_lists.py). The key values are validated in code, not by a CHECK.
+    # The points CHECK (0 to 100) is in the migration; keep it in step with MRF_RECRUITER_POINTS_MAX in app/routers/admin_metrics.py.
+    __tablename__ = "mrf_recruiter_points"
+    assignment = Column(String, primary_key=True)
+    classification = Column(String, primary_key=True)
+    points = Column(Integer, nullable=False)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    updated_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
