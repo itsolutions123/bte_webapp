@@ -71,7 +71,6 @@
         var LOGIN_PAGE = "/mrf/login";
         var EMPTY_TEXT = "Nothing here yet";
         var LOAD_FAILED_TEXT = "Could not load requests. Try again.";
-        var REJECTED = "Rejected";
 
         var tbody = document.getElementById("mrf-requests-body");
 
@@ -107,7 +106,7 @@
                 addCell(tr, item.assignment);
                 addCell(tr, formatDate(item.created_at));
                 var statusCell = addCell(tr, item.status);
-                if (item.status === REJECTED && item.remarks) {
+                if (item.remarks) {
                     var remarks = document.createElement("div");
                     remarks.className = "mrf-request-remarks";
                     remarks.textContent = item.remarks;

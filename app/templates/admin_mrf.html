@@ -55,8 +55,9 @@
         .mrf-review-stage { background: #E7E3D8; padding: 1rem; }
         .mrf-paper { max-width: 49.5rem; margin: 0 auto; padding: 2.25rem 2.5rem; background: #fff; color: var(--accent-black); box-shadow: 0 0.5rem 2rem rgba(17, 17, 17, 0.18); }
         .mrf-paper-stamp { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #7A5B00; white-space: nowrap; }
-        .mrf-paper-stamp[data-status="Approved"] { border-color: #15803D; color: #15803D; }
-        .mrf-paper-stamp[data-status="Rejected"] { border-color: #B42318; color: #B42318; }
+        .mrf-paper-stamp[data-status="ON GOING MRF"], .mrf-paper-stamp[data-status="PARTIALLY CLOSED MRF"] { border-color: #8A6A00; color: #8A6A00; }
+        .mrf-paper-stamp[data-status="CLOSED MRF"] { border-color: #15803D; color: #15803D; }
+        .mrf-paper-stamp[data-status="CANCELLED MRF"] { border-color: #B42318; color: #B42318; }
         .mrf-paper-title { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem 0 0.85rem; margin-bottom: 1.25rem; border-top: 3px solid var(--accent-black); border-bottom: 1px solid var(--border-light); }
         .mrf-paper-title h2 { margin: 0; font-size: 1.6rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
         .mrf-paper-title p { margin: 0.25rem 0 0; font-size: 0.8rem; color: var(--text-muted); }
@@ -131,9 +132,9 @@
         #mrfReviewModal .mrf-attach-file { font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         #mrfReviewModal .mrf-attach-actions { display: flex; gap: 0.75rem; flex-shrink: 0; font-size: 0.875rem; }
         .mrf-status { display: inline-block; padding: 0.25rem 0.875rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); background-color: color-mix(in srgb, currentColor 14%, transparent); }
-        .mrf-status[data-status="Pending"] { color: #8A6A00; }
-        .mrf-status[data-status="Approved"], .mrf-status[data-status="ACTIVE"] { color: #15803D; }
-        .mrf-status[data-status="Rejected"] { color: #B42318; }
+        .mrf-status[data-status="ON GOING MRF"], .mrf-status[data-status="PARTIALLY CLOSED MRF"] { color: #8A6A00; }
+        .mrf-status[data-status="CLOSED MRF"], .mrf-status[data-status="ACTIVE"] { color: #15803D; }
+        .mrf-status[data-status="CANCELLED MRF"] { color: #B42318; }
         #mrf-formprev-edit:not([hidden]) { display: inline-flex; align-items: center; }
         .mrf-pager .btn { border-radius: 0.75rem; }
     </style>
@@ -300,8 +301,12 @@
                         <div id="mrf-review-body"></div>
                         <div class="mrf-paper-sec" id="mrf-decide-box" hidden>
                             <div class="mrf-paper-hd">HR remarks</div>
-                            <label class="form-label" for="mrf-decide-remarks">Required when rejecting a request</label>
-                            <textarea class="form-control" id="mrf-decide-remarks" rows="3" placeholder="Required to reject"></textarea>
+                            <div class="mrf-noprint mb-3">
+                                <label class="form-label" for="mrf-status-select">Change status</label>
+                                <select class="form-select" id="mrf-status-select"></select>
+                            </div>
+                            <label class="form-label" for="mrf-decide-remarks" id="mrf-decide-remarks-label">Remarks</label>
+                            <textarea class="form-control" id="mrf-decide-remarks" rows="3"></textarea>
                             <div class="text-muted small text-end mrf-noprint" id="mrf-decide-count"></div>
                             <div class="text-danger small mt-2 mrf-noprint" id="mrf-decide-error" role="alert" hidden></div>
                         </div>
@@ -318,8 +323,7 @@
                         </div>
                     </div>
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-danger" id="mrf-decide-reject" hidden>Reject</button>
-                        <button type="button" class="btn mrf-add-btn" id="mrf-decide-approve" hidden>Approve</button>
+                        <button type="button" class="btn mrf-add-btn" id="mrf-status-save" hidden>Save status</button>
                     </div>
                 </div>
             </div>
@@ -404,18 +408,18 @@
             var MRF_REQ_FILE_DOWNLOAD_TEXT = 'Download';
             var MRF_REQ_FILE_KB = 1024;
             var MRF_REQ_FILE_MB = 1024 * 1024;
-            var MRF_REQ_DECIDE_API_SUFFIX = '/decision';
+            var MRF_REQ_STATUS_API_SUFFIX = '/status';
             var MRF_REQ_DECIDE_REMARKS_MAX = 500;
             var MRF_REQ_DECIDE_CONFIRM_MS = 5000;
-            var MRF_REQ_DECIDE_PENDING = 'Pending';
-            var MRF_REQ_DECIDE_APPROVED = 'Approved';
-            var MRF_REQ_DECIDE_REJECTED = 'Rejected';
-            var MRF_REQ_DECIDE_APPROVE_TEXT = 'Approve';
-            var MRF_REQ_DECIDE_REJECT_TEXT = 'Reject';
-            var MRF_REQ_DECIDE_CONFIRM_APPROVE_TEXT = 'Confirm approve';
-            var MRF_REQ_DECIDE_CONFIRM_REJECT_TEXT = 'Confirm reject';
+            var MRF_REQ_STATUS_TRANSITIONS = {{ mrf_request_status_transitions | tojson }};
+            var MRF_REQ_STATUS_CANCELLED = 'CANCELLED MRF';
+            var MRF_REQ_STATUS_SAVE_TEXT = 'Save status';
+            var MRF_REQ_STATUS_CONFIRM_TEXT = 'Confirm save';
+            var MRF_REQ_STATUS_REMARKS_REQUIRED_LABEL = 'Remarks (required to cancel)';
+            var MRF_REQ_STATUS_REMARKS_OPTIONAL_LABEL = 'Remarks (optional)';
+            var MRF_REQ_STATUS_REMARKS_NEEDED_TEXT = 'Add remarks to cancel a request.';
             var MRF_REQ_DECIDE_ERROR_ACCESS = 'You do not have access to decide requests.';
-            var MRF_REQ_DECIDE_ERROR_OTHER = 'Could not save the decision. Try again.';
+            var MRF_REQ_DECIDE_ERROR_OTHER = 'Could not save the status. Try again.';
             var MRF_REQ_DECIDE_ROLE_LABELS = { SUPERADMIN: 'Super admin', MANAGER: 'Manager' };
             var MRF_REQ_DECIDE_NAME_EMPTY = '\u2014';
             var MRF_REQ_REVIEW_LABELS = {
@@ -449,8 +453,9 @@
             var decideRemarks = document.getElementById('mrf-decide-remarks');
             var decideCount = document.getElementById('mrf-decide-count');
             var decideError = document.getElementById('mrf-decide-error');
-            var decideApprove = document.getElementById('mrf-decide-approve');
-            var decideReject = document.getElementById('mrf-decide-reject');
+            var decideSelect = document.getElementById('mrf-status-select');
+            var decideSave = document.getElementById('mrf-status-save');
+            var decideRemarksLabel = document.getElementById('mrf-decide-remarks-label');
             var decideCurrent = null;
             var decideConfirm = null;
             var decideTimer = null;
@@ -808,21 +813,28 @@
                 decideError.hidden = true;
             }
 
+            function decideRefresh() {
+                var sel = decideSelect.value;
+                var cur = decideCurrent ? decideCurrent.status : '';
+                decideRemarksLabel.textContent = (sel === MRF_REQ_STATUS_CANCELLED) ? MRF_REQ_STATUS_REMARKS_REQUIRED_LABEL : MRF_REQ_STATUS_REMARKS_OPTIONAL_LABEL;
+                decideSave.disabled = decideBusy || !decideCurrent || sel === cur;
+                decideSelect.disabled = decideBusy;
+                decideRemarks.disabled = decideBusy;
+            }
+
             function decideReset() {
                 clearTimeout(decideTimer);
                 decideConfirm = null;
                 decideBusy = false;
-                decideApprove.textContent = MRF_REQ_DECIDE_APPROVE_TEXT;
-                decideReject.textContent = MRF_REQ_DECIDE_REJECT_TEXT;
-                decideApprove.disabled = false;
-                decideReject.disabled = false;
+                decideSave.textContent = MRF_REQ_STATUS_SAVE_TEXT;
+                decideRefresh();
             }
 
             function decideHide() {
                 decideCurrent = null;
                 decideBox.hidden = true;
-                decideApprove.hidden = true;
-                decideReject.hidden = true;
+                decideSave.hidden = true;
+                decideSelect.replaceChildren();
                 decideClearError();
                 decideReset();
             }
@@ -830,39 +842,50 @@
             function decideSetup(d) {
                 decideReset();
                 decideClearError();
-                var pending = !!d && d.status === MRF_REQ_DECIDE_PENDING;
-                decideCurrent = pending ? d : null;
-                decideBox.hidden = !pending;
-                decideApprove.hidden = !pending;
-                decideReject.hidden = !pending;
-                decideRemarks.value = '';
+                var next = d ? (MRF_REQ_STATUS_TRANSITIONS[d.status] || []) : [];
+                var open = next.length > 0;
+                decideCurrent = open ? d : null;
+                decideBox.hidden = !open;
+                decideSave.hidden = !open;
+                decideSelect.replaceChildren();
+                if (open) {
+                    [d.status].concat(next).forEach(function (s) {
+                        var o = document.createElement('option');
+                        o.value = s;
+                        o.textContent = s;
+                        decideSelect.appendChild(o);
+                    });
+                    decideSelect.value = d.status;
+                }
+                decideRemarks.value = open ? (d.remarks || '') : '';
                 decideCountUpdate();
+                decideRefresh();
             }
 
-            function decideClick(status) {
+            function decideClick() {
                 if (!decideCurrent || decideBusy) { return; }
+                var status = decideSelect.value;
+                if (status === decideCurrent.status) { return; }
                 decideClearError();
-                if (decideConfirm !== status) {
+                if (status === MRF_REQ_STATUS_CANCELLED && !decideRemarks.value.trim()) {
+                    decideShowError(MRF_REQ_STATUS_REMARKS_NEEDED_TEXT);
+                    return;
+                }
+                var finalTarget = (MRF_REQ_STATUS_TRANSITIONS[status] || []).length === 0;
+                if (finalTarget && decideConfirm !== status) {
                     decideReset();
                     decideConfirm = status;
-                    if (status === MRF_REQ_DECIDE_APPROVED) {
-                        decideApprove.textContent = MRF_REQ_DECIDE_CONFIRM_APPROVE_TEXT;
-                        decideReject.disabled = true;
-                    } else {
-                        decideReject.textContent = MRF_REQ_DECIDE_CONFIRM_REJECT_TEXT;
-                        decideApprove.disabled = true;
-                    }
+                    decideSave.textContent = MRF_REQ_STATUS_CONFIRM_TEXT;
                     decideTimer = setTimeout(decideReset, MRF_REQ_DECIDE_CONFIRM_MS);
                     return;
                 }
                 clearTimeout(decideTimer);
                 decideBusy = true;
-                decideApprove.disabled = true;
-                decideReject.disabled = true;
+                decideRefresh();
                 var mine = reviewLatest;
                 var current = decideCurrent;
-                fetch(MRF_REQ_API + '/' + encodeURIComponent(current.id) + MRF_REQ_DECIDE_API_SUFFIX, {
-                    method: 'POST',
+                fetch(MRF_REQ_API + '/' + encodeURIComponent(current.id) + MRF_REQ_STATUS_API_SUFFIX, {
+                    method: 'PATCH',
                     credentials: 'same-origin',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ status: status, remarks: decideRemarks.value })
@@ -907,8 +930,11 @@
                 if (decideConfirm !== null && !decideBusy) { decideReset(); }
             });
             reviewPrint.addEventListener('click', reviewPrintDocument);
-            decideApprove.addEventListener('click', function () { decideClick(MRF_REQ_DECIDE_APPROVED); });
-            decideReject.addEventListener('click', function () { decideClick(MRF_REQ_DECIDE_REJECTED); });
+            decideSave.addEventListener('click', decideClick);
+            decideSelect.addEventListener('change', function () {
+                if (!decideBusy) { decideReset(); }
+                decideClearError();
+            });
             reqSearch.maxLength = MRF_REQ_SEARCH_MAX_LENGTH;
             reqSearch.addEventListener('input', function () {
                 clearTimeout(reqSearchTimer);

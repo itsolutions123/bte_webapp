@@ -142,7 +142,7 @@ body.mrf-app-body {
 .mrf-option:focus-visible { outline: 2px solid var(--mrf-gold); outline-offset: 2px; }
 .mrf-textbox { width: 100%; max-width: 420px; min-height: 110px; padding: 0.75rem 0.9rem; border: 1px solid var(--mrf-border); border-radius: 10px; font: inherit; font-size: 0.92rem; resize: vertical; text-align: left; }
 .mrf-error { color: #b42318; font-size: 0.82rem; margin: 1rem 0 0; }
-/* My Requests: HR remarks under a Rejected status (part 78) */
+/* My Requests: HR remarks under the status when a request has remarks (part 78, widened for the four MRF statuses) */
 .mrf-request-remarks { font-size: 0.78rem; font-weight: 400; color: var(--mrf-muted); margin-top: 0.1rem; }
 /* My Requests: data cells (part 78) */
 .mrf-table td { padding: 0.8rem 1rem; font-size: 0.88rem; border-bottom: 1px solid var(--mrf-border); vertical-align: top; }
