@@ -268,6 +268,8 @@ DECIDED 2026-11-17 (user, part 64). APPLIED and VERIFIED by read-back 2026-11-17
 - closed_at timestamptz NULL (ADDED 2026-11-27, migration 031; set only when the status becomes CLOSED MRF; used by the recruiter metrics date filter)
 - Indexes (rule 18.1): status, classification, department, created_at, user_id, form_id (migration 027, used by the MRF form delete check), closed_at (idx_mrf_requests_closed_at, migration 031)
 - Migration 031 APPLIED 2026-11-27 with the user's explicit confirmation naming the loss (Pending and Approved merged to ON GOING MRF, so that distinction is lost; 5 rows; Rejected renamed to CANCELLED MRF, 3 rows, remarks kept); read back OK; backup table mrf_requests_bak_20261127 (8 rows, plain copy, no indexes; delete only on the user's confirmation). Code commit 45f55ba.
+- recruiter_user_id UUID NULL FK users.id ON DELETE SET NULL (ADDED 2026-11-27, migration 032; the recruiter credited for the MRF, NULL means Unassigned and scores nobody; set through PATCH /api/v1/admin/mrf/requests/{request_id}/recruiter; only an active, non-archived RECRUITER can be chosen). Index idx_mrf_requests_recruiter_user_id (rule 18.1, used by the Recruiters metrics page).
+- Migration 032 (migrations/032_mrf_requests_recruiter.sql) APPLIED 2026-11-27 with the user's explicit confirmation; additive, no data lost; read back OK (column, index, FK ON DELETE SET NULL); 11 rows at the time, all NULL. Code commits d4f2e0f (backend) and 722478f (review modal Recruiter select).
 
 ### mrf_request_answers
 APPLIED and VERIFIED by read-back 2026-11-17 (migration 024, 0 rows). answer is NOT NULL (user, part 66, option A).
