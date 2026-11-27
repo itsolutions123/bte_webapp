@@ -98,6 +98,10 @@ class AdminApplicationDetailResponse(BaseModel):
     id: UUID4
     applicant: AdminApplicantDetail
     job_title: str
+    brand_name: str
+    job_type: Optional[str] = None
+    employee_classification: Optional[str] = None
+    created_at: Optional[datetime] = None
     score: Optional[int]
     status: str
     answers: List[AdminAnswerDetail]

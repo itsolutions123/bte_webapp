@@ -538,6 +538,31 @@
                     </div>
                     <div class="assess-list" id="applicant-detail-answers"></div>
                 </section>
+                <section class="detail-card" aria-labelledby="applicant-detail-job-title">
+                    <div class="detail-card-title" id="applicant-detail-job-title">Application details</div>
+                    <div class="detail-fields">
+                        <div class="detail-field">
+                            <div class="detail-field-name">Position</div>
+                            <div class="detail-field-text" id="applicant-detail-position">&mdash;</div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-name">Brand</div>
+                            <div class="detail-field-text" id="applicant-detail-brand">&mdash;</div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-name">Employment type</div>
+                            <div class="detail-field-text" id="applicant-detail-jobtype">&mdash;</div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-name">Classification</div>
+                            <div class="detail-field-text" id="applicant-detail-classification">&mdash;</div>
+                        </div>
+                        <div class="detail-field detail-field-full">
+                            <div class="detail-field-name">Date submitted</div>
+                            <div class="detail-field-text" id="applicant-detail-submitted">&mdash;</div>
+                        </div>
+                    </div>
+                </section>
                 <section class="detail-card">
                     <div class="detail-card-title">Candidate information</div>
                     <div class="detail-fields">
@@ -860,6 +885,12 @@
         });
         const detailModalEl = document.getElementById('applicantDetailModal');
 
+        // E5b: date submitted, read from the ISO string so it stays in the app timezone like the list rows.
+        function formatDetailDate(iso) {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            if (!iso || !months[parseInt(String(iso).slice(5, 7), 10) - 1]) return '\u2014';
+            return months[parseInt(iso.slice(5, 7), 10) - 1] + ' ' + parseInt(iso.slice(8, 10), 10) + ', ' + iso.slice(0, 4);
+        }
         function setDetailHeader(values) {
             const dash = '\u2014';
             const show = function (v) { return (v === null || v === undefined || v === '') ? dash : String(v); };
@@ -875,7 +906,7 @@
             document.getElementById('applicant-detail-avatar').textContent = initials;
             document.getElementById('applicantDetailName').textContent = values.name;
             document.getElementById('applicant-detail-subline').textContent = loaded
-                ? 'Applied for ' + show(values.job) + ' \u00b7 Application details'
+                ? 'Applied for ' + show(values.job) + ' \u00b7 ' + show(values.brand)
                 : 'Application details';
             document.getElementById('applicant-detail-email').textContent = show(values.email);
             document.getElementById('applicant-detail-age').textContent =
@@ -883,6 +914,11 @@
             document.getElementById('applicant-detail-gender').textContent = show(values.gender);
             document.getElementById('applicant-detail-phone').textContent = show(values.phone);
             document.getElementById('applicant-detail-address').textContent = show(values.address);
+            document.getElementById('applicant-detail-position').textContent = show(values.job);
+            document.getElementById('applicant-detail-brand').textContent = show(values.brand);
+            document.getElementById('applicant-detail-jobtype').textContent = show(values.jobType);
+            document.getElementById('applicant-detail-classification').textContent = show(values.classification);
+            document.getElementById('applicant-detail-submitted').textContent = formatDetailDate(values.submitted);
         }
 
 
@@ -1096,7 +1132,11 @@
                     address: d.applicant.address,
                     gender: d.applicant.gender,
                     phone: d.applicant.phone,
-                    job: d.job_title
+                    job: d.job_title,
+                    brand: d.brand_name,
+                    jobType: d.job_type,
+                    classification: d.employee_classification,
+                    submitted: d.created_at
                 });
                 setResumeButton(applicationId);
                 renderDetailStatus(d.status);

@@ -624,15 +624,16 @@ async def get_application_detail(
     # First slice (docs/API_CONTRACT.md): id, status, score, applicant fields, answers.
     row = (
         await db.execute(
-            select(Application, Applicant, Job.title)
+            select(Application, Applicant, Job.title, Brand.name, Job.job_type, Job.employee_classification)
             .join(Applicant, Applicant.id == Application.applicant_id)
             .join(Job, Job.id == Application.job_id)
+            .join(Brand, Brand.id == Job.brand_id)
             .where(Application.id == application_id)
         )
     ).first()
     if row is None:
         raise HTTPException(status_code=404, detail="application not found")
-    application, applicant, job_title = row
+    application, applicant, job_title, brand_name, job_type, employee_classification = row
 
     age = None
     if applicant.date_of_birth is not None:
@@ -690,6 +691,10 @@ async def get_application_detail(
             age=age,
         ),
         job_title=job_title,
+        brand_name=brand_name,
+        job_type=job_type,
+        employee_classification=employee_classification,
+        created_at=to_app_tz(application.created_at) if application.created_at is not None else None,
         score=score,
         status=application.status,
         answers=answers,
