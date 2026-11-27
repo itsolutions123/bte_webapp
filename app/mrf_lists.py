@@ -70,17 +70,35 @@ MRF_QUESTION_TEXT_MAX_LENGTH = 500
 # Trimmed question description is at most this long (docs/API_CONTRACT.md "Question description", d2; longer returns 422). mrf_form_questions.description itself is unbounded.
 MRF_QUESTION_DESCRIPTION_MAX_LENGTH = 500
 
-# MRF request status (migration 024, DECIDED part 64, docs/API_CONTRACT.md).
-# A new request starts Pending; HR sets Approved or Rejected once (a decision is final).
+# MRF request status (migration 031, CONTRACTED 2026-11-27, docs/API_CONTRACT.md, PATCH /api/v1/admin/mrf/requests/{request_id}/status).
+# A new request starts ON GOING MRF; CLOSED MRF and CANCELLED MRF are final (the allowed changes are in the contract).
 # Also enforced by the CHECK ck_mrf_requests_status on mrf_requests.status: keep the two in step.
-MRF_REQUEST_STATUS_PENDING = "Pending"
-MRF_REQUEST_STATUS_APPROVED = "Approved"
-MRF_REQUEST_STATUS_REJECTED = "Rejected"
+MRF_REQUEST_STATUS_ON_GOING = "ON GOING MRF"
+MRF_REQUEST_STATUS_PARTIALLY_CLOSED = "PARTIALLY CLOSED MRF"
+MRF_REQUEST_STATUS_CLOSED = "CLOSED MRF"
+MRF_REQUEST_STATUS_CANCELLED = "CANCELLED MRF"
 MRF_REQUEST_STATUSES = (
-    MRF_REQUEST_STATUS_PENDING,
-    MRF_REQUEST_STATUS_APPROVED,
-    MRF_REQUEST_STATUS_REJECTED,
+    MRF_REQUEST_STATUS_ON_GOING,
+    MRF_REQUEST_STATUS_PARTIALLY_CLOSED,
+    MRF_REQUEST_STATUS_CLOSED,
+    MRF_REQUEST_STATUS_CANCELLED,
 )
+
+# Allowed status changes (CONTRACTED 2026-11-27, PATCH /api/v1/admin/mrf/requests/{request_id}/status).
+# A status with no next status is final. Re-sending the current status is not a change.
+MRF_REQUEST_STATUS_TRANSITIONS = {
+    MRF_REQUEST_STATUS_ON_GOING: (
+        MRF_REQUEST_STATUS_PARTIALLY_CLOSED,
+        MRF_REQUEST_STATUS_CLOSED,
+        MRF_REQUEST_STATUS_CANCELLED,
+    ),
+    MRF_REQUEST_STATUS_PARTIALLY_CLOSED: (
+        MRF_REQUEST_STATUS_CLOSED,
+        MRF_REQUEST_STATUS_CANCELLED,
+    ),
+    MRF_REQUEST_STATUS_CLOSED: (),
+    MRF_REQUEST_STATUS_CANCELLED: (),
+}
 
 # Trimmed OPEN_ENDED answers on a submitted MRF request are at most this long (DECIDED part 65 sign-off (b), option A;
 # longer returns 422 "Answers must be 1000 characters or fewer."). mrf_request_answers.answer itself is unbounded Text.

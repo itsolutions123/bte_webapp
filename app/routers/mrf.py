@@ -39,7 +39,7 @@ from app.mrf_lists import (
     MRF_QUESTION_TYPE_FILE_UPLOAD,
     MRF_QUESTION_TYPE_OPEN_ENDED,
     MRF_QUESTION_TYPE_YES_NO,
-    MRF_REQUEST_STATUS_PENDING,
+    MRF_REQUEST_STATUS_ON_GOING,
     POSITIONS,
 )
 from app.password_rules import validate_sign_up_password
@@ -572,7 +572,7 @@ async def submit_request(
         classification=stored[classification_question.id],
         department=user.department,
         assignment=assignment,
-        status=MRF_REQUEST_STATUS_PENDING,
+        status=MRF_REQUEST_STATUS_ON_GOING,
     )
     db.add(request_row)
     created_paths = [entry[0] for entry in saved_files.values()]
@@ -611,6 +611,6 @@ async def submit_request(
         "form_name": form_name,
         "assignment": assignment,
         "created_at": created_at,
-        "status": MRF_REQUEST_STATUS_PENDING,
+        "status": MRF_REQUEST_STATUS_ON_GOING,
         "remarks": None,
     }

@@ -7,7 +7,7 @@ from .database import Base
 from .mrf_lists import (
     MRF_FORM_NAME_MAX_LENGTH,
     MRF_FORM_STATUS_DRAFT,
-    MRF_REQUEST_STATUS_PENDING,
+    MRF_REQUEST_STATUS_ON_GOING,
 )
 
 def utc_now():
@@ -276,7 +276,8 @@ class MrfRequest(Base):
     # MRF request submitted by an MRF portal user (migration 024, table already live). One row per submitted form.
     # classification and assignment are copied at submit time (DECIDED part 64). department is the submitter's department.
     # Status is one of MRF_REQUEST_STATUSES (app/mrf_lists.py); the database CHECK ck_mrf_requests_status enforces it.
-    # A decision is final: decided_by_user_id (admin users table) and decided_at are set once with the status.
+    # decided_by_user_id (admin users table) and decided_at record the latest status change (migration 031, no history table).
+    # closed_at is set once, only when the status becomes CLOSED MRF (a final status).
     __tablename__ = "mrf_requests"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     form_id = Column(UUID(as_uuid=True), ForeignKey("mrf_forms.id"), nullable=False)
@@ -288,12 +289,13 @@ class MrfRequest(Base):
     status = Column(
         String,
         nullable=False,
-        default=MRF_REQUEST_STATUS_PENDING,
-        server_default=MRF_REQUEST_STATUS_PENDING,
+        default=MRF_REQUEST_STATUS_ON_GOING,
+        server_default=MRF_REQUEST_STATUS_ON_GOING,
     )
     remarks = Column(Text, nullable=True)
     decided_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     decided_at = Column(DateTime(timezone=True), nullable=True)
+    closed_at = Column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
         Index("idx_mrf_requests_status", "status"),

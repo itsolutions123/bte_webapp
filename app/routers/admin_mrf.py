@@ -30,9 +30,9 @@ from app.mrf_lists import (
     MRF_QUESTION_TYPE_OPEN_ENDED,
     MRF_QUESTION_TYPE_YES_NO,
     MRF_QUESTION_TYPES,
-    MRF_REQUEST_STATUS_APPROVED,
-    MRF_REQUEST_STATUS_PENDING,
-    MRF_REQUEST_STATUS_REJECTED,
+    MRF_REQUEST_STATUS_CANCELLED,
+    MRF_REQUEST_STATUS_CLOSED,
+    MRF_REQUEST_STATUS_TRANSITIONS,
     MRF_REQUEST_STATUSES,
 )
 from app.mrf_lists import MRF_ATTACHMENT_DEFAULT_STORAGE_PATH
@@ -54,7 +54,7 @@ from app.schemas import (
     MrfAdminRequestListResponse,
     MrfAdminRequestAnswerItem,
     MrfAdminRequestDetail,
-    MrfRequestDecision,
+    MrfRequestStatusUpdate,
     MrfUserListItem,
     MrfUserListResponse,
     MrfBulkDelete,
@@ -78,7 +78,7 @@ MRF_USERS_SEARCH_MAX_LENGTH = 100
 MRF_REQUESTS_DEFAULT_PAGE_SIZE = 10
 MRF_REQUESTS_MAX_PAGE_SIZE = 50
 MRF_REQUESTS_SEARCH_MAX_LENGTH = 100
-MRF_REQUESTS_STATUS_INVALID = "status must be Pending, Approved or Rejected"
+MRF_REQUESTS_STATUS_INVALID = "status must be ON GOING MRF, PARTIALLY CLOSED MRF, CLOSED MRF or CANCELLED MRF"
 MRF_REQUESTS_SEARCH_TOO_LONG = f"Search must be {MRF_REQUESTS_SEARCH_MAX_LENGTH} characters or fewer."
 MRF_REQUESTS_DATE_ORDER = "Start date must not be after end date."
 
@@ -87,12 +87,13 @@ MRF_REQUEST_NOT_FOUND = "Request not found."
 MRF_ATTACHMENT_NOT_FOUND = "Attachment not found."
 MRF_ATTACHMENT_DEFAULT_DOWNLOAD_NAME = "attachment.pdf"
 
-# Decision endpoint (docs/API_CONTRACT.md, POST /api/v1/admin/mrf/requests/{request_id}/decision, decided 2026-11-17 part 65 and 2026-11-18 part 81, option A).
+# Status endpoint (docs/API_CONTRACT.md, PATCH /api/v1/admin/mrf/requests/{request_id}/status, CONTRACTED 2026-11-27; replaces the decision endpoint).
 MRF_REMARKS_MAX_LENGTH = 500
-MRF_DECISION_ALREADY_DECIDED = "This request has already been decided."
-MRF_DECISION_STATUS_INVALID = "Choose Approved or Rejected."
-MRF_DECISION_REMARKS_REQUIRED = "Add remarks to reject a request."
-MRF_DECISION_REMARKS_TOO_LONG = f"Remarks must be {MRF_REMARKS_MAX_LENGTH} characters or fewer."
+MRF_STATUS_ALREADY_FINAL = "This request is already closed or cancelled."
+MRF_STATUS_INVALID = "Choose a valid status."
+MRF_STATUS_CHANGE_NOT_ALLOWED = "That status change is not allowed."
+MRF_STATUS_REMARKS_REQUIRED = "Add remarks to cancel a request."
+MRF_STATUS_REMARKS_TOO_LONG = f"Remarks must be {MRF_REMARKS_MAX_LENGTH} characters or fewer."
 
 # Forms list limits and messages (docs/API_CONTRACT.md, GET /api/v1/admin/mrf/forms, decided by the user 2026-11-12, part 43, option A).
 MRF_FORMS_DEFAULT_PAGE_SIZE = 10
@@ -264,6 +265,7 @@ async def list_mrf_requests(
                 decided_at=to_app_tz(r.decided_at),
                 decided_by=_decided_by_name(dfirst, dlast),
                 decided_by_role=drole,
+                closed_at=to_app_tz(r.closed_at),
             )
             for r, first, last, form_name, dfirst, dlast, drole in rows
         ],
@@ -339,6 +341,7 @@ async def get_mrf_request(
         decided_at=to_app_tz(r.decided_at),
         decided_by=_decided_by_name(dfirst, dlast),
         decided_by_role=drole,
+        closed_at=to_app_tz(r.closed_at),
         answers=[
             MrfAdminRequestAnswerItem(
                 question_id=qid,
@@ -393,37 +396,45 @@ async def get_mrf_request_attachment(
     )
 
 
-@router.post(
-    "/mrf/requests/{request_id}/decision",
+@router.patch(
+    "/mrf/requests/{request_id}/status",
     response_model=MrfAdminRequestListItem,
 )
-async def decide_mrf_request(
+async def update_mrf_request_status(
     request_id: UUID,
-    payload: MrfRequestDecision,
+    payload: MrfRequestStatusUpdate,
     response: Response,
     admin: User = Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
-    """Approves or rejects one Pending MRF request, once. The row is locked while it is checked, so two admins
-    deciding the same request get one 200 and one 409. Order of checks: 404, 409, then the 422s."""
+    """Moves one MRF request to a new status. The row is locked while it is checked, so two admins changing the same
+    request get one 200 and one 409. Order of checks: 404, 409 (already final), 422 (invalid status),
+    409 (change not allowed), 422 (cancel needs remarks), 422 (remarks too long)."""
     req = await db.scalar(select(MrfRequest).where(MrfRequest.id == request_id).with_for_update())
     if req is None:
         raise HTTPException(status_code=404, detail=MRF_REQUEST_NOT_FOUND)
-    if req.status != MRF_REQUEST_STATUS_PENDING:
-        raise HTTPException(status_code=409, detail=MRF_DECISION_ALREADY_DECIDED)
+    allowed = MRF_REQUEST_STATUS_TRANSITIONS.get(req.status, ())
+    if not allowed:
+        raise HTTPException(status_code=409, detail=MRF_STATUS_ALREADY_FINAL)
 
-    if payload.status not in (MRF_REQUEST_STATUS_APPROVED, MRF_REQUEST_STATUS_REJECTED):
-        raise HTTPException(status_code=422, detail=MRF_DECISION_STATUS_INVALID)
+    new_status = payload.status
+    if new_status not in MRF_REQUEST_STATUSES:
+        raise HTTPException(status_code=422, detail=MRF_STATUS_INVALID)
+    if new_status not in allowed:
+        raise HTTPException(status_code=409, detail=MRF_STATUS_CHANGE_NOT_ALLOWED)
     remarks = (payload.remarks or "").strip()
-    if payload.status == MRF_REQUEST_STATUS_REJECTED and not remarks:
-        raise HTTPException(status_code=422, detail=MRF_DECISION_REMARKS_REQUIRED)
+    if new_status == MRF_REQUEST_STATUS_CANCELLED and not remarks:
+        raise HTTPException(status_code=422, detail=MRF_STATUS_REMARKS_REQUIRED)
     if len(remarks) > MRF_REMARKS_MAX_LENGTH:
-        raise HTTPException(status_code=422, detail=MRF_DECISION_REMARKS_TOO_LONG)
+        raise HTTPException(status_code=422, detail=MRF_STATUS_REMARKS_TOO_LONG)
 
-    req.status = payload.status
+    now = datetime.now(timezone.utc)
+    req.status = new_status
     req.remarks = remarks or None
     req.decided_by_user_id = admin.id
-    req.decided_at = datetime.now(timezone.utc)
+    req.decided_at = now
+    if new_status == MRF_REQUEST_STATUS_CLOSED:
+        req.closed_at = now
 
     first, last, form_name = (
         await db.execute(
@@ -447,6 +458,7 @@ async def decide_mrf_request(
         decided_at=to_app_tz(req.decided_at),
         decided_by=_decided_by_name(admin.first_name, admin.last_name),
         decided_by_role=admin.role,
+        closed_at=to_app_tz(req.closed_at),
     )
     await db.commit()
     response.headers["Cache-Control"] = "no-store"

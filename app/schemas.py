@@ -586,6 +586,8 @@ class MrfAdminRequestListItem(BaseModel):
     decided_at: Optional[datetime] = None
     decided_by: Optional[str] = None
     decided_by_role: Optional[str] = None
+    # Set once, when the status becomes CLOSED MRF (migration 031, docs/API_CONTRACT.md PATCH .../status); null otherwise.
+    closed_at: Optional[datetime] = None
 
 
 class MrfAdminRequestListResponse(BaseModel):
@@ -611,8 +613,8 @@ class MrfAdminRequestDetail(MrfAdminRequestListItem):
     answers: List[MrfAdminRequestAnswerItem]
 
 
-class MrfRequestDecision(BaseModel):
-    # Loose on purpose: both fields optional so the endpoint returns its own 422 texts (docs/API_CONTRACT.md, POST /api/v1/admin/mrf/requests/{request_id}/decision, part 81).
+class MrfRequestStatusUpdate(BaseModel):
+    # Loose on purpose: both fields optional so the endpoint returns its own 422 texts (docs/API_CONTRACT.md, PATCH /api/v1/admin/mrf/requests/{request_id}/status, CONTRACTED 2026-11-27, replacing the decision endpoint of part 81).
     # A non-string status or remarks still gets FastAPI's own list-style 422 before the handler runs.
     status: Optional[str] = None
     remarks: Optional[str] = None
