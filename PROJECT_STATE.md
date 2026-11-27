@@ -2939,3 +2939,24 @@ HANDOFF items and open work: (a) E5b, Application Details card (position, brand,
 Hardcodes added: pill colours #1f7a42 and #b42318 (repeated from existing rules), resume frame height 70vh and min-height 24rem, the 992px breakpoint and 1120px panel width, the strings Passed, Not passed, Not scored, No resume to show., No answers recorded., No scored questions, the ring constants (viewBox 0 0 36 36, dash 100.5) copied from the list. Removed: the inline copy of the scoring rule.
 
 Next: E5b (contract, then backend, then the Application Details card and the subline).
+
+## Applicants E5b: Application details card and brand subline on the slide-over panel (2026-11-26, code e10fbc9, docs 8dd0e5c)
+
+Work mode: feature-wiring step (contract first, then backend, then UI). Page: Applicants slide-over panel (/admin/applicants), E5b of the Applicants redesign. Code commit e10fbc9 (app/routers/admin.py, app/schemas.py, app/templates/admin_applicants.html; 53 insertions, 4 deletions), docs commit 8dd0e5c (docs/API_CONTRACT.md, bullet flipped to IMPLEMENTED, Last verified line updated).
+
+What changed:
+- Backend (app/routers/admin.py, app/schemas.py): GET /api/v1/admin/applications/{application_id} gains brand_name (string), job_type and employee_classification (nullable raw strings from jobs) and created_at (nullable timestamp through to_app_tz). get_application_detail adds the same Brand join the list uses. AdminApplicationDetailResponse gained the four fields. No migration, no new index, no extra query. The list endpoint is not changed.
+- Frontend (app/templates/admin_applicants.html): new Application details card (Position, Brand, Employment type, Classification, Date submitted; em dash when null) between Assessment score and Candidate information. The header subline now reads "Applied for {job} · {brand}". New formatDetailDate helper; setDetailHeader and loadApplicantDetail pass the new values. The mockup's status pill beside the subline was left out on purpose (the stepper and status button already show status). Store type is not shown (no column; HANDOFF to Structure from E4).
+- Docs: API_CONTRACT.md detail response shape line and the E5b bullet (IMPLEMENTED 2026-11-26, code commit e10fbc9), Last verified line. SCHEMA.md not changed.
+
+Verified (curl, user-run): login 200; 15 of 15 applications: the four keys present and equal to the list row, the score rebuilt from the pills still matches; an unknown id returns 404; for application 911096b0 (Cook at Pares Retiro) the API gave Part-time, classification null and created_at 2026-11-07T11:12:35.6+08:00 against 2026-11-07 03:12:35 UTC in the database (the same moment). The app reload finished cleanly (log showed Reloading, then Application startup complete). The browser check is the user's words ("checks confirmed"), not observed by the assistant.
+
+NOT tested: a RECRUITER account; a long brand or classification text; an application with null created_at (the card would show a dash); a real employee_classification value (no tested row has one, so that field has only been seen as a dash); the card in Firefox, Safari and a narrow window.
+
+Hardcodes added: the labels Application details, Position, Brand, Employment type, Classification, Date submitted, the "Applied for " prefix reuse, and a second copy of the month array inside formatDetailDate.
+
+Slips (assistant): in this save, the first grep for the E5b contract bullet used plain field names and matched nothing, because the contract text wraps them in backticks; the exact line was read with sed before the anchors were written, and the edit script aborts unless each anchor matches exactly once.
+
+Open items carried forward: E5c (Assigned To card, recommendation read-only for candidates only); HANDOFF to Structure on per-section score bars, store type and Recruiters metrics; the optional hardening list (RECRUITER-account test, Firefox and Safari, narrow window, candidate Filters button, shared colour variables, dead #applicant-detail-answers .list-group-item CSS).
+
+Next (new user task, 2026-11-27, nothing built or committed yet): change the MRF request status to a dropdown with four values (ON GOING MRF, PARTIALLY CLOSED MRF, CLOSED MRF, CANCELLED MRF with remarks) and then build Metrics > Recruiters from the Recruiter_Performance mockup, scored on closed MRFs. A HANDOFF to Structure with five recommended picks was written in the conversation and the recommendations were taken under the standing rule; the contract edit, the migration (the ck_mrf_requests_status check and a nullable closed_at), the backend and the review-modal dropdown are still to do. The source of the recruiter, hired applicant and brand for scoring is undecided because mrf_requests has none of them.
