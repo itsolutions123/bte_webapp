@@ -262,11 +262,12 @@ DECIDED 2026-11-17 (user, part 64). APPLIED and VERIFIED by read-back 2026-11-17
 - classification String NOT NULL (copied from the classification answer at submit)
 - department String (copied from the submitter at submit)
 - assignment String NOT NULL (copied from the form at submit)
-- status String NOT NULL default 'Pending'. Values Pending, Approved, Rejected
-  (one constant in app/mrf_lists.py, CHECK in the DB). A decision is final.
-- remarks Text NULL (trimmed, max 500, DECIDED 2026-11-17, part 65 sign-off (a); constant MRF_REMARKS_MAX_LENGTH). Required on Rejected, optional on Approved.
-- decided_by_user_id UUID NULL FK users.id; decided_at timestamptz NULL (both NULL while Pending)
-- Indexes (rule 18.1): status, classification, department, created_at, user_id, form_id (migration 027, used by the MRF form delete check)
+- status String NOT NULL default 'ON GOING MRF'. Values ON GOING MRF, PARTIALLY CLOSED MRF, CLOSED MRF, CANCELLED MRF (CHANGED 2026-11-27, migration 031; the list MRF_REQUEST_STATUSES and the allowed-change map MRF_REQUEST_STATUS_TRANSITIONS are in app/mrf_lists.py, the CHECK is ck_mrf_requests_status in the DB). CLOSED MRF and CANCELLED MRF are final.
+- remarks Text NULL (trimmed, max 500, DECIDED 2026-11-17, part 65 sign-off (a); constant MRF_REMARKS_MAX_LENGTH). Required on CANCELLED MRF, optional otherwise (CHANGED 2026-11-27).
+- decided_by_user_id UUID NULL FK users.id; decided_at timestamptz NULL (both NULL until the first status change; since 2026-11-27 they record the LATEST status change, there is no history table)
+- closed_at timestamptz NULL (ADDED 2026-11-27, migration 031; set only when the status becomes CLOSED MRF; used by the recruiter metrics date filter)
+- Indexes (rule 18.1): status, classification, department, created_at, user_id, form_id (migration 027, used by the MRF form delete check), closed_at (idx_mrf_requests_closed_at, migration 031)
+- Migration 031 APPLIED 2026-11-27 with the user's explicit confirmation naming the loss (Pending and Approved merged to ON GOING MRF, so that distinction is lost; 5 rows; Rejected renamed to CANCELLED MRF, 3 rows, remarks kept); read back OK; backup table mrf_requests_bak_20261127 (8 rows, plain copy, no indexes; delete only on the user's confirmation). Code commit 45f55ba.
 
 ### mrf_request_answers
 APPLIED and VERIFIED by read-back 2026-11-17 (migration 024, 0 rows). answer is NOT NULL (user, part 66, option A).
@@ -286,5 +287,5 @@ APPLIED and VERIFIED by read-back 2026-11-17 (migration 024, 0 rows). answer is 
 
 ### Open (not answered, not built)
 - Answered 2026-11-10 (part 28, recorded in docs/API_CONTRACT.md): SUPERADMIN and MANAGER approve MRF accounts; the sidebar MRF item and the Users tab carry a badge that counts pending accounts only; the Users tab pending group is contracted (PROPOSED, not built).
-- DECIDED 2026-11-17 (user, part 64): SUPERADMIN and MANAGER change request status (they count as HR for MRF) through POST /api/v1/admin/mrf/requests/{request_id}/decision; transitions are Pending to Approved or Rejected, once, final; the Assignment column is mrf_requests.assignment, copied from the form at submit.
+- DECIDED 2026-11-17 (user, part 64): SUPERADMIN and MANAGER change request status (they count as HR for MRF) through POST /api/v1/admin/mrf/requests/{request_id}/decision (REPLACED 2026-11-27 by PATCH /api/v1/admin/mrf/requests/{request_id}/status with four statuses, see the mrf_requests section; the rule that follows is the original and is history); transitions are Pending to Approved or Rejected, once, final; the Assignment column is mrf_requests.assignment, copied from the form at submit.
 - Still open: admin-created accounts pre-approved or not.
