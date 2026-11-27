@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTE Careers - Recruiter performance</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="/static/admin-sidebar.css" rel="stylesheet">
+    <style>
+        /* Recruiters metrics SHELL (section 8): every value is a placeholder, nothing is fetched. Colours reuse the admin tokens. */
+        .rec-banner { background: var(--tint); border: 1px dashed var(--accent-gold); border-radius: 0.75rem; padding: 0.5rem 0.9rem; font-size: 0.8rem; color: var(--gold-deep); margin-bottom: 1.25rem; }
+        .rec-pill { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 999px; padding: 0.5rem 1rem; font-size: 0.875rem; color: var(--text-muted); }
+        .rec-search { border: 0; outline: 0; background: transparent; min-width: 11rem; font: inherit; }
+        .rec-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .rec-gbar { width: 3rem; height: 4px; border-radius: 4px; background: var(--accent-gold); margin: 0.5rem 0 0.75rem; }
+        .rec-sub { font-size: 0.9rem; color: var(--text-muted); }
+        .rec-row2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+        @media (max-width: 991px) { .rec-row2 { grid-template-columns: 1fr; } }
+        .rec-card { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 1rem; box-shadow: var(--soft-shadow); }
+        .rec-hero { background: var(--accent-black); color: #fff; border-radius: 1rem; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; gap: 1.25rem; }
+        .rec-eyebrow { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.08em; color: #9A947F; }
+        .rec-rankpill { font-size: 0.6875rem; font-weight: 800; color: var(--accent-black); background: var(--accent-gold); padding: 0.2rem 0.65rem; border-radius: 999px; }
+        .rec-ring { width: 5.5rem; height: 5.5rem; border-radius: 50%; border: 6px solid rgba(255, 255, 255, 0.14); display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
+        .rec-points { font-size: 3rem; font-weight: 800; color: var(--accent-gold); line-height: 1; }
+        .rec-chip { display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.7rem; border-radius: 999px; border: 1px dashed rgba(247, 233, 184, 0.5); color: #F7E9B8; }
+        .rec-runners { padding: 1.25rem 1.5rem; }
+        .rec-runner { margin-top: 1rem; }
+        .rec-bar { height: 6px; border-radius: 6px; background: var(--border-light); margin-top: 0.5rem; }
+        .rec-rk { display: inline-flex; align-items: center; justify-content: center; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: var(--hover); font-size: 0.8rem; font-weight: 800; }
+        .rec-lbh, .rec-lb { display: grid; grid-template-columns: 4.5rem 1.6fr repeat(4, 1fr) 1fr; align-items: center; gap: 0.5rem; padding: 0.8rem 1.4rem; }
+        .rec-lbh { background: var(--tint); font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-muted); }
+        .rec-lb { border-top: 1px solid var(--border-light); font-size: 0.875rem; }
+        .rec-c { text-align: center; }
+        .rec-r { text-align: right; font-weight: 800; }
+        .rec-scroll { overflow-x: auto; }
+        .rec-scroll > div { min-width: 44rem; }
+        .rec-live { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); }
+        .rec-ini { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 50%; background: var(--accent-black); color: var(--accent-gold); font-size: 0.7rem; font-weight: 800; margin-right: 0.6rem; }
+    </style>
+</head>
+<body>
+    {% set active_page = 'recruiters' %}
+    <div class="container-fluid p-0">
+        <div class="row g-0">
+            {% include '_sidebar.html' %}
+
+            <main class="col-md-10 px-4 pb-5">
+                <div class="rec-banner mt-4">Layout preview: every name, number and date on this page is a placeholder. No data is loaded yet.</div>
+
+                <div class="d-flex gap-3 flex-wrap">
+                    <label class="rec-pill"><span aria-hidden="true">&#9906;</span><input class="rec-search" type="text" placeholder="Search recruiters" disabled></label>
+                    <button type="button" class="rec-pill" disabled>Date range &#9662;</button>
+                </div>
+
+                <div class="rec-top">
+                    <div>
+                        <h4 class="fw-bold mb-0">Recruiter performance</h4>
+                        <div class="rec-gbar"></div>
+                        <div class="rec-sub">Points are earned only when an MRF is closed. On-going MRFs show as pending points.</div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-dark" disabled>Scoring Guideline</button>
+                        <button type="button" class="btn btn-dark" disabled>Export Report</button>
+                    </div>
+                </div>
+
+                <div class="rec-row2">
+                    <div class="rec-hero">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="rec-eyebrow">TOP RECRUITER &middot; THIS PERIOD</div>
+                            <span class="rec-rankpill">RANK #1</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center gap-3">
+                            <div>
+                                <div class="fs-4 fw-bold">Recruiter name</div>
+                                <div class="rec-eyebrow mt-1">Brand &middot; Brand</div>
+                            </div>
+                            <div class="rec-ring"><div class="fw-bold">&mdash;%</div><div class="rec-eyebrow" style="font-size:0.5rem">OF POOL</div></div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-end flex-wrap gap-2">
+                            <div><span class="rec-points">&mdash;</span> <span class="rec-eyebrow">points earned</span></div>
+                            <div class="text-end">
+                                <div class="small" style="color:#D9D4C4">+&mdash; pts vs #2</div>
+                                <span class="rec-chip">&mdash; pts pending</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="rec-card rec-runners">
+                        <div class="rec-eyebrow">RUNNERS-UP</div>
+                        <div class="rec-runner"><div class="d-flex align-items-center gap-2"><span class="rec-rk">2</span><b class="flex-grow-1">Recruiter name</b><b>&mdash;</b></div><div class="rec-bar"></div></div>
+                        <div class="rec-runner"><div class="d-flex align-items-center gap-2"><span class="rec-rk">3</span><b class="flex-grow-1">Recruiter name</b><b>&mdash;</b></div><div class="rec-bar"></div></div>
+                        <div class="rec-runner"><div class="d-flex align-items-center gap-2"><span class="rec-rk">4</span><b class="flex-grow-1">Recruiter name</b><b>&mdash;</b></div><div class="rec-bar"></div></div>
+                    </div>
+                </div>
+
+                <div class="rec-card rec-scroll">
+                    <div>
+                        <div class="d-flex justify-content-between align-items-start p-4 pb-3">
+                            <div>
+                                <div class="fw-bold fs-6">Full leaderboard</div>
+                                <div class="rec-sub">Ranked by earned points &middot; closed MRFs only</div>
+                            </div>
+                            <span class="rec-live">Auto-updating (not wired yet)</span>
+                        </div>
+                        <div class="rec-lbh"><div>RANK</div><div>RECRUITER</div><div class="rec-c">PENDING</div><div class="rec-c">MANAGERIAL</div><div class="rec-c">SUPERVISORY</div><div class="rec-c">RANK &amp; FILE</div><div class="rec-r">EARNED</div></div>
+                        <div class="rec-lb"><div><span class="rec-rk">1</span></div><div><span class="rec-ini">&mdash;</span>Recruiter name</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-r">&mdash;</div></div>
+                        <div class="rec-lb"><div><span class="rec-rk">2</span></div><div><span class="rec-ini">&mdash;</span>Recruiter name</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-r">&mdash;</div></div>
+                        <div class="rec-lb"><div><span class="rec-rk">3</span></div><div><span class="rec-ini">&mdash;</span>Recruiter name</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-r">&mdash;</div></div>
+                        <div class="rec-lb"><div><span class="rec-rk">4</span></div><div><span class="rec-ini">&mdash;</span>Recruiter name</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-r">&mdash;</div></div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/admin-sidebar.js"></script>
+</body>
+</html>

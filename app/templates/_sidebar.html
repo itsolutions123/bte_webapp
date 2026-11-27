@@ -22,7 +22,7 @@
     <div class="nav-section">WORKSPACE</div>
     <div class="nav flex-column">
         {# Metrics: collapsible unit like Forms (setupStaticUnit in admin-sidebar.js). Applicants child = the existing dashboard (/admin/home, active_page dashboard). Recruiters is a placeholder, no route yet (SHELL, section 8). #}
-        <div class="business-unit metrics-unit{% if active_page == 'dashboard' %} has-active-child{% endif %}" id="metrics-unit">
+        <div class="business-unit metrics-unit{% if active_page in ['dashboard', 'recruiters'] %} has-active-child{% endif %}" id="metrics-unit">
             <div class="unit-head">
                 <span class="business-unit-toggle d-flex align-items-center flex-grow-1" id="metrics-toggle" role="button" tabindex="0" aria-expanded="false" aria-controls="metrics-sub"><svg class="sb-i" aria-hidden="true"><use href="#i-dash"/></svg><span class="business-unit-title">Metrics</span><span class="business-unit-chevron" aria-hidden="true"><svg class="sb-chev" aria-hidden="true"><use href="#ch"/></svg></span></span>
             </div>
@@ -30,7 +30,9 @@
                 <div class="sub-inner">
                     <div class="nav flex-column">
                         <a href="/admin/home" class="{% if active_page == 'dashboard' %}active{% endif %}">Applicants</a>
-                        <a role="link" aria-disabled="true" tabindex="-1" class="sb-soon">Recruiters</a>
+                        {% if request is defined and request.state.user is defined and request.state.user.role in ['SUPERADMIN', 'MANAGER'] %}
+                        <a href="/admin/metrics/recruiters" class="{% if active_page == 'recruiters' %}active{% endif %}">Recruiters</a>
+                        {% endif %}
                     </div>
                 </div>
             </div>
