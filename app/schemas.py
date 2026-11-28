@@ -688,3 +688,49 @@ class RecruiterPointsUpdateItem(BaseModel):
 
 class RecruiterPointsUpdate(BaseModel):
     data: List[RecruiterPointsUpdateItem]
+
+
+class RecruiterMetricsPeriod(BaseModel):
+    # Echo of the requested range as ISO dates (docs/API_CONTRACT.md, GET /api/v1/admin/metrics/recruiters); null means open-ended.
+    date_from: Optional[str] = None
+    date_to: Optional[str] = None
+
+
+class RecruiterMetricsTotals(BaseModel):
+    earned_points: int
+    pending_points: int
+    closed_count: int
+    pending_count: int
+
+
+class RecruiterMetricsUnassigned(BaseModel):
+    closed_count: int
+    pending_count: int
+
+
+class RecruiterMetricsClassification(BaseModel):
+    classification: str
+    closed_count: int
+    earned_points: int
+
+
+class RecruiterMetricsRow(BaseModel):
+    rank: int
+    id: UUID4
+    name: str
+    earned_points: int
+    pending_points: int
+    closed_count: int
+    pending_count: int
+    share_percent: Optional[float] = None
+    assignments: List[str]
+    by_classification: List[RecruiterMetricsClassification]
+
+
+class RecruiterMetricsResponse(BaseModel):
+    period: RecruiterMetricsPeriod
+    classifications: List[str]
+    totals: RecruiterMetricsTotals
+    unassigned: RecruiterMetricsUnassigned
+    data: List[RecruiterMetricsRow]
+    total: int
