@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link href="/static/admin-sidebar.css" rel="stylesheet">
     <style>
-        /* Recruiters metrics SHELL (section 8): every value is a placeholder, nothing is fetched. Colours reuse the admin tokens. */
+        /* Recruiters metrics page. Wired to GET /api/v1/admin/metrics/recruiters (feature F3). Colours reuse the admin tokens. */
         .rec-banner { background: var(--tint); border: 1px dashed var(--accent-gold); border-radius: 0.75rem; padding: 0.5rem 0.9rem; font-size: 0.8rem; color: var(--gold-deep); margin-bottom: 1.25rem; }
         .rec-pill { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 999px; padding: 0.5rem 1rem; font-size: 0.875rem; color: var(--text-muted); }
         .rec-search { border: 0; outline: 0; background: transparent; min-width: 11rem; font: inherit; }
@@ -19,17 +19,20 @@
         @media (max-width: 991px) { .rec-row2 { grid-template-columns: 1fr; } }
         .rec-card { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 1rem; box-shadow: var(--soft-shadow); }
         .rec-hero { background: var(--accent-black); color: #fff; border-radius: 1rem; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; gap: 1.25rem; }
+        .rec-hero-body { display: flex; flex-direction: column; justify-content: space-between; gap: 1.25rem; flex-grow: 1; }
         .rec-eyebrow { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.08em; color: #9A947F; }
         .rec-rankpill { font-size: 0.6875rem; font-weight: 800; color: var(--accent-black); background: var(--accent-gold); padding: 0.2rem 0.65rem; border-radius: 999px; }
-        .rec-ring { width: 5.5rem; height: 5.5rem; border-radius: 50%; border: 6px solid rgba(255, 255, 255, 0.14); display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
+        .rec-ring { --p: 0; width: 5.5rem; height: 5.5rem; border-radius: 50%; background: conic-gradient(var(--accent-gold) calc(var(--p) * 1%), rgba(255, 255, 255, 0.14) 0); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .rec-ring-in { width: 4.4rem; height: 4.4rem; border-radius: 50%; background: var(--accent-black); display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .rec-points { font-size: 3rem; font-weight: 800; color: var(--accent-gold); line-height: 1; }
         .rec-chip { display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.7rem; border-radius: 999px; border: 1px dashed rgba(247, 233, 184, 0.5); color: #F7E9B8; }
         .rec-runners { padding: 1.25rem 1.5rem; }
         .rec-runner { margin-top: 1rem; }
-        .rec-bar { height: 6px; border-radius: 6px; background: var(--border-light); margin-top: 0.5rem; }
+        .rec-bar { height: 6px; border-radius: 6px; background: var(--border-light); margin-top: 0.5rem; overflow: hidden; }
+        .rec-bar-fill { height: 100%; border-radius: 6px; background: var(--accent-gold); }
         .rec-rk { display: inline-flex; align-items: center; justify-content: center; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: var(--hover); font-size: 0.8rem; font-weight: 800; }
         .rec-lbh, .rec-lb { display: grid; grid-template-columns: 4.5rem 1.6fr repeat(4, 1fr) 1fr; align-items: center; gap: 0.5rem; padding: 0.8rem 1.4rem; }
-        .rec-lbh { background: var(--tint); font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-muted); }
+        .rec-lbh { background: var(--tint); font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-muted); text-transform: uppercase; }
         .rec-lb { border-top: 1px solid var(--border-light); font-size: 0.875rem; }
         .rec-c { text-align: center; }
         .rec-r { text-align: right; font-weight: 800; }
@@ -37,6 +40,7 @@
         .rec-scroll > div { min-width: 44rem; }
         .rec-live { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); }
         .rec-ini { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 50%; background: var(--accent-black); color: var(--accent-gold); font-size: 0.7rem; font-weight: 800; margin-right: 0.6rem; }
+        .rec-note { padding: 0.8rem 1.4rem; border-top: 1px solid var(--border-light); font-size: 0.8rem; color: var(--text-muted); }
     </style>
 </head>
 <body>
@@ -46,7 +50,7 @@
             {% include '_sidebar.html' %}
 
             <main class="col-md-10 px-4 pb-5">
-                <div class="rec-banner mt-4">Layout preview: every name, number and date on this page is a placeholder. No data is loaded yet.</div>
+                <div class="rec-banner mt-4" id="rec-status" role="status" aria-live="polite">Loading recruiter performance...</div>
 
                 <div class="d-flex gap-3 flex-wrap">
                     <label class="rec-pill"><span aria-hidden="true">&#9906;</span><input class="rec-search" type="text" placeholder="Search recruiters" disabled></label>
@@ -65,49 +69,54 @@
                     </div>
                 </div>
 
-                <div class="rec-row2">
-                    <div class="rec-hero">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="rec-eyebrow">TOP RECRUITER &middot; THIS PERIOD</div>
-                            <span class="rec-rankpill">RANK #1</span>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center gap-3">
-                            <div>
-                                <div class="fs-4 fw-bold">Recruiter name</div>
-                                <div class="rec-eyebrow mt-1">Brand &middot; Brand</div>
+                <div id="rec-content" hidden>
+                    <div class="rec-row2">
+                        <div class="rec-hero">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="rec-eyebrow" id="rec-hero-eyebrow"></div>
+                                <span class="rec-rankpill" id="rec-hero-rank" hidden></span>
                             </div>
-                            <div class="rec-ring"><div class="fw-bold">&mdash;%</div><div class="rec-eyebrow" style="font-size:0.5rem">OF POOL</div></div>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-end flex-wrap gap-2">
-                            <div><span class="rec-points">&mdash;</span> <span class="rec-eyebrow">points earned</span></div>
-                            <div class="text-end">
-                                <div class="small" style="color:#D9D4C4">+&mdash; pts vs #2</div>
-                                <span class="rec-chip">&mdash; pts pending</span>
+                            <div id="rec-hero-empty" hidden>
+                                <div class="fs-4 fw-bold">No points earned yet</div>
+                                <div class="rec-eyebrow mt-1">POINTS APPEAR WHEN A RECRUITER'S MRF IS CLOSED</div>
                             </div>
+                            <div class="rec-hero-body" id="rec-hero-full" hidden>
+                                <div class="d-flex justify-content-between align-items-center gap-3">
+                                    <div>
+                                        <div class="fs-4 fw-bold" id="rec-hero-name"></div>
+                                        <div class="rec-eyebrow mt-1" id="rec-hero-sub"></div>
+                                    </div>
+                                    <div class="rec-ring" id="rec-hero-ring"><div class="rec-ring-in"><div class="fw-bold" id="rec-hero-share"></div><div class="rec-eyebrow" style="font-size:0.5rem">OF POOL</div></div></div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-end flex-wrap gap-2">
+                                    <div><span class="rec-points" id="rec-hero-points"></span> <span class="rec-eyebrow">points earned</span></div>
+                                    <div class="text-end">
+                                        <div class="small" style="color:#D9D4C4" id="rec-hero-lead" hidden></div>
+                                        <span class="rec-chip" id="rec-hero-pending"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="rec-card rec-runners">
+                            <div class="rec-eyebrow">RUNNERS-UP</div>
+                            <div id="rec-runners"></div>
+                            <div class="rec-sub mt-3" id="rec-runners-empty" hidden></div>
                         </div>
                     </div>
-                    <div class="rec-card rec-runners">
-                        <div class="rec-eyebrow">RUNNERS-UP</div>
-                        <div class="rec-runner"><div class="d-flex align-items-center gap-2"><span class="rec-rk">2</span><b class="flex-grow-1">Recruiter name</b><b>&mdash;</b></div><div class="rec-bar"></div></div>
-                        <div class="rec-runner"><div class="d-flex align-items-center gap-2"><span class="rec-rk">3</span><b class="flex-grow-1">Recruiter name</b><b>&mdash;</b></div><div class="rec-bar"></div></div>
-                        <div class="rec-runner"><div class="d-flex align-items-center gap-2"><span class="rec-rk">4</span><b class="flex-grow-1">Recruiter name</b><b>&mdash;</b></div><div class="rec-bar"></div></div>
-                    </div>
-                </div>
 
-                <div class="rec-card rec-scroll">
-                    <div>
-                        <div class="d-flex justify-content-between align-items-start p-4 pb-3">
-                            <div>
-                                <div class="fw-bold fs-6">Full leaderboard</div>
-                                <div class="rec-sub">Ranked by earned points &middot; closed MRFs only</div>
+                    <div class="rec-card rec-scroll">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-start p-4 pb-3">
+                                <div>
+                                    <div class="fw-bold fs-6">Full leaderboard</div>
+                                    <div class="rec-sub">Ranked by earned points &middot; closed MRFs only</div>
+                                </div>
+                                <span class="rec-live" id="rec-updated"></span>
                             </div>
-                            <span class="rec-live">Auto-updating (not wired yet)</span>
+                            <div class="rec-lbh" id="rec-lbh"></div>
+                            <div id="rec-lb"></div>
+                            <div class="rec-note" id="rec-unassigned" hidden></div>
                         </div>
-                        <div class="rec-lbh"><div>RANK</div><div>RECRUITER</div><div class="rec-c">PENDING</div><div class="rec-c">MANAGERIAL</div><div class="rec-c">SUPERVISORY</div><div class="rec-c">RANK &amp; FILE</div><div class="rec-r">EARNED</div></div>
-                        <div class="rec-lb"><div><span class="rec-rk">1</span></div><div><span class="rec-ini">&mdash;</span>Recruiter name</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-r">&mdash;</div></div>
-                        <div class="rec-lb"><div><span class="rec-rk">2</span></div><div><span class="rec-ini">&mdash;</span>Recruiter name</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-r">&mdash;</div></div>
-                        <div class="rec-lb"><div><span class="rec-rk">3</span></div><div><span class="rec-ini">&mdash;</span>Recruiter name</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-r">&mdash;</div></div>
-                        <div class="rec-lb"><div><span class="rec-rk">4</span></div><div><span class="rec-ini">&mdash;</span>Recruiter name</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-c">&mdash;</div><div class="rec-r">&mdash;</div></div>
                     </div>
                 </div>
             </main>
@@ -115,5 +124,221 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/admin-sidebar.js"></script>
+    <script>
+        (function () {
+            // Recruiters page data (docs/API_CONTRACT.md, GET /api/v1/admin/metrics/recruiters, feature F3). All values are set with textContent.
+            var REC_API_URL = '/api/v1/admin/metrics/recruiters';
+            var REC_LOGIN_PATH = '/login';
+            var REC_RUNNERS_COUNT = 3;
+            var REC_INITIALS_MAX = 2;
+            var REC_DASH = '\u2014';
+            var REC_DOT = ' \u00b7 ';
+            var REC_TEXT_LOADING = 'Loading recruiter performance...';
+            var REC_TEXT_ERROR = 'Could not load recruiter performance.';
+            var REC_TEXT_ACCESS = 'You do not have access to this page.';
+            var REC_TEXT_NO_RECRUITERS = 'No recruiters yet. Users with the Recruiter role appear here.';
+            var REC_TEXT_RETRY = 'Try again';
+            var REC_TEXT_HERO_PREFIX = 'TOP RECRUITER' + REC_DOT;
+            var REC_TEXT_PERIOD_ALL = 'ALL TIME';
+            var REC_TEXT_NO_POINTS_RUNNERS = 'No points earned yet.';
+            var REC_TEXT_UPDATED = 'Updated at ';
+            var REC_HEAD_RANK = 'Rank';
+            var REC_HEAD_RECRUITER = 'Recruiter';
+            var REC_HEAD_PENDING = 'Pending';
+            var REC_HEAD_EARNED = 'Earned';
+
+            var statusEl = document.getElementById('rec-status');
+            var contentEl = document.getElementById('rec-content');
+            var heroEyebrow = document.getElementById('rec-hero-eyebrow');
+            var heroRank = document.getElementById('rec-hero-rank');
+            var heroEmpty = document.getElementById('rec-hero-empty');
+            var heroFull = document.getElementById('rec-hero-full');
+            var heroName = document.getElementById('rec-hero-name');
+            var heroSub = document.getElementById('rec-hero-sub');
+            var heroRing = document.getElementById('rec-hero-ring');
+            var heroShare = document.getElementById('rec-hero-share');
+            var heroPoints = document.getElementById('rec-hero-points');
+            var heroLead = document.getElementById('rec-hero-lead');
+            var heroPending = document.getElementById('rec-hero-pending');
+            var runnersEl = document.getElementById('rec-runners');
+            var runnersEmpty = document.getElementById('rec-runners-empty');
+            var updatedEl = document.getElementById('rec-updated');
+            var headEl = document.getElementById('rec-lbh');
+            var bodyEl = document.getElementById('rec-lb');
+            var unassignedEl = document.getElementById('rec-unassigned');
+            var latest = 0;
+
+            function el(tag, className, text) {
+                var n = document.createElement(tag);
+                if (className) { n.className = className; }
+                if (text !== undefined) { n.textContent = text; }
+                return n;
+            }
+
+            function showStatus(text, withRetry) {
+                statusEl.textContent = text;
+                if (withRetry) {
+                    var b = el('button', 'btn btn-sm btn-outline-dark ms-2', REC_TEXT_RETRY);
+                    b.type = 'button';
+                    b.addEventListener('click', load);
+                    statusEl.appendChild(b);
+                }
+                statusEl.hidden = false;
+                contentEl.hidden = true;
+            }
+
+            function hideStatus() {
+                statusEl.textContent = '';
+                statusEl.hidden = true;
+            }
+
+            function initials(name) {
+                var parts = String(name || '').split(/\s+/).filter(function (p) { return p; });
+                var s = parts.slice(0, REC_INITIALS_MAX).map(function (p) { return p.charAt(0); }).join('');
+                return s ? s.toUpperCase() : '?';
+            }
+
+            function periodLabel(p) {
+                if (p && p.date_from && p.date_to) { return (p.date_from + ' to ' + p.date_to).toUpperCase(); }
+                if (p && p.date_from) { return ('from ' + p.date_from).toUpperCase(); }
+                if (p && p.date_to) { return ('until ' + p.date_to).toUpperCase(); }
+                return REC_TEXT_PERIOD_ALL;
+            }
+
+            function pts(n) { return n + ' pts'; }
+
+            function renderHero(b, rows) {
+                var top = rows[0];
+                heroEyebrow.textContent = REC_TEXT_HERO_PREFIX + periodLabel(b.period);
+                if (!(b.totals.earned_points > 0)) {
+                    heroRank.hidden = true;
+                    heroFull.hidden = true;
+                    heroEmpty.hidden = false;
+                    return;
+                }
+                heroEmpty.hidden = true;
+                heroFull.hidden = false;
+                heroRank.textContent = 'RANK #' + top.rank;
+                heroRank.hidden = false;
+                heroName.textContent = top.name;
+                heroSub.textContent = (top.assignments || []).join(REC_DOT);
+                heroShare.textContent = (top.share_percent === null || top.share_percent === undefined) ? REC_DASH : top.share_percent + '%';
+                heroRing.style.setProperty('--p', String(top.share_percent || 0));
+                heroPoints.textContent = String(top.earned_points);
+                heroPending.textContent = pts(top.pending_points) + ' pending';
+                if (rows.length > 1) {
+                    heroLead.textContent = '+' + (top.earned_points - rows[1].earned_points) + ' pts vs #' + rows[1].rank;
+                    heroLead.hidden = false;
+                } else {
+                    heroLead.hidden = true;
+                }
+            }
+
+            function renderRunners(b, rows) {
+                runnersEl.textContent = '';
+                if (!(b.totals.earned_points > 0)) {
+                    runnersEmpty.textContent = REC_TEXT_NO_POINTS_RUNNERS;
+                    runnersEmpty.hidden = false;
+                    return;
+                }
+                runnersEmpty.hidden = true;
+                var topEarned = rows[0].earned_points;
+                rows.slice(1, 1 + REC_RUNNERS_COUNT).forEach(function (r) {
+                    var wrap = el('div', 'rec-runner');
+                    var line = el('div', 'd-flex align-items-center gap-2');
+                    line.appendChild(el('span', 'rec-rk', String(r.rank)));
+                    line.appendChild(el('b', 'flex-grow-1', r.name));
+                    line.appendChild(el('b', '', pts(r.earned_points)));
+                    var bar = el('div', 'rec-bar');
+                    var fill = el('div', 'rec-bar-fill');
+                    fill.style.width = (topEarned > 0 ? Math.round(r.earned_points * 100 / topEarned) : 0) + '%';
+                    bar.appendChild(fill);
+                    wrap.appendChild(line);
+                    wrap.appendChild(bar);
+                    runnersEl.appendChild(wrap);
+                });
+            }
+
+            function renderBoard(b, rows) {
+                // Classification columns come from the response, shown high to low (the list is in MRF_CLASSIFICATION_OPTIONS order).
+                var classes = (b.classifications || []).slice().reverse();
+                var grid = '4.5rem 1.6fr repeat(' + (classes.length + 1) + ', 1fr) 1fr';
+                headEl.style.gridTemplateColumns = grid;
+                headEl.textContent = '';
+                headEl.appendChild(el('div', '', REC_HEAD_RANK));
+                headEl.appendChild(el('div', '', REC_HEAD_RECRUITER));
+                headEl.appendChild(el('div', 'rec-c', REC_HEAD_PENDING));
+                classes.forEach(function (c) { headEl.appendChild(el('div', 'rec-c', c)); });
+                headEl.appendChild(el('div', 'rec-r', REC_HEAD_EARNED));
+
+                bodyEl.textContent = '';
+                rows.forEach(function (r) {
+                    var line = el('div', 'rec-lb');
+                    line.style.gridTemplateColumns = grid;
+                    var rk = el('div');
+                    rk.appendChild(el('span', 'rec-rk', String(r.rank)));
+                    var who = el('div');
+                    who.appendChild(el('span', 'rec-ini', initials(r.name)));
+                    who.appendChild(document.createTextNode(r.name));
+                    line.appendChild(rk);
+                    line.appendChild(who);
+                    line.appendChild(el('div', 'rec-c', String(r.pending_points)));
+                    var byClass = {};
+                    (r.by_classification || []).forEach(function (x) { byClass[x.classification] = x; });
+                    classes.forEach(function (c) {
+                        var x = byClass[c] || { earned_points: 0, closed_count: 0 };
+                        var cell = el('div', 'rec-c', String(x.earned_points));
+                        cell.title = x.closed_count + ' closed MRF' + (x.closed_count === 1 ? '' : 's');
+                        line.appendChild(cell);
+                    });
+                    line.appendChild(el('div', 'rec-r', String(r.earned_points)));
+                    bodyEl.appendChild(line);
+                });
+
+                var un = b.unassigned || { closed_count: 0, pending_count: 0 };
+                if (un.closed_count + un.pending_count > 0) {
+                    unassignedEl.textContent = 'No recruiter set, so they score nobody: ' + un.closed_count + ' closed and ' + un.pending_count + ' pending MRFs.';
+                    unassignedEl.hidden = false;
+                } else {
+                    unassignedEl.hidden = true;
+                }
+                updatedEl.textContent = REC_TEXT_UPDATED + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
+            function render(b) {
+                var rows = b.data || [];
+                if (rows.length === 0) { showStatus(REC_TEXT_NO_RECRUITERS, false); return; }
+                hideStatus();
+                contentEl.hidden = false;
+                renderHero(b, rows);
+                renderRunners(b, rows);
+                renderBoard(b, rows);
+            }
+
+            function load() {
+                var mine = ++latest;
+                showStatus(REC_TEXT_LOADING, false);
+                fetch(REC_API_URL, { credentials: 'same-origin', cache: 'no-store', headers: { 'Accept': 'application/json' } })
+                    .then(function (res) {
+                        if (res.ok) { return res.json(); }
+                        var err = new Error('request failed');
+                        err.status = res.status;
+                        throw err;
+                    })
+                    .then(function (b) {
+                        if (mine !== latest) { return; }
+                        render(b);
+                    })
+                    .catch(function (err) {
+                        if (mine !== latest) { return; }
+                        if (err.status === 401) { window.location.replace(REC_LOGIN_PATH); return; }
+                        if (err.status === 403) { showStatus(REC_TEXT_ACCESS, false); return; }
+                        showStatus(REC_TEXT_ERROR, true);
+                    });
+            }
+
+            load();
+        })();
+    </script>
 </body>
 </html>
