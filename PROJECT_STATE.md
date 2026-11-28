@@ -3120,3 +3120,22 @@ Hardcodes: REC_TAB_ON_GOING and REC_TAB_CLOSED on the page must equal the contra
 Open items: the user has not confirmed the seed points or the CANCELLED MRF assumption; editing points rescores past closed MRFs and keeps no history; throwaway rows A, B, C ("ZZ del test") and the backup table mrf_requests_bak_20261127 remain and inflate the Recruiters unassigned counts until deleted on the user's explicit confirmation; the F5 modal cannot show applicant, job title, brand or an MRF number (no such data).
 
 Next: F6, the Scoring Guideline modal (existing GET and PUT recruiter-points) and the Export Report preview.
+
+
+## Recruiters F6a: Scoring Guideline modal (2026-11-28, code 2f33db9)
+
+Built: no new endpoint. The Scoring Guideline button on /admin/metrics/recruiters opens a modal that reads GET /api/v1/admin/metrics/recruiter-points and shows the 12 points as a grid (assignments as rows, classifications as columns, Managerial, Supervisory, Rank and File). SUPERADMIN sees number inputs, a Save changes button and the warning that saving rescores every past closed MRF with no history kept; MANAGER sees the same numbers read only. Save sends the whole set through PUT recruiter-points (whole numbers go as numbers, anything else as typed text so the server's 422 text is shown), then the page reloads the leaderboard. The page route in app/main.py passes rec_can_edit_points (true for SUPERADMIN only); the server still returns 403 on PUT for anyone else. Named constants: REC_POINTS_API_URL, REC_POINTS_MAX (100, must equal MRF_RECRUITER_POINTS_MAX and the SQL CHECK), REC_CAN_EDIT_POINTS and the REC_TEXT_G_* texts.
+
+Decisions under the standing rule, flagged, not individually confirmed: a 12-cell grid built from the API instead of the mockup's two groups (the mockup's NSO group is dropped); read only for MANAGER, decided on the server and passed to the page; the warning is always shown to SUPERADMIN; no CSV or other export in this step.
+
+Verified: script run by the user as a signed-in SUPERADMIN: 22 PASS and 1 FAIL. The one FAIL was a bug in the test (a case-sensitive Cache-Control lookup, the server sends lowercase cache-control: no-store, confirmed in a separate read-only check on both endpoints), not in the code. The script proved a changed value is returned, stored and read back, that the points endpoint, the breakdown totals and the leaderboard row moved by exactly the change, that 11 rows, a repeated pair, 101, 2.5, a string and -1 each give the right 422 text and leave the table unchanged, signed-out 401 on GET and PUT, and that the points table and throwaway row A were restored to their snapshots. A Jinja parse of the template passed inside the container and a node syntax check of the page script printed NODE CHECK OK (node exists on the host; the F4 and F5 page checks remain unknown). The modal was browser-confirmed by the user ("checks confirmed", the six checks asked for were not itemised), never observed by the assistant. The user's browser test changed a value and was asked to put it back; the seeds are therefore expected unchanged but were not re-read by the assistant after the browser check.
+
+NOT tested: a MANAGER account (expected read-only modal, 403 on PUT); a RECRUITER account (403); concurrent PUT calls; the modal's load-error and Try again states; Firefox, Safari, a narrow window; keyboard use of the grid beyond normal typing.
+
+Docs: API_CONTRACT.md (call-site lines of the GET and PUT recruiter-points entries, the GET status phrase, the section 4 line, Last verified line 2); SCHEMA.md no change.
+
+Hardcodes: REC_POINTS_MAX (100) on the page must equal MRF_RECRUITER_POINTS_MAX and the SQL CHECK; the grid key separator is page-local; the display order of the classification columns is reversed on the page; the seed points are still unconfirmed by the user and so is the CANCELLED MRF assumption; the period logic is still duplicated in admin_metrics.py; Export Report is still a disabled placeholder (F6b).
+
+Slips (assistant) this step: one test check combined four conditions in one line and used a case-sensitive header lookup, which produced a false FAIL that could not be traced to its part until a separate read-only check.
+
+Next: F6b, the Export Report A4 preview printed by the browser, built from the leaderboard data the page already loaded.
