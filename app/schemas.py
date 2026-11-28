@@ -734,3 +734,27 @@ class RecruiterMetricsResponse(BaseModel):
     unassigned: RecruiterMetricsUnassigned
     data: List[RecruiterMetricsRow]
     total: int
+
+
+class RecruiterRequestItem(BaseModel):
+    # One MRF behind a recruiter's score (docs/API_CONTRACT.md, GET /api/v1/admin/metrics/recruiters/{user_id}/requests, F5).
+    id: UUID4
+    form_name: str
+    assignment: str
+    classification: str
+    status: str
+    created_at: datetime
+    closed_at: Optional[datetime] = None
+    remarks: Optional[str] = None
+    points: int
+
+
+class RecruiterRequestsResponse(BaseModel):
+    period: RecruiterMetricsPeriod
+    recruiter: MrfRequestRecruiter
+    totals: RecruiterMetricsTotals
+    tab: str
+    data: List[RecruiterRequestItem]
+    total: int
+    page: int
+    page_size: int

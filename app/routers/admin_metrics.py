@@ -3,13 +3,14 @@
 Feature F2: the scoring points per assignment and classification (GET for SUPERADMIN and MANAGER, PUT for SUPERADMIN only)."""
 from datetime import date, datetime, timedelta, timezone
 from typing import Literal, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import MrfRecruiterPoints, MrfRequest, User
+from app.models import MrfForm, MrfRecruiterPoints, MrfRequest, User
 from app.mrf_lists import (
     MRF_ASSIGNMENTS,
     MRF_CLASSIFICATION_OPTIONS,
@@ -20,6 +21,7 @@ from app.mrf_lists import (
 from app.roles import ROLE_MANAGER, ROLE_RECRUITER, ROLE_SUPERADMIN
 from app.routers.auth import require_roles
 from app.schemas import (
+    MrfRequestRecruiter,
     RecruiterMetricsClassification,
     RecruiterMetricsPeriod,
     RecruiterMetricsResponse,
@@ -29,6 +31,8 @@ from app.schemas import (
     RecruiterPointsItem,
     RecruiterPointsListResponse,
     RecruiterPointsUpdate,
+    RecruiterRequestItem,
+    RecruiterRequestsResponse,
 )
 from app.timeutil import APP_TIMEZONE
 
@@ -45,6 +49,10 @@ MRF_METRICS_DATE_ORDER = "Start date must not be after end date."
 MRF_METRICS_PRESET_AND_RANGE = "Use either a preset or a date range, not both."
 MRF_METRICS_LAST_7_DAYS = 7
 MRF_METRICS_LAST_30_DAYS = 30
+# Score breakdown (docs/API_CONTRACT.md, GET /api/v1/admin/metrics/recruiters/{user_id}/requests, CONTRACTED 2026-11-28, F5).
+MRF_RECRUITER_REQUESTS_DEFAULT_PAGE_SIZE = 10
+MRF_RECRUITER_REQUESTS_MAX_PAGE_SIZE = 50
+MRF_RECRUITER_NOT_FOUND = "Recruiter not found."
 
 
 async def _load_points_items(db: AsyncSession):
@@ -263,4 +271,143 @@ async def get_recruiter_metrics(
         unassigned=RecruiterMetricsUnassigned(closed_count=un_closed, pending_count=un_pending),
         data=data,
         total=len(data),
+    )
+
+
+def _resolve_metrics_period(preset, date_from, date_to):
+    # Same period rules as get_recruiter_metrics above (kept as a separate copy so that tested handler is not edited).
+    if preset is not None:
+        if date_from is not None or date_to is not None:
+            raise HTTPException(status_code=422, detail=MRF_METRICS_PRESET_AND_RANGE)
+        today = datetime.now(APP_TIMEZONE).date()
+        date_to = today
+        if preset == "today":
+            date_from = today
+        elif preset == "last_7_days":
+            date_from = today - timedelta(days=MRF_METRICS_LAST_7_DAYS - 1)
+        elif preset == "last_30_days":
+            date_from = today - timedelta(days=MRF_METRICS_LAST_30_DAYS - 1)
+        else:
+            date_from = today.replace(day=1)
+    if date_from is not None and date_to is not None and date_from > date_to:
+        raise HTTPException(status_code=422, detail=MRF_METRICS_DATE_ORDER)
+    start = datetime.combine(date_from, datetime.min.time(), tzinfo=APP_TIMEZONE) if date_from is not None else None
+    end = datetime.combine(date_to + timedelta(days=1), datetime.min.time(), tzinfo=APP_TIMEZONE) if date_to is not None else None
+    return date_from, date_to, start, end
+
+
+@router.get(
+    "/metrics/recruiters/{user_id}/requests",
+    response_model=RecruiterRequestsResponse,
+    dependencies=[Depends(require_roles(ROLE_SUPERADMIN, ROLE_MANAGER))],
+)
+async def get_recruiter_requests(
+    response: Response,
+    user_id: UUID,
+    tab: Literal["on_going", "closed"] = Query(...),
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    preset: Optional[Literal["today", "last_7_days", "last_30_days", "this_month"]] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(MRF_RECRUITER_REQUESTS_DEFAULT_PAGE_SIZE, ge=1, le=MRF_RECRUITER_REQUESTS_MAX_PAGE_SIZE),
+    db: AsyncSession = Depends(get_db),
+):
+    # Score breakdown for one recruiter (docs/API_CONTRACT.md, F5). Closed tab: CLOSED MRF on closed_at. On-going tab:
+    # ON GOING MRF and PARTIALLY CLOSED MRF on created_at. CANCELLED MRF is never listed. Points are read live.
+    date_from, date_to, start, end = _resolve_metrics_period(preset, date_from, date_to)
+
+    user = (
+        await db.execute(select(User.full_name, User.first_name, User.last_name, User.email).where(User.id == user_id))
+    ).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail=MRF_RECRUITER_NOT_FOUND)
+    full_name, first, last, email = user
+    name = full_name or f"{first or ''} {last or ''}".strip() or email
+
+    def window(col):
+        flt = []
+        if start is not None:
+            flt.append(col >= start)
+        if end is not None:
+            flt.append(col < end)
+        return flt
+
+    points = {
+        (r.assignment, r.classification): r.points
+        for r in (await db.execute(select(MrfRecruiterPoints))).scalars().all()
+    }
+    closed_statuses = (MRF_REQUEST_STATUS_CLOSED,)
+    pending_statuses = (MRF_REQUEST_STATUS_ON_GOING, MRF_REQUEST_STATUS_PARTIALLY_CLOSED)
+
+    async def grouped(statuses, col):
+        return (
+            await db.execute(
+                select(MrfRequest.assignment, MrfRequest.classification, func.count())
+                .where(MrfRequest.recruiter_user_id == user_id, MrfRequest.status.in_(statuses), *window(col))
+                .group_by(MrfRequest.assignment, MrfRequest.classification)
+            )
+        ).all()
+
+    closed_rows = await grouped(closed_statuses, MrfRequest.closed_at)
+    pending_rows = await grouped(pending_statuses, MrfRequest.created_at)
+    totals = RecruiterMetricsTotals(
+        earned_points=sum(n * points.get((a, c), 0) for a, c, n in closed_rows),
+        pending_points=sum(n * points.get((a, c), 0) for a, c, n in pending_rows),
+        closed_count=sum(n for _a, _c, n in closed_rows),
+        pending_count=sum(n for _a, _c, n in pending_rows),
+    )
+
+    if tab == "closed":
+        statuses, col, total = closed_statuses, MrfRequest.closed_at, totals.closed_count
+    else:
+        statuses, col, total = pending_statuses, MrfRequest.created_at, totals.pending_count
+
+    rows = (
+        await db.execute(
+            select(
+                MrfRequest.id,
+                MrfForm.name,
+                MrfRequest.assignment,
+                MrfRequest.classification,
+                MrfRequest.status,
+                MrfRequest.created_at,
+                MrfRequest.closed_at,
+                MrfRequest.remarks,
+            )
+            .join(MrfForm, MrfForm.id == MrfRequest.form_id)
+            .where(MrfRequest.recruiter_user_id == user_id, MrfRequest.status.in_(statuses), *window(col))
+            .order_by(col.desc().nulls_last(), MrfRequest.id)
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+    ).all()
+
+    data = [
+        RecruiterRequestItem(
+            id=r[0],
+            form_name=r[1],
+            assignment=r[2],
+            classification=r[3],
+            status=r[4],
+            created_at=r[5].astimezone(APP_TIMEZONE),
+            closed_at=r[6].astimezone(APP_TIMEZONE) if r[6] is not None else None,
+            remarks=r[7],
+            points=points.get((r[2], r[3]), 0),
+        )
+        for r in rows
+    ]
+
+    response.headers["Cache-Control"] = "no-store"
+    return RecruiterRequestsResponse(
+        period=RecruiterMetricsPeriod(
+            date_from=date_from.isoformat() if date_from is not None else None,
+            date_to=date_to.isoformat() if date_to is not None else None,
+        ),
+        recruiter=MrfRequestRecruiter(id=user_id, name=name),
+        totals=totals,
+        tab=tab,
+        data=data,
+        total=total,
+        page=page,
+        page_size=page_size,
     )

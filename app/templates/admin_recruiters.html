@@ -49,6 +49,19 @@
         .rec-live { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); }
         .rec-ini { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 50%; background: var(--accent-black); color: var(--accent-gold); font-size: 0.7rem; font-weight: 800; margin-right: 0.6rem; }
         .rec-note { padding: 0.8rem 1.4rem; border-top: 1px solid var(--border-light); font-size: 0.8rem; color: var(--text-muted); }
+        .rec-click { cursor: pointer; }
+        .rec-click:hover { background: var(--hover); }
+        .rec-click:focus-visible { outline: 2px solid var(--accent-gold); outline-offset: -2px; }
+        .rec-mcards { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin: 1rem 0; }
+        .rec-mcard { border-radius: 0.9rem; padding: 1rem 1.1rem; }
+        .rec-mcard.dark { background: var(--accent-black); color: var(--accent-gold); }
+        .rec-mcard.pend { background: var(--tint); border: 1.5px dashed var(--accent-gold); color: var(--gold-deep); }
+        .rec-mnum { font-size: 2.25rem; font-weight: 800; line-height: 1; }
+        .rec-mtabs { display: flex; gap: 0.4rem; margin-bottom: 0.75rem; }
+        .rec-mtab { border: 0; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 700; padding: 0.4rem 0.9rem; background: var(--hover); color: var(--text-muted); }
+        .rec-mtab.on { background: var(--accent-black); color: #F7E9B8; }
+        .rec-mrow { display: flex; justify-content: space-between; gap: 1rem; padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--border-light); }
+        .rec-mmeta { font-size: 0.75rem; color: var(--text-muted); }
     </style>
 </head>
 <body>
@@ -133,6 +146,34 @@
             </main>
         </div>
     </div>
+    <div class="modal fade" id="recBreakdownModal" tabindex="-1" aria-labelledby="recBreakdownTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="recBreakdownTitle">Score Breakdown</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="fw-bold" id="rec-m-who"></div>
+                    <div class="rec-mcards">
+                        <div class="rec-mcard dark"><div class="rec-eyebrow">POINTS EARNED</div><div class="rec-mnum" id="rec-m-earned"></div></div>
+                        <div class="rec-mcard pend"><div class="rec-eyebrow" style="color:inherit">PENDING POINTS</div><div class="rec-mnum" id="rec-m-pending"></div></div>
+                    </div>
+                    <div class="rec-mtabs">
+                        <button type="button" class="rec-mtab on" id="rec-m-tab-on" aria-pressed="true"></button>
+                        <button type="button" class="rec-mtab" id="rec-m-tab-cl" aria-pressed="false"></button>
+                    </div>
+                    <div class="rec-banner" id="rec-m-status" role="status" aria-live="polite" hidden></div>
+                    <div id="rec-m-list"></div>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <button type="button" class="btn btn-sm btn-outline-dark" id="rec-m-prev">Previous</button>
+                        <span class="rec-mmeta" id="rec-m-info"></span>
+                        <button type="button" class="btn btn-sm btn-outline-dark" id="rec-m-next">Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/admin-sidebar.js"></script>
     <script>
@@ -162,6 +203,16 @@
             var REC_TEXT_DATE_CUSTOM = 'Custom range';
             var REC_TEXT_DATE_APPLY = 'Apply';
             var REC_TEXT_RANGE_MISSING = 'Choose a start date and an end date.';
+            var REC_TEXT_M_LOADING = 'Loading score breakdown...';
+            var REC_TEXT_M_ERROR = 'Could not load the score breakdown.';
+            var REC_TEXT_M_EMPTY_ON = 'No on-going MRFs in this period.';
+            var REC_TEXT_M_EMPTY_CLOSED = 'No closed MRFs in this period.';
+            var REC_TEXT_M_ON = 'On-going';
+            var REC_TEXT_M_CLOSED = 'Closed';
+            // Tab keys and the page size sent to GET /api/v1/admin/metrics/recruiters/{user_id}/requests (feature F5; default and maximum per the contract).
+            var REC_TAB_ON_GOING = 'on_going';
+            var REC_TAB_CLOSED = 'closed';
+            var REC_MODAL_PAGE_SIZE = 10;
             // Preset keys must equal the contract's preset values (GET /api/v1/admin/metrics/recruiters, feature F4).
             var REC_PRESETS = [
                 { key: 'today', label: 'Today' },
@@ -292,6 +343,7 @@
                     bar.appendChild(fill);
                     wrap.appendChild(line);
                     wrap.appendChild(bar);
+                    makeOpenable(wrap, r);
                     runnersEl.appendChild(wrap);
                 });
             }
@@ -333,6 +385,7 @@
                         line.appendChild(cell);
                     });
                     line.appendChild(el('div', 'rec-r', String(r.earned_points)));
+                    makeOpenable(line, r);
                     bodyEl.appendChild(line);
                 });
 
@@ -444,6 +497,153 @@
                 dateMenu.appendChild(menuErr);
             }
 
+            // Score Breakdown modal (docs/API_CONTRACT.md, GET /api/v1/admin/metrics/recruiters/{user_id}/requests, feature F5).
+            var mEl = document.getElementById('recBreakdownModal');
+            var mWho = document.getElementById('rec-m-who');
+            var mEarned = document.getElementById('rec-m-earned');
+            var mPending = document.getElementById('rec-m-pending');
+            var mTabOn = document.getElementById('rec-m-tab-on');
+            var mTabCl = document.getElementById('rec-m-tab-cl');
+            var mStatus = document.getElementById('rec-m-status');
+            var mList = document.getElementById('rec-m-list');
+            var mPrev = document.getElementById('rec-m-prev');
+            var mNext = document.getElementById('rec-m-next');
+            var mInfo = document.getElementById('rec-m-info');
+            var mRec = null;
+            var mSel = { mode: 'all' };
+            var mTab = REC_TAB_ON_GOING;
+            var mPage = 1;
+            var mSeq = 0;
+
+            function periodParams(sel) {
+                if (sel.mode === 'preset') { return '&preset=' + encodeURIComponent(sel.preset); }
+                if (sel.mode === 'range') { return '&date_from=' + encodeURIComponent(sel.from) + '&date_to=' + encodeURIComponent(sel.to); }
+                return '';
+            }
+
+            // Date and time are cut from the ISO string so they stay in the app timezone.
+            function fmtStamp(iso) {
+                return iso ? String(iso).slice(0, 10) + ' ' + String(iso).slice(11, 16) : REC_DASH;
+            }
+
+            function setMStatus(text, withRetry) {
+                mStatus.textContent = text;
+                if (withRetry) {
+                    var b = el('button', 'btn btn-sm btn-outline-dark ms-2', REC_TEXT_RETRY);
+                    b.type = 'button';
+                    b.addEventListener('click', loadModal);
+                    mStatus.appendChild(b);
+                }
+                mStatus.hidden = !text;
+            }
+
+            function updateTabs() {
+                mTabOn.classList.toggle('on', mTab === REC_TAB_ON_GOING);
+                mTabCl.classList.toggle('on', mTab === REC_TAB_CLOSED);
+                mTabOn.setAttribute('aria-pressed', mTab === REC_TAB_ON_GOING ? 'true' : 'false');
+                mTabCl.setAttribute('aria-pressed', mTab === REC_TAB_CLOSED ? 'true' : 'false');
+            }
+
+            function renderModal(b) {
+                var closed = b.tab === REC_TAB_CLOSED;
+                mWho.textContent = b.recruiter.name + REC_DOT + periodLabel(b.period);
+                mEarned.textContent = String(b.totals.earned_points);
+                mPending.textContent = String(b.totals.pending_points);
+                mTabOn.textContent = REC_TEXT_M_ON + REC_DOT + b.totals.pending_count;
+                mTabCl.textContent = REC_TEXT_M_CLOSED + REC_DOT + b.totals.closed_count;
+                mList.textContent = '';
+                setMStatus('', false);
+                if (b.data.length === 0) {
+                    if (b.total > 0 && mPage > 1) {
+                        mPage = Math.max(1, Math.ceil(b.total / b.page_size));
+                        loadModal();
+                        return;
+                    }
+                    setMStatus(closed ? REC_TEXT_M_EMPTY_CLOSED : REC_TEXT_M_EMPTY_ON, false);
+                }
+                b.data.forEach(function (x) {
+                    var row = el('div', 'rec-mrow');
+                    var left = el('div');
+                    left.appendChild(el('b', '', x.form_name));
+                    left.appendChild(el('div', 'rec-mmeta', [x.assignment, x.classification, x.status].join(REC_DOT)));
+                    left.appendChild(el('div', 'rec-mmeta', 'Created ' + fmtStamp(x.created_at) + (x.closed_at ? REC_DOT + 'Closed ' + fmtStamp(x.closed_at) : '')));
+                    if (x.remarks) { left.appendChild(el('div', 'rec-mmeta', 'Remark: ' + x.remarks)); }
+                    var right = el('div', 'text-end');
+                    right.appendChild(el('b', '', pts(x.points)));
+                    right.appendChild(el('div', 'rec-mmeta', closed ? 'earned' : 'pending'));
+                    row.appendChild(left);
+                    row.appendChild(right);
+                    mList.appendChild(row);
+                });
+                var from = (b.page - 1) * b.page_size + 1;
+                mInfo.textContent = b.total === 0 ? '0 of 0' : from + ' to ' + (from + b.data.length - 1) + ' of ' + b.total;
+                mPrev.disabled = b.page <= 1;
+                mNext.disabled = b.page * b.page_size >= b.total;
+            }
+
+            function loadModal() {
+                var mine = ++mSeq;
+                mList.textContent = '';
+                mPrev.disabled = true;
+                mNext.disabled = true;
+                setMStatus(REC_TEXT_M_LOADING, false);
+                var url = REC_API_URL + '/' + encodeURIComponent(mRec.id) + '/requests?tab=' + mTab + '&page=' + mPage + '&page_size=' + REC_MODAL_PAGE_SIZE + periodParams(mSel);
+                fetch(url, { credentials: 'same-origin', cache: 'no-store', headers: { 'Accept': 'application/json' } })
+                    .then(function (res) {
+                        if (res.ok) { return res.json(); }
+                        return res.json().catch(function () { return null; }).then(function (j) {
+                            var err = new Error('request failed');
+                            err.status = res.status;
+                            err.detail = (j && typeof j.detail === 'string') ? j.detail : '';
+                            throw err;
+                        });
+                    })
+                    .then(function (b) {
+                        if (mine !== mSeq) { return; }
+                        renderModal(b);
+                    })
+                    .catch(function (err) {
+                        if (mine !== mSeq) { return; }
+                        if (err.status === 401) { window.location.replace(REC_LOGIN_PATH); return; }
+                        setMStatus(err.detail || REC_TEXT_M_ERROR, true);
+                    });
+            }
+
+            function setModalTab(t) {
+                if (t === mTab) { return; }
+                mTab = t;
+                mPage = 1;
+                updateTabs();
+                loadModal();
+            }
+
+            function openBreakdown(r) {
+                mRec = { id: r.id, name: r.name };
+                mSel = { mode: applied.mode, preset: applied.preset, from: applied.from, to: applied.to };
+                mTab = REC_TAB_ON_GOING;
+                mPage = 1;
+                mWho.textContent = r.name;
+                mEarned.textContent = REC_DASH;
+                mPending.textContent = REC_DASH;
+                mTabOn.textContent = REC_TEXT_M_ON;
+                mTabCl.textContent = REC_TEXT_M_CLOSED;
+                mInfo.textContent = '';
+                updateTabs();
+                bootstrap.Modal.getOrCreateInstance(mEl).show();
+                loadModal();
+            }
+
+            function makeOpenable(node, r) {
+                node.classList.add('rec-click');
+                node.tabIndex = 0;
+                node.setAttribute('role', 'button');
+                node.setAttribute('aria-label', 'Score breakdown for ' + r.name);
+                node.addEventListener('click', function () { openBreakdown(r); });
+                node.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBreakdown(r); }
+                });
+            }
+
             function load(next) {
                 var target = (next && next.mode) ? next : applied;
                 var mine = ++latest;
@@ -490,6 +690,12 @@
             searchEl.addEventListener('input', function () {
                 if (current) { renderBoard(current, current.data || []); }
             });
+
+            mTabOn.addEventListener('click', function () { setModalTab(REC_TAB_ON_GOING); });
+            mTabCl.addEventListener('click', function () { setModalTab(REC_TAB_CLOSED); });
+            mPrev.addEventListener('click', function () { if (mPage > 1) { mPage -= 1; loadModal(); } });
+            mNext.addEventListener('click', function () { mPage += 1; loadModal(); });
+            mEl.addEventListener('hidden.bs.modal', function () { mSeq += 1; });
 
             buildMenu();
             updateDateUi();
