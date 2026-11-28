@@ -265,7 +265,7 @@ async def serve_admin_users(request: Request):
 async def serve_admin_metrics_recruiters(request: Request):
     # Recruiters metrics, SHELL only (section 8): placeholder content, no data is fetched yet.
     # Role check: SUPERADMIN and MANAGER allowed, RECRUITER gets 403 (the same guard as /admin/mrf).
-    return templates.TemplateResponse(request=request, name="admin_recruiters.html", context=admin_sidebar_context(request), headers=NO_STORE)
+    return templates.TemplateResponse(request=request, name="admin_recruiters.html", context={**admin_sidebar_context(request), "rec_can_edit_points": getattr(getattr(request.state, "user", None), "role", "") == ROLE_SUPERADMIN}, headers=NO_STORE)
 
 @app.get("/admin/mrf", include_in_schema=False, dependencies=[Depends(require_page_session), Depends(require_page_roles(ROLE_SUPERADMIN, ROLE_MANAGER))])
 async def serve_admin_mrf(request: Request):

@@ -88,7 +88,7 @@
                         <div class="rec-sub">Points are earned only when an MRF is closed. On-going MRFs show as pending points.</div>
                     </div>
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-outline-dark" disabled>Scoring Guideline</button>
+                        <button type="button" class="btn btn-outline-dark" id="rec-guide-btn">Scoring Guideline</button>
                         <button type="button" class="btn btn-dark" disabled>Export Report</button>
                     </div>
                 </div>
@@ -174,6 +174,29 @@
             </div>
         </div>
     </div>
+    <div class="modal fade" id="recGuideModal" tabindex="-1" aria-labelledby="recGuideTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="recGuideTitle">Scoring Guideline</h5>
+                    <span class="badge ms-2" id="rec-g-badge"></span>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="rec-sub mb-3" id="rec-g-note"></div>
+                    <div class="rec-banner" id="rec-g-warn"></div>
+                    <div class="rec-banner" id="rec-g-status" role="status" aria-live="polite" hidden></div>
+                    <div id="rec-g-grid"></div>
+                    <div class="rec-menu-err px-0" id="rec-g-error" role="alert" hidden></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-dark" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-dark" id="rec-g-save" hidden>Save changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/admin-sidebar.js"></script>
     <script>
@@ -213,6 +236,22 @@
             var REC_TAB_ON_GOING = 'on_going';
             var REC_TAB_CLOSED = 'closed';
             var REC_MODAL_PAGE_SIZE = 10;
+            // Scoring Guideline (feature F6). REC_POINTS_MAX must equal MRF_RECRUITER_POINTS_MAX in app/routers/admin_metrics.py and the SQL CHECK.
+            var REC_POINTS_API_URL = '/api/v1/admin/metrics/recruiter-points';
+            var REC_POINTS_MAX = 100;
+            var REC_CAN_EDIT_POINTS = {{ (rec_can_edit_points | default(false)) | tojson }} === true;
+            var REC_TEXT_G_INTRO = 'Points are awarded per assignment and classification only when an MRF is closed. Pending (on-going) MRFs never count toward earned points.';
+            var REC_TEXT_G_WARN = 'Saving rescores every past closed MRF, because points are always calculated from this table. No history of the old values is kept.';
+            var REC_TEXT_G_READONLY = 'Read only. Only a super admin can change these points.';
+            var REC_TEXT_G_BADGE_EDIT = 'EDITABLE';
+            var REC_TEXT_G_BADGE_READ = 'READ ONLY';
+            var REC_TEXT_G_LOADING = 'Loading scoring guideline...';
+            var REC_TEXT_G_ERROR = 'Could not load the scoring guideline.';
+            var REC_TEXT_G_SAVE_ERROR = 'Could not save the scoring guideline.';
+            var REC_TEXT_G_SAVED = 'Saved. The leaderboard has been refreshed.';
+            var REC_TEXT_G_SAVE = 'Save changes';
+            var REC_TEXT_G_SAVING = 'Saving...';
+            var REC_TEXT_G_HEAD_ASSIGNMENT = 'Assignment';
             // Preset keys must equal the contract's preset values (GET /api/v1/admin/metrics/recruiters, feature F4).
             var REC_PRESETS = [
                 { key: 'today', label: 'Today' },
@@ -696,6 +735,174 @@
             mPrev.addEventListener('click', function () { if (mPage > 1) { mPage -= 1; loadModal(); } });
             mNext.addEventListener('click', function () { mPage += 1; loadModal(); });
             mEl.addEventListener('hidden.bs.modal', function () { mSeq += 1; });
+
+            // Scoring Guideline modal (docs/API_CONTRACT.md, GET and PUT /api/v1/admin/metrics/recruiter-points, feature F6).
+            var gBtn = document.getElementById('rec-guide-btn');
+            var gEl = document.getElementById('recGuideModal');
+            var gBadge = document.getElementById('rec-g-badge');
+            var gNote = document.getElementById('rec-g-note');
+            var gWarn = document.getElementById('rec-g-warn');
+            var gStatus = document.getElementById('rec-g-status');
+            var gGrid = document.getElementById('rec-g-grid');
+            var gError = document.getElementById('rec-g-error');
+            var gSave = document.getElementById('rec-g-save');
+            var gInputs = {};
+            var gSeq = 0;
+            var gSaving = false;
+
+            function gReadResponse(res) {
+                if (res.ok) { return res.json(); }
+                return res.json().catch(function () { return null; }).then(function (j) {
+                    var err = new Error('request failed');
+                    err.status = res.status;
+                    err.detail = (j && typeof j.detail === 'string') ? j.detail : '';
+                    throw err;
+                });
+            }
+
+            function setGStatus(text, withRetry) {
+                gStatus.textContent = text;
+                if (withRetry) {
+                    var b = el('button', 'btn btn-sm btn-outline-dark ms-2', REC_TEXT_RETRY);
+                    b.type = 'button';
+                    b.addEventListener('click', loadGuide);
+                    gStatus.appendChild(b);
+                }
+                gStatus.hidden = !text;
+            }
+
+            function setGError(text) {
+                gError.textContent = text || '';
+                gError.hidden = !text;
+            }
+
+            function renderGuide(items) {
+                var assignments = [];
+                var classes = [];
+                var byKey = {};
+                items.forEach(function (i) {
+                    if (assignments.indexOf(i.assignment) < 0) { assignments.push(i.assignment); }
+                    if (classes.indexOf(i.classification) < 0) { classes.push(i.classification); }
+                    byKey[i.assignment + '|' + i.classification] = i.points;
+                });
+                classes.reverse();
+                gInputs = {};
+                gGrid.textContent = '';
+                var table = el('table', 'table table-sm align-middle mb-0');
+                var headRow = el('tr');
+                headRow.appendChild(el('th', '', REC_TEXT_G_HEAD_ASSIGNMENT));
+                classes.forEach(function (c) { headRow.appendChild(el('th', 'text-end', c)); });
+                var thead = el('thead');
+                thead.appendChild(headRow);
+                table.appendChild(thead);
+                var tbody = el('tbody');
+                assignments.forEach(function (a) {
+                    var tr = el('tr');
+                    tr.appendChild(el('th', 'fw-semibold', a));
+                    classes.forEach(function (c) {
+                        var td = el('td', 'text-end');
+                        var v = byKey[a + '|' + c];
+                        if (REC_CAN_EDIT_POINTS) {
+                            var input = el('input', 'form-control form-control-sm text-end ms-auto');
+                            input.type = 'number';
+                            input.min = '0';
+                            input.max = String(REC_POINTS_MAX);
+                            input.step = '1';
+                            input.value = (v === undefined) ? '' : String(v);
+                            input.style.maxWidth = '6rem';
+                            input.setAttribute('aria-label', a + ', ' + c + ' points');
+                            td.appendChild(input);
+                            gInputs[a + '|' + c] = { assignment: a, classification: c, input: input };
+                        } else {
+                            td.textContent = (v === undefined) ? REC_DASH : String(v);
+                        }
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(tbody);
+                var wrap = el('div', 'table-responsive');
+                wrap.appendChild(table);
+                gGrid.appendChild(wrap);
+            }
+
+            function loadGuide() {
+                var mine = ++gSeq;
+                setGError('');
+                gGrid.textContent = '';
+                gSave.disabled = true;
+                setGStatus(REC_TEXT_G_LOADING, false);
+                fetch(REC_POINTS_API_URL, { credentials: 'same-origin', cache: 'no-store', headers: { 'Accept': 'application/json' } })
+                    .then(gReadResponse)
+                    .then(function (b) {
+                        if (mine !== gSeq) { return; }
+                        setGStatus('', false);
+                        renderGuide(b.data || []);
+                        gSave.disabled = false;
+                    })
+                    .catch(function (err) {
+                        if (mine !== gSeq) { return; }
+                        if (err.status === 401) { window.location.replace(REC_LOGIN_PATH); return; }
+                        if (err.status === 403) { setGStatus(REC_TEXT_ACCESS, false); return; }
+                        setGStatus(REC_TEXT_G_ERROR, true);
+                    });
+            }
+
+            function saveGuide() {
+                if (gSaving || !REC_CAN_EDIT_POINTS) { return; }
+                var data = Object.keys(gInputs).map(function (k) {
+                    var g = gInputs[k];
+                    var raw = g.input.value.trim();
+                    return { assignment: g.assignment, classification: g.classification, points: /^\d+$/.test(raw) ? parseInt(raw, 10) : raw };
+                });
+                var mine = ++gSeq;
+                gSaving = true;
+                gSave.disabled = true;
+                gSave.textContent = REC_TEXT_G_SAVING;
+                setGError('');
+                setGStatus('', false);
+                fetch(REC_POINTS_API_URL, {
+                    method: 'PUT',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: data })
+                })
+                    .then(gReadResponse)
+                    .then(function (b) {
+                        load();
+                        if (mine !== gSeq) { return; }
+                        renderGuide(b.data || []);
+                        setGStatus(REC_TEXT_G_SAVED, false);
+                    })
+                    .catch(function (err) {
+                        if (mine !== gSeq) { return; }
+                        if (err.status === 401) { window.location.replace(REC_LOGIN_PATH); return; }
+                        if (err.status === 403) { setGError(REC_TEXT_ACCESS); return; }
+                        setGError(err.detail || REC_TEXT_G_SAVE_ERROR);
+                    })
+                    .then(function () {
+                        gSaving = false;
+                        gSave.disabled = false;
+                        gSave.textContent = REC_TEXT_G_SAVE;
+                    });
+            }
+
+            function openGuide() {
+                gBadge.textContent = REC_CAN_EDIT_POINTS ? REC_TEXT_G_BADGE_EDIT : REC_TEXT_G_BADGE_READ;
+                gBadge.className = 'badge ms-2 ' + (REC_CAN_EDIT_POINTS ? 'text-bg-warning' : 'text-bg-secondary');
+                gNote.textContent = REC_TEXT_G_INTRO;
+                gWarn.textContent = REC_CAN_EDIT_POINTS ? REC_TEXT_G_WARN : REC_TEXT_G_READONLY;
+                gSave.hidden = !REC_CAN_EDIT_POINTS;
+                gSave.textContent = REC_TEXT_G_SAVE;
+                setGError('');
+                bootstrap.Modal.getOrCreateInstance(gEl).show();
+                loadGuide();
+            }
+
+            gBtn.addEventListener('click', openGuide);
+            gSave.addEventListener('click', saveGuide);
+            gEl.addEventListener('hidden.bs.modal', function () { gSeq += 1; });
 
             buildMenu();
             updateDateUi();
