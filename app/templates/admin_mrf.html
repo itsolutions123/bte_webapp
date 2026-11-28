@@ -383,6 +383,8 @@
             var MRF_REQ_SEARCH_DELAY_MS = 300;
             var MRF_REQ_SEARCH_MAX_LENGTH = 100;
             var MRF_REQ_LOGIN_PATH = '/login';
+            // Query parameter that opens one request's review panel on load; must equal REC_MRF_LINK_PARAM in admin_recruiters.html.
+            var MRF_REQ_DEEP_LINK_PARAM = 'request';
             var MRF_REQ_EMPTY_TEXT = 'Nothing here yet';
             var MRF_REQ_EMPTY_FILTERED_TEXT = 'No requests match your filters.';
             var MRF_REQ_ERROR_OTHER = 'Could not load requests. Try again.';
@@ -1121,6 +1123,10 @@
                 if (typeof MRF_INITIAL_TAB !== 'undefined' && MRF_INITIAL_TAB === 'submissions' && !reqLoaded) {
                     reqLoaded = true;
                     loadRequests();
+                }
+                var deepId = new URLSearchParams(window.location.search).get(MRF_REQ_DEEP_LINK_PARAM);
+                if (deepId && typeof MRF_INITIAL_TAB !== 'undefined' && MRF_INITIAL_TAB === 'submissions') {
+                    reviewOpen({ id: deepId, submitted_by: '' });
                 }
             });
         })();
