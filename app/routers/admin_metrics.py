@@ -2,7 +2,7 @@
 
 Feature F2: the scoring points per assignment and classification (GET for SUPERADMIN and MANAGER, PUT for SUPERADMIN only)."""
 from datetime import date, datetime, timedelta, timezone
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func, select
@@ -42,6 +42,9 @@ MRF_RECRUITER_POINTS_VALUE_INVALID = f"Points must be whole numbers from 0 to {M
 
 # Recruiter metrics (docs/API_CONTRACT.md, GET /api/v1/admin/metrics/recruiters, CONTRACTED 2026-11-27). Same text as MRF_REQUESTS_DATE_ORDER in app/routers/admin_mrf.py.
 MRF_METRICS_DATE_ORDER = "Start date must not be after end date."
+MRF_METRICS_PRESET_AND_RANGE = "Use either a preset or a date range, not both."
+MRF_METRICS_LAST_7_DAYS = 7
+MRF_METRICS_LAST_30_DAYS = 30
 
 
 async def _load_points_items(db: AsyncSession):
@@ -116,12 +119,26 @@ async def get_recruiter_metrics(
     response: Response,
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
+    preset: Optional[Literal["today", "last_7_days", "last_30_days", "this_month"]] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Recruiter leaderboard data (docs/API_CONTRACT.md, GET /api/v1/admin/metrics/recruiters, CONTRACTED 2026-11-27).
     Earned: CLOSED MRF filtered on closed_at. Pending: ON GOING MRF and PARTIALLY CLOSED MRF filtered on created_at.
     CANCELLED MRF scores nothing. A request with no recruiter is only counted under unassigned. Points come live from
     mrf_recruiter_points; a pair with no row scores 0."""
+    if preset is not None:
+        if date_from is not None or date_to is not None:
+            raise HTTPException(status_code=422, detail=MRF_METRICS_PRESET_AND_RANGE)
+        today = datetime.now(APP_TIMEZONE).date()
+        date_to = today
+        if preset == "today":
+            date_from = today
+        elif preset == "last_7_days":
+            date_from = today - timedelta(days=MRF_METRICS_LAST_7_DAYS - 1)
+        elif preset == "last_30_days":
+            date_from = today - timedelta(days=MRF_METRICS_LAST_30_DAYS - 1)
+        else:
+            date_from = today.replace(day=1)
     if date_from is not None and date_to is not None and date_from > date_to:
         raise HTTPException(status_code=422, detail=MRF_METRICS_DATE_ORDER)
     start = datetime.combine(date_from, datetime.min.time(), tzinfo=APP_TIMEZONE) if date_from is not None else None

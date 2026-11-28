@@ -12,6 +12,14 @@
         .rec-banner { background: var(--tint); border: 1px dashed var(--accent-gold); border-radius: 0.75rem; padding: 0.5rem 0.9rem; font-size: 0.8rem; color: var(--gold-deep); margin-bottom: 1.25rem; }
         .rec-pill { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 999px; padding: 0.5rem 1rem; font-size: 0.875rem; color: var(--text-muted); }
         .rec-search { border: 0; outline: 0; background: transparent; min-width: 11rem; font: inherit; }
+        button.rec-pill { cursor: pointer; font-family: inherit; }
+        .rec-datewrap { position: relative; }
+        .rec-menu { position: absolute; top: calc(100% + 0.4rem); left: 0; z-index: 20; min-width: 14rem; background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 0.75rem; box-shadow: var(--soft-shadow); padding: 0.35rem; }
+        .rec-opt { display: block; width: 100%; text-align: left; background: transparent; border: 0; border-radius: 0.5rem; padding: 0.45rem 0.75rem; font-size: 0.875rem; color: inherit; }
+        .rec-opt:hover { background: var(--hover); }
+        .rec-opt.on { font-weight: 800; background: var(--tint); }
+        .rec-custom { padding: 0.5rem 0.75rem; border-top: 1px solid var(--border-light); margin-top: 0.35rem; }
+        .rec-menu-err { color: #b02a37; font-size: 0.8rem; padding: 0.35rem 0.75rem; }
         .rec-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
         .rec-gbar { width: 3rem; height: 4px; border-radius: 4px; background: var(--accent-gold); margin: 0.5rem 0 0.75rem; }
         .rec-sub { font-size: 0.9rem; color: var(--text-muted); }
@@ -53,8 +61,11 @@
                 <div class="rec-banner mt-4" id="rec-status" role="status" aria-live="polite">Loading recruiter performance...</div>
 
                 <div class="d-flex gap-3 flex-wrap">
-                    <label class="rec-pill"><span aria-hidden="true">&#9906;</span><input class="rec-search" type="text" placeholder="Search recruiters" disabled></label>
-                    <button type="button" class="rec-pill" disabled>Date range &#9662;</button>
+                    <label class="rec-pill"><span aria-hidden="true">&#9906;</span><input class="rec-search" id="rec-search" type="text" placeholder="Search recruiters" autocomplete="off" aria-label="Search recruiters"></label>
+                    <div class="rec-datewrap">
+                        <button type="button" class="rec-pill" id="rec-date-btn" aria-haspopup="true" aria-expanded="false"><span id="rec-date-label"></span> &#9662;</button>
+                        <div class="rec-menu" id="rec-date-menu" hidden></div>
+                    </div>
                 </div>
 
                 <div class="rec-top">
@@ -146,6 +157,18 @@
             var REC_HEAD_RECRUITER = 'Recruiter';
             var REC_HEAD_PENDING = 'Pending';
             var REC_HEAD_EARNED = 'Earned';
+            var REC_TEXT_NO_MATCH = 'No recruiters match your search.';
+            var REC_TEXT_DATE_ALL = 'All time';
+            var REC_TEXT_DATE_CUSTOM = 'Custom range';
+            var REC_TEXT_DATE_APPLY = 'Apply';
+            var REC_TEXT_RANGE_MISSING = 'Choose a start date and an end date.';
+            // Preset keys must equal the contract's preset values (GET /api/v1/admin/metrics/recruiters, feature F4).
+            var REC_PRESETS = [
+                { key: 'today', label: 'Today' },
+                { key: 'last_7_days', label: 'Last 7 days' },
+                { key: 'last_30_days', label: 'Last 30 days' },
+                { key: 'this_month', label: 'This month' }
+            ];
 
             var statusEl = document.getElementById('rec-status');
             var contentEl = document.getElementById('rec-content');
@@ -167,6 +190,19 @@
             var bodyEl = document.getElementById('rec-lb');
             var unassignedEl = document.getElementById('rec-unassigned');
             var latest = 0;
+            var searchEl = document.getElementById('rec-search');
+            var dateBtn = document.getElementById('rec-date-btn');
+            var dateLabel = document.getElementById('rec-date-label');
+            var dateMenu = document.getElementById('rec-date-menu');
+            var hasData = false;
+            var current = null;
+            var applied = { mode: 'all' };
+            var optEls = [];
+            var customOpt = null;
+            var customPanel = null;
+            var customFrom = null;
+            var customTo = null;
+            var menuErr = null;
 
             function el(tag, className, text) {
                 var n = document.createElement(tag);
@@ -185,6 +221,7 @@
                 }
                 statusEl.hidden = false;
                 contentEl.hidden = true;
+                hasData = false;
             }
 
             function hideStatus() {
@@ -272,7 +309,11 @@
                 headEl.appendChild(el('div', 'rec-r', REC_HEAD_EARNED));
 
                 bodyEl.textContent = '';
-                rows.forEach(function (r) {
+                // Search only filters the rows shown here; ranks, totals, hero and Runners-up stay computed over everyone.
+                var term = searchEl.value.trim().toLowerCase();
+                var shown = term ? rows.filter(function (r) { return String(r.name).toLowerCase().indexOf(term) !== -1; }) : rows;
+                if (shown.length === 0) { bodyEl.appendChild(el('div', 'rec-note', REC_TEXT_NO_MATCH)); }
+                shown.forEach(function (r) {
                     var line = el('div', 'rec-lb');
                     line.style.gridTemplateColumns = grid;
                     var rk = el('div');
@@ -302,7 +343,6 @@
                 } else {
                     unassignedEl.hidden = true;
                 }
-                updatedEl.textContent = REC_TEXT_UPDATED + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             }
 
             function render(b) {
@@ -310,33 +350,149 @@
                 if (rows.length === 0) { showStatus(REC_TEXT_NO_RECRUITERS, false); return; }
                 hideStatus();
                 contentEl.hidden = false;
+                hasData = true;
+                current = b;
                 renderHero(b, rows);
                 renderRunners(b, rows);
                 renderBoard(b, rows);
+                updatedEl.textContent = REC_TEXT_UPDATED + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             }
 
-            function load() {
+            function queryFor(sel) {
+                if (sel.mode === 'preset') { return '?preset=' + encodeURIComponent(sel.preset); }
+                if (sel.mode === 'range') { return '?date_from=' + encodeURIComponent(sel.from) + '&date_to=' + encodeURIComponent(sel.to); }
+                return '';
+            }
+
+            function sameSel(a, b) {
+                return a.mode === b.mode && a.preset === b.preset && a.from === b.from && a.to === b.to;
+            }
+
+            function selLabel(sel) {
+                if (sel.mode === 'preset') {
+                    for (var i = 0; i < REC_PRESETS.length; i++) {
+                        if (REC_PRESETS[i].key === sel.preset) { return REC_PRESETS[i].label; }
+                    }
+                }
+                if (sel.mode === 'range') { return sel.from + ' to ' + sel.to; }
+                return REC_TEXT_DATE_ALL;
+            }
+
+            function updateDateUi() {
+                dateLabel.textContent = selLabel(applied);
+                optEls.forEach(function (o) { o.el.classList.toggle('on', sameSel(o.sel, applied)); });
+                if (customOpt) { customOpt.classList.toggle('on', applied.mode === 'range'); }
+            }
+
+            function menuError(text) {
+                menuErr.textContent = text || '';
+                menuErr.hidden = !text;
+            }
+
+            function openMenu() {
+                dateMenu.hidden = false;
+                dateBtn.setAttribute('aria-expanded', 'true');
+            }
+
+            function closeMenu() {
+                dateMenu.hidden = true;
+                dateBtn.setAttribute('aria-expanded', 'false');
+                menuError('');
+            }
+
+            function pick(sel) {
+                menuError('');
+                load(sel);
+            }
+
+            function addOpt(label, sel) {
+                var b = el('button', 'rec-opt', label);
+                b.type = 'button';
+                b.addEventListener('click', function () { pick(sel); });
+                dateMenu.appendChild(b);
+                optEls.push({ el: b, sel: sel });
+            }
+
+            function buildMenu() {
+                addOpt(REC_TEXT_DATE_ALL, { mode: 'all' });
+                REC_PRESETS.forEach(function (p) { addOpt(p.label, { mode: 'preset', preset: p.key }); });
+                customOpt = el('button', 'rec-opt', REC_TEXT_DATE_CUSTOM);
+                customOpt.type = 'button';
+                customOpt.addEventListener('click', function () { customPanel.hidden = !customPanel.hidden; });
+                dateMenu.appendChild(customOpt);
+                customPanel = el('div', 'rec-custom');
+                customPanel.hidden = true;
+                customFrom = el('input', 'form-control form-control-sm mb-2');
+                customFrom.type = 'date';
+                customFrom.setAttribute('aria-label', 'Start date');
+                customTo = el('input', 'form-control form-control-sm mb-2');
+                customTo.type = 'date';
+                customTo.setAttribute('aria-label', 'End date');
+                var applyBtn = el('button', 'btn btn-sm btn-dark', REC_TEXT_DATE_APPLY);
+                applyBtn.type = 'button';
+                applyBtn.addEventListener('click', function () {
+                    if (!customFrom.value || !customTo.value) { menuError(REC_TEXT_RANGE_MISSING); return; }
+                    pick({ mode: 'range', from: customFrom.value, to: customTo.value });
+                });
+                customPanel.appendChild(customFrom);
+                customPanel.appendChild(customTo);
+                customPanel.appendChild(applyBtn);
+                dateMenu.appendChild(customPanel);
+                menuErr = el('div', 'rec-menu-err');
+                menuErr.hidden = true;
+                menuErr.setAttribute('role', 'alert');
+                dateMenu.appendChild(menuErr);
+            }
+
+            function load(next) {
+                var target = (next && next.mode) ? next : applied;
                 var mine = ++latest;
-                showStatus(REC_TEXT_LOADING, false);
-                fetch(REC_API_URL, { credentials: 'same-origin', cache: 'no-store', headers: { 'Accept': 'application/json' } })
+                if (!hasData) { showStatus(REC_TEXT_LOADING, false); }
+                fetch(REC_API_URL + queryFor(target), { credentials: 'same-origin', cache: 'no-store', headers: { 'Accept': 'application/json' } })
                     .then(function (res) {
                         if (res.ok) { return res.json(); }
-                        var err = new Error('request failed');
-                        err.status = res.status;
-                        throw err;
+                        return res.json().catch(function () { return null; }).then(function (j) {
+                            var err = new Error('request failed');
+                            err.status = res.status;
+                            err.detail = (j && typeof j.detail === 'string') ? j.detail : '';
+                            throw err;
+                        });
                     })
                     .then(function (b) {
                         if (mine !== latest) { return; }
                         render(b);
+                        applied = target;
+                        updateDateUi();
+                        closeMenu();
                     })
                     .catch(function (err) {
                         if (mine !== latest) { return; }
+                        if (err.status === 422) {
+                            menuError(err.detail || REC_TEXT_ERROR);
+                            if (!hasData) { showStatus(REC_TEXT_ERROR, true); }
+                            return;
+                        }
                         if (err.status === 401) { window.location.replace(REC_LOGIN_PATH); return; }
                         if (err.status === 403) { showStatus(REC_TEXT_ACCESS, false); return; }
                         showStatus(REC_TEXT_ERROR, true);
                     });
             }
 
+            dateBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (dateMenu.hidden) { openMenu(); } else { closeMenu(); }
+            });
+            dateMenu.addEventListener('click', function (e) { e.stopPropagation(); });
+            document.addEventListener('click', function () { if (!dateMenu.hidden) { closeMenu(); } });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && !dateMenu.hidden) { closeMenu(); dateBtn.focus(); }
+            });
+            searchEl.addEventListener('input', function () {
+                if (current) { renderBoard(current, current.data || []); }
+            });
+
+            buildMenu();
+            updateDateUi();
             load();
         })();
     </script>
