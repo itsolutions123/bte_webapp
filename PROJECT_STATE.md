@@ -3060,3 +3060,23 @@ Open items: the user has not confirmed the seed points; editing points rescores 
 Slips (assistant) this step: the first code script used a doubled backslash for newlines inside a quoted-heredoc Python script, so no anchor matched and it aborted with nothing written (only the migration file existed); a placeholder False check line was left in the test script and printed FAIL (flagged before the run). Carried: count rows with a plain count(*); do not predict diff counts; anchors verbatim and aborting unless each count is exactly 1; one step per message; the terminal garbles echoed long pastes (output lines are fine).
 
 Next: docs commit (API_CONTRACT.md, SCHEMA.md, PROJECT_STATE.md) and a plain push, then F3: GET /api/v1/admin/metrics/recruiters. The contract comes first (date range, earned from CLOSED MRF on closed_at, pending from ON GOING MRF and PARTIALLY CLOSED MRF on created_at, per recruiter and classification, ranked, a closed MRF with no recruiter shown as Unassigned and scoring nobody, CANCELLED MRF scoring nothing, no unbounded list), then the endpoint, then the leaderboard, hero and runners-up wiring with the placeholder rows removed.
+
+## Recruiters F3: metrics endpoint and page wiring (2026-11-28, contract f809543, code 1d97f5a, page f5c0672)
+
+Hashes: F2 docs eb01b39; F3 contract f809543; F3 backend 1d97f5a (GET /api/v1/admin/metrics/recruiters in app/routers/admin_metrics.py, schemas RecruiterMetrics*); F3 page f5c0672 (app/templates/admin_recruiters.html, 344 lines, fetches once on load, no dates).
+
+Built: earned points from CLOSED MRF on closed_at, pending from ON GOING MRF and PARTIALLY CLOSED MRF on created_at, CANCELLED MRF scores nothing, points read live from mrf_recruiter_points, requests with no recruiter counted only under unassigned, ranks by earned, pending, name, id, share_percent to one decimal or null. The page shows loading, error with Try again, 403, no recruiters, hero only when the pool earned points, share ring, Runners-up ranks 2 to 4, Full leaderboard with classification columns from the response. Search pill, date range, Scoring Guideline and Export Report stay disabled (F4 and F6).
+
+Verified: 36 PASS lines from a script run by the user as a signed-in SUPERADMIN (shape, order, ranks, totals, share, period, 422s, independent SQL cross-check four times, live-points deltas, CANCELLED not counted, unassigned drop, date ranges, throwaway rows restored); signed-out 401. The page was browser-confirmed by the user ("checks confirmed"), never observed by the assistant.
+
+NOT tested: a MANAGER account; a RECRUITER account on the endpoint and the page (403); concurrent PATCH or PUT; the status handler's recruiter join with a non-final status; a day-boundary exclusion for date ranges; an empty recruiter list; large data volume; the page's error and Try again state; Firefox, Safari, a narrow window; a failed recruiter save in the modal; more than 200 users (the modal option list stops at 200).
+
+Docs: API_CONTRACT.md (GET recruiters flipped to IMPLEMENTED and VERIFIED LIVE, the stale section 4 entry updated, Last verified line 2); SCHEMA.md no change.
+
+Hardcodes: seed points are data in migration 033 and unconfirmed by the user; MRF_RECRUITER_POINTS_MAX (100) must equal the SQL CHECK; the display-name rule is copied in three routers; the admin request row is built inline in four handlers; the page keeps its texts, URL and /login path as named constants.
+
+Open items: the user has not confirmed the seed points or the CANCELLED MRF assumption; editing points rescores past closed MRFs and keeps no history; throwaway rows A, B, C ("ZZ del test") and the backup table mrf_requests_bak_20261127 remain and inflate the unassigned counts until deleted on the user's explicit confirmation.
+
+Slips (assistant) this step: my first docs read truncated the lines I needed to anchor on and the heading filter matched line 2 instead of the real block at line 976. The docs script then repeated the doubled-backslash newline mistake (a literal backslash and n in a quoted heredoc), which wrote a stray line before the F3 heading; it was found by a read-only check and removed before the commit.
+
+Next: F4 search pill (new query parameter q, contract first) and date presets.
