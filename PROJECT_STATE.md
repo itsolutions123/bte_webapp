@@ -3080,3 +3080,22 @@ Open items: the user has not confirmed the seed points or the CANCELLED MRF assu
 Slips (assistant) this step: my first docs read truncated the lines I needed to anchor on and the heading filter matched line 2 instead of the real block at line 976. The docs script then repeated the doubled-backslash newline mistake (a literal backslash and n in a quoted heredoc), which wrote a stray line before the F3 heading; it was found by a read-only check and removed before the commit.
 
 Next: F4 search pill (new query parameter q, contract first) and date presets.
+
+
+## Recruiters F4: search pill and date presets (2026-11-28, contract b0e5a46, code and page ad4479d)
+
+Built: GET /api/v1/admin/metrics/recruiters gains the optional query parameter preset (today, last_7_days, last_30_days, this_month), resolved on the server in the app timezone, 422 "Use either a preset or a date range, not both." when combined with date_from or date_to; constants MRF_METRICS_LAST_7_DAYS, MRF_METRICS_LAST_30_DAYS and MRF_METRICS_PRESET_AND_RANGE in app/routers/admin_metrics.py. The page: the search pill filters the Full leaderboard in the browser (case-insensitive contains on name; ranks, totals, hero and Runners-up stay computed over everyone), the date pill opens a menu with All time, Today, Last 7 days, Last 30 days, This month and Custom range (two date inputs, Apply); a 422 shows its text in the menu and keeps the old data; Escape and an outside click close the menu.
+
+Decisions under the standing rule, flagged, not individually confirmed: server-side preset instead of browser dates; no q parameter (the earlier plan); the default period stays all time (the mockup defaulted to this month).
+
+Verified: script run by the user as a signed-in SUPERADMIN, 36 PASS and 0 FAIL (each preset's period equals the app-timezone date, identical to the explicit date range it resolves to, SQL cross-check, both 422 texts, old 422 text unchanged, signed-out 401). The four SQL cross-checks compared 0 points and 0 MRF against 0 and 0, so they did not prove window exclusion for the presets (F3 proved exclusion on the same code path). The page was browser-confirmed by the user ("checks confirmed", the six checks asked for were not itemised), never observed by the assistant.
+
+NOT tested: a MANAGER account and a RECRUITER account; a midnight boundary; the first day of a month; a non-zero window exclusion for the presets; the page's error and Try again state; Firefox, Safari, a narrow window; keyboard use of the date menu beyond Escape. The test script hardcodes Asia/Manila (test only).
+
+Docs: API_CONTRACT.md (F4 amendment flipped, Last verified line 2); SCHEMA.md no change.
+
+Hardcodes: REC_PRESETS keys on the page must equal the contract's preset values; the error colour #b02a37 is a repeated colour value; Scoring Guideline and Export Report stay disabled (F6). Earlier hardcodes unchanged.
+
+Slips (assistant) this step: I told the user the page script would print 15 edits and it printed 14 (I typed an expected number instead of counting); I did not see whether the node syntax check ran (that output line scrolled off).
+
+Next: F5, the Recruiter Score Breakdown modal: contract first for GET /api/v1/admin/metrics/recruiters/{user_id}/requests.
