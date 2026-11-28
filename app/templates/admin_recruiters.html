@@ -62,6 +62,39 @@
         .rec-mtab.on { background: var(--accent-black); color: #F7E9B8; }
         .rec-mrow { display: flex; justify-content: space-between; gap: 1rem; padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--border-light); }
         .rec-mmeta { font-size: 0.75rem; color: var(--text-muted); }
+        /* Export Report (F6b): A4 preview and the print root. */
+        .rec-x-paper { background: #fff; color: #1C1B17; width: 100%; max-width: 210mm; margin: 0 auto; padding: 14mm 12mm; font-size: 11px; box-sizing: border-box; border: 1px solid #E7E2D4; }
+        .rec-x-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 2px solid #C9941F; }
+        .rec-x-company { font-size: 13px; letter-spacing: 1px; }
+        .rec-x-lab { font-size: 9px; font-weight: 700; color: #9A947F; letter-spacing: 1.2px; }
+        .rec-x-eyebrow { font-size: 10px; font-weight: 700; color: #8A6A12; letter-spacing: 1.4px; margin: 22px 0 6px; }
+        .rec-x-title { font-size: 26px; font-weight: 800; line-height: 1.1; }
+        .rec-x-meta { display: flex; gap: 32px; flex-wrap: wrap; margin: 14px 0 18px; font-size: 10.5px; font-weight: 600; }
+        .rec-x-top { background: #15140F; color: #fff; border-left: 5px solid #C9941F; border-radius: 10px; padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; break-inside: avoid; }
+        .rec-x-top-name { font-size: 21px; font-weight: 800; margin: 6px 0 8px; }
+        .rec-x-chip { display: inline-block; background: rgba(255, 255, 255, 0.12); color: #D9D4C4; border-radius: 20px; padding: 2px 9px; margin: 0 5px 5px 0; font-size: 10px; }
+        .rec-x-top-sub { font-size: 10.5px; color: #B9B39F; }
+        .rec-x-top-pts { font-size: 46px; font-weight: 800; color: #C9941F; line-height: 1; text-align: right; }
+        .rec-x-top-pend { font-size: 10px; color: #F7E9B8; text-align: right; margin-top: 4px; }
+        .rec-x-kpis { display: grid; grid-template-columns: repeat(4, 1fr); margin: 16px 0 22px; border-top: 1px solid #E7E2D4; border-bottom: 1px solid #E7E2D4; break-inside: avoid; }
+        .rec-x-kpi { padding: 12px 10px; }
+        .rec-x-kpi-n { font-size: 22px; font-weight: 800; margin-top: 4px; }
+        .rec-x-h2 { font-size: 12px; font-weight: 800; margin-bottom: 8px; }
+        .rec-x-table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+        .rec-x-table th { font-size: 8.5px; font-weight: 700; color: #9A947F; background: #FAF9F4; padding: 6px 8px; text-align: left; }
+        .rec-x-table td { padding: 7px 8px; border-bottom: 1px solid #EFEBDD; }
+        .rec-x-table tr { break-inside: avoid; }
+        .rec-x-table .n { text-align: right; }
+        .rec-x-note { font-size: 9.5px; color: #6B6657; line-height: 1.55; margin-top: 14px; }
+        #rec-print-root { display: none; }
+        @page { size: A4; margin: 12mm; }
+        @media print {
+            body.rec-printing > *:not(#rec-print-root) { display: none !important; }
+            body.rec-printing { display: block !important; overflow: visible !important; padding: 0 !important; background: #fff !important; }
+            body.rec-printing #rec-print-root { display: block; width: 100%; }
+            #rec-print-root, #rec-print-root * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            #rec-print-root .rec-x-paper { max-width: none; border: 0; padding: 0; }
+        }
     </style>
 </head>
 <body>
@@ -89,7 +122,7 @@
                     </div>
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-outline-dark" id="rec-guide-btn">Scoring Guideline</button>
-                        <button type="button" class="btn btn-dark" disabled>Export Report</button>
+                        <button type="button" class="btn btn-dark" id="rec-export-btn">Export Report</button>
                     </div>
                 </div>
 
@@ -197,6 +230,26 @@
         </div>
     </div>
 
+    <div class="modal fade" id="recExportModal" tabindex="-1" aria-labelledby="recExportTitle" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="recExportTitle">Export Report</h5>
+                    <span class="rec-mmeta ms-2">Document preview, A4</span>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    <div id="rec-x-preview"></div>
+                </div>
+                <div class="modal-footer">
+                    <span class="rec-mmeta me-auto">Opens your browser's print dialog. Choose Save as PDF there to keep a file.</span>
+                    <button type="button" class="btn btn-outline-dark" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-dark" id="rec-x-print">Export PDF</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/admin-sidebar.js"></script>
     <script>
@@ -252,6 +305,27 @@
             var REC_TEXT_G_SAVE = 'Save changes';
             var REC_TEXT_G_SAVING = 'Saving...';
             var REC_TEXT_G_HEAD_ASSIGNMENT = 'Assignment';
+            // Export Report (feature F6b): an A4 preview built from the leaderboard response the page already loaded; no endpoint.
+            var REC_X_PRINT_ROOT_ID = 'rec-print-root';
+            var REC_X_PRINTING_CLASS = 'rec-printing';
+            var REC_TEXT_X_COMPANY = 'BIGTIME EMPIRE';
+            var REC_TEXT_X_CONF = 'HUMAN RESOURCES' + REC_DOT + 'CONFIDENTIAL';
+            var REC_TEXT_X_EYEBROW = 'PERFORMANCE REPORT';
+            var REC_TEXT_X_TITLE = 'Recruiter Performance Report';
+            var REC_TEXT_X_PERIOD = 'PERIOD';
+            var REC_TEXT_X_GENERATED = 'GENERATED';
+            var REC_TEXT_X_PREPARED = 'PREPARED BY';
+            var REC_TEXT_X_TOP = 'TOP PERFORMER';
+            var REC_TEXT_X_POINTS_EARNED = 'points earned';
+            var REC_TEXT_X_PENDING_SUFFIX = ' pending';
+            var REC_TEXT_X_NO_POINTS = 'No points have been earned in this period.';
+            var REC_TEXT_X_K_RECRUITERS = 'RECRUITERS';
+            var REC_TEXT_X_K_POOL = 'EARNED POOL';
+            var REC_TEXT_X_K_PENDING = 'PENDING POINTS';
+            var REC_TEXT_X_K_COUNTS = 'CLOSED / ON-GOING';
+            var REC_TEXT_X_RANKING = 'Ranking summary';
+            var REC_TEXT_X_HEADS = ['#', 'RECRUITER', 'ASSIGNMENTS', 'CLOSED MRFS', 'PENDING MRFS', 'PENDING PTS', 'EARNED PTS'];
+            var REC_TEXT_X_NOTE = 'Points are earned only when an MRF is Closed. On-going MRFs show as pending points and are excluded from every earned total. Each closed MRF earns the points set for its assignment and classification in the Scoring Guideline, and the report always uses the values in force when it is generated.';
             // Preset keys must equal the contract's preset values (GET /api/v1/admin/metrics/recruiters, feature F4).
             var REC_PRESETS = [
                 { key: 'today', label: 'Today' },
@@ -903,6 +977,145 @@
             gBtn.addEventListener('click', openGuide);
             gSave.addEventListener('click', saveGuide);
             gEl.addEventListener('hidden.bs.modal', function () { gSeq += 1; });
+
+            // Export Report modal (feature F6b): the A4 preview is built from `current`, the last leaderboard response; the browser prints it.
+            var xBtn = document.getElementById('rec-export-btn');
+            var xEl = document.getElementById('recExportModal');
+            var xPreview = document.getElementById('rec-x-preview');
+            var xPrint = document.getElementById('rec-x-print');
+
+            function xGenerated() {
+                try { return new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); } catch (e) { return REC_DASH; }
+            }
+
+            function xPreparedBy() {
+                var n = document.getElementById('profile-pill-name');
+                var s = n ? n.textContent.trim() : '';
+                return s || REC_DASH;
+            }
+
+            function xKpi(label, value) {
+                var d = el('div', 'rec-x-kpi');
+                d.appendChild(el('div', 'rec-x-lab', label));
+                d.appendChild(el('div', 'rec-x-kpi-n', String(value)));
+                return d;
+            }
+
+            function buildExportPaper(b) {
+                var rows = (b.data || []).slice().sort(function (a, c) { return a.rank - c.rank; });
+                var t = b.totals || { earned_points: 0, pending_points: 0, closed_count: 0, pending_count: 0 };
+                var paper = el('div', 'rec-x-paper');
+
+                var head = el('div', 'rec-x-head');
+                head.appendChild(el('b', 'rec-x-company', REC_TEXT_X_COMPANY));
+                head.appendChild(el('span', 'rec-x-lab', REC_TEXT_X_CONF));
+                paper.appendChild(head);
+                paper.appendChild(el('div', 'rec-x-eyebrow', REC_TEXT_X_EYEBROW));
+                paper.appendChild(el('div', 'rec-x-title', REC_TEXT_X_TITLE));
+
+                var meta = el('div', 'rec-x-meta');
+                [[REC_TEXT_X_PERIOD, periodLabel(b.period)], [REC_TEXT_X_GENERATED, xGenerated()], [REC_TEXT_X_PREPARED, xPreparedBy()]].forEach(function (m) {
+                    var d = el('div');
+                    d.appendChild(el('div', 'rec-x-lab', m[0]));
+                    d.appendChild(document.createTextNode(m[1]));
+                    meta.appendChild(d);
+                });
+                paper.appendChild(meta);
+
+                var top = (rows.length > 0 && rows[0].earned_points > 0) ? rows[0] : null;
+                if (top) {
+                    var card = el('div', 'rec-x-top');
+                    var left = el('div');
+                    left.appendChild(el('div', 'rec-x-lab', REC_TEXT_X_TOP));
+                    left.appendChild(el('div', 'rec-x-top-name', top.name));
+                    var chips = el('div');
+                    (top.assignments || []).forEach(function (a) { chips.appendChild(el('span', 'rec-x-chip', a)); });
+                    left.appendChild(chips);
+                    var parts = [
+                        top.closed_count + ' closed MRF' + (top.closed_count === 1 ? '' : 's'),
+                        top.pending_count + ' on-going'
+                    ];
+                    if (top.share_percent !== null && top.share_percent !== undefined) { parts.push(top.share_percent + '% of pool'); }
+                    if (rows.length > 1) { parts.push('+' + (top.earned_points - rows[1].earned_points) + ' pts vs #2'); }
+                    left.appendChild(el('div', 'rec-x-top-sub', parts.join(REC_DOT)));
+                    var right = el('div');
+                    right.appendChild(el('div', 'rec-x-top-pts', String(top.earned_points)));
+                    right.appendChild(el('div', 'rec-x-top-pend', REC_TEXT_X_POINTS_EARNED));
+                    right.appendChild(el('div', 'rec-x-top-pend', '+' + top.pending_points + REC_TEXT_X_PENDING_SUFFIX));
+                    card.appendChild(left);
+                    card.appendChild(right);
+                    paper.appendChild(card);
+                } else {
+                    paper.appendChild(el('div', 'rec-x-note', REC_TEXT_X_NO_POINTS));
+                }
+
+                var kpis = el('div', 'rec-x-kpis');
+                kpis.appendChild(xKpi(REC_TEXT_X_K_RECRUITERS, rows.length));
+                kpis.appendChild(xKpi(REC_TEXT_X_K_POOL, t.earned_points));
+                kpis.appendChild(xKpi(REC_TEXT_X_K_PENDING, t.pending_points));
+                kpis.appendChild(xKpi(REC_TEXT_X_K_COUNTS, t.closed_count + ' / ' + t.pending_count));
+                paper.appendChild(kpis);
+
+                paper.appendChild(el('div', 'rec-x-h2', REC_TEXT_X_RANKING));
+                if (rows.length === 0) {
+                    paper.appendChild(el('div', 'rec-x-note', REC_TEXT_NO_RECRUITERS));
+                } else {
+                    var table = el('table', 'rec-x-table');
+                    var hr = el('tr');
+                    REC_TEXT_X_HEADS.forEach(function (h, i) { hr.appendChild(el('th', i >= 3 ? 'n' : '', h)); });
+                    var thead = el('thead');
+                    thead.appendChild(hr);
+                    table.appendChild(thead);
+                    var tbody = el('tbody');
+                    rows.forEach(function (r) {
+                        var tr = el('tr');
+                        var cells = [
+                            String(r.rank), r.name, (r.assignments && r.assignments.length) ? r.assignments.join(REC_DOT) : REC_DASH,
+                            String(r.closed_count), String(r.pending_count), String(r.pending_points), String(r.earned_points)
+                        ];
+                        cells.forEach(function (c, i) { tr.appendChild(el('td', i >= 3 ? 'n' : '', c)); });
+                        tbody.appendChild(tr);
+                    });
+                    table.appendChild(tbody);
+                    paper.appendChild(table);
+                }
+
+                var un = b.unassigned || { closed_count: 0, pending_count: 0 };
+                if (un.closed_count + un.pending_count > 0) {
+                    paper.appendChild(el('div', 'rec-x-note', 'No recruiter set, so they score nobody: ' + un.closed_count + ' closed and ' + un.pending_count + ' pending MRFs.'));
+                }
+                paper.appendChild(el('div', 'rec-x-note', REC_TEXT_X_NOTE));
+                return paper;
+            }
+
+            function openExport() {
+                if (!current || !current.data) { return; }
+                xPreview.textContent = '';
+                xPreview.appendChild(buildExportPaper(current));
+                bootstrap.Modal.getOrCreateInstance(xEl).show();
+            }
+
+            function printExport() {
+                if (!current || !current.data) { return; }
+                var old = document.getElementById(REC_X_PRINT_ROOT_ID);
+                if (old) { old.remove(); }
+                var root = el('div');
+                root.id = REC_X_PRINT_ROOT_ID;
+                root.appendChild(buildExportPaper(current));
+                document.body.appendChild(root);
+                document.body.classList.add(REC_X_PRINTING_CLASS);
+                function cleanup() {
+                    window.removeEventListener('afterprint', cleanup);
+                    document.body.classList.remove(REC_X_PRINTING_CLASS);
+                    root.remove();
+                }
+                window.addEventListener('afterprint', cleanup);
+                window.print();
+            }
+
+            xBtn.addEventListener('click', openExport);
+            xPrint.addEventListener('click', printExport);
+            xEl.addEventListener('hidden.bs.modal', function () { xPreview.textContent = ''; });
 
             buildMenu();
             updateDateUi();
